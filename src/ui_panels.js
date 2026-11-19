@@ -1127,7 +1127,7 @@ function showMenu() {
   showDialog({
     render: function () {
       return dlgHead('메뉴 — ' + GAME_VERSION) + '<div class="dlg-b"><div class="cmds"><button class="cmd" type="button" data-a="save"><b>저장</b><small>이 기기에 저장</small></button><button class="cmd" type="button" data-a="load"><b>불러오기</b><small>마지막 저장</small></button>' +
-        '<button class="cmd" type="button" data-a="snd"><b>효과음 ' + (UI.sound ? '켜짐' : '꺼짐') + '</b><small>누르면 전환</small></button><button class="cmd" type="button" data-a="mus"><b>음악 ' + (UI.music ? '켜짐' : '꺼짐') + '</b><small>누르면 전환</small></button><button class="cmd" type="button" data-a="spd"><b>열흘 재생</b><small>' + SPEEDS[UI.pspeed][0] + ' · 누르면 전환</small></button><button class="cmd" type="button" data-a="help"><b>도움말</b><small>규칙·조작</small></button>' +
+        '<button class="cmd" type="button" data-a="snd"><b>효과음 ' + (UI.sound ? '켜짐' : '꺼짐') + '</b><small>누르면 전환</small></button><button class="cmd" type="button" data-a="mus"><b>음악 ' + (UI.music ? '켜짐' : '꺼짐') + '</b><small>' + (!UI.music ? '누르면 켬' : (BGM.mode === 'file' ? '연주곡 · 누르면 끔' : (BGM.mode === 'syn' ? '곡 파일을 못 읽어 만든 음악 · 누르면 끔' : '누르면 끔'))) + '</small></button><button class="cmd" type="button" data-a="spd"><b>열흘 재생</b><small>' + SPEEDS[UI.pspeed][0] + ' · 누르면 전환</small></button><button class="cmd" type="button" data-a="help"><b>도움말</b><small>규칙·조작</small></button>' +
         '<button class="cmd" type="button" data-a="title"><b>처음으로</b><small>타이틀 화면</small></button></div><p class="note">턴을 마칠 때마다 자동으로 저장됩니다. 저장은 이 기기의 브라우저에만 남습니다.</p></div>';
     },
     on: {

@@ -193,7 +193,12 @@ def steps(pg):
     pg.evaluate('() => { UI.music = true; playBgm(bgmForState()); }'); pg.wait_for_timeout(1500)
     on = pg.evaluate('() => ({ mode: BGM.mode, name: BGM.name, paused: BGM.el ? BGM.el.paused : null })')
     check('다시 켜면 지금 장면의 음악', on['name'] == 'field' and on['mode'] in ('file', 'syn'), on)
-    B.shot(pg, 'd12_10_end', 300)
+    tap(pg, '#btnMenu', 0, 400)
+    mt = pg.evaluate('''() => (document.querySelector('#modal [data-a=mus]') || {}).innerText || ""''')
+    check('메뉴의 음악 단추가 지금 나오는 것이 연주곡인지 만든 음악인지 알려 줌', ('연주곡' in mt) if HAS_BGM else ('만든 음악' in mt), mt)
+    B.shot(pg, 'd12_10_menu', 300)
+    tap(pg, '#modal .dlg-h .x')
+    B.shot(pg, 'd12_11_end', 300)
 B.run(steps, 412, 915)
 errs = [e for e in B.errors if 'ERR_FILE_NOT_FOUND' not in e and 'GPU stall' not in e and 'GL Driver Message' not in e]
 print('console errors:', len(errs)); [print('   ', e[:300]) for e in errs[:12]]
