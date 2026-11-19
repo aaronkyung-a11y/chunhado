@@ -46,7 +46,10 @@
 ## 앱(PWA)과 GitHub Pages(v0.7)
 - `python3 tools/build.py --pwa` → `dist/pwa/`를 저장소 맨 위에 그대로 올린다(GitHub Pages: main 브랜치 / 루트).
 - `pwa/sw.js`: 화면은 저장해 둔 것을 열되, 인터넷이 되면 먼저 서버의 것이 바뀌었는지만 짧게 묻고(HEAD) 바뀌었으면 새로 받는다 — 새 판을 올리면 다음에 열 때 바로 바뀐다. 음악은 화면이 뜬 뒤 차례로 받아 둔다. 아이콘을 바꾸면 `SHELL`, 음악을 바꾸면 `BGM`의 번호를 올린다.
-- 서비스 워커 등록과 '앱으로 설치' 단추는 앱판에만 들어간다(`tools/build.py`의 `PWA_HEAD`·`PWA_JS`). 아티팩트판에는 없다.
+- 서비스 워커 등록, '앱으로 설치' 단추, 휴대폰 '뒤로' 처리는 앱판에만 들어간다(`tools/build.py`의 `PWA_HEAD`·`PWA_JS`). 아티팩트판에는 없다.
+  - '뒤로'는 앱으로 열렸을 때(`display-mode: standalone/fullscreen`)만 받는다: `appBack()`(`src/ui_panels.js`)이 ×와 같은 규칙으로 한 단계 물러나고, 더 물러날 곳이 없으면 "한 번 더 누르면 나갑니다".
+- 같은 계정의 다른 GitHub Pages 앱과 **저장 공간을 같이 쓴다**(주소의 앞부분 `aaronkyung-a11y.github.io`가 같아서). 그래서 캐시 이름은 `chunhado-`로, 저장 키는 `chunhado_`로 시작하고, 이 서비스 워커는 `chunhado-`로 시작하는 캐시만 정리한다. 다른 앱의 서비스 워커가 남의 캐시까지 지우면 이 게임은 다음에 열 때 다시 받는다(그때는 인터넷이 필요).
+- 올리는 법: `python3 tools/build.py --pwa && python3 tools/deploy_repo.py <저장소 폴더>` → 저장소 폴더에서 커밋·푸시. `deploy_repo.py`는 내려받은 주소가 적힌 로컬 기록을 빼고, 주소·열쇠 같은 글자가 섞인 파일이 있으면 멈춘다. 저장소에는 그림·소리 원본과 옛 판 스냅샷을 올리지 않는다.
 
 ## 창과 뒤로 가기(v0.6)
 `src/ui_panels.js`의 규칙. 새 창·새 흐름을 넣을 때 이대로 맞춘다.
