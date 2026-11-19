@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+"""소스 묶음: python3 tools/pack_sources.py <버전> <out.txt>  — 손으로 쓴 소스·도구·시험·그림 기록을 한 파일로(생성물은 index.html 안에 있음)"""
+import os, sys
+root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+ver, out = sys.argv[1], sys.argv[2]
+FILES = '''README.md CHANGELOG.md
+src/index.html src/style.css src/data.js src/core.js src/ai.js src/ui3d.js src/fx.js src/ui_panels.js
+build/patch_v04_ui3d.py build/patch_v04_panels.py build/v07/p1_core.py build/v07/p2_audio.py build/v07/p3_fx.py build/v07/p4_ui.py
+pwa/manifest.webmanifest pwa/sw.js
+tools/geo.py tools/mapgen2.py tools/bake3d.py tools/bake3d_ink.py tools/make_sprites.py tools/make_sprites_ink.py tools/make_roster.py tools/make_portraits.py tools/make_assets_ink.py
+tools/build.py tools/pack_sources.py tools/fetch_art.py tools/contact.py tools/dl_por2.py tools/dl_por3.py
+tools/por5_prompt.py tools/dl_por5.py tools/facebox.py tools/make_assets_v05.py tools/qa_por5.py
+tools/por7_prompt.py tools/por7_plan.py tools/dl_por7.py tools/qa_por7.py tools/dl_audio7.py tools/make_audio_v07.py tools/make_icons.py
+tests/sim.js tests/fuzz.js tests/dist.js tests/floor.js tests/zonecheck.js tests/tac7.js tests/browser.py
+tests/d1.py tests/d2.py tests/d2b.py tests/d3.py tests/d4.py tests/d5.py tests/d6.py tests/d7.py tests/d8.py tests/d9.py tests/d10.py tests/d11.py tests/d12.py tests/d13.py tests/b9.py
+art/por3_ids.tsv art/spr3_jobs.tsv art/prompts-v0.4.txt
+art/por5_ids.tsv art/por5_scenes.tsv art/por5_scenes_f.tsv art/por5_scenes_pilot.tsv art/por5_focus.tsv art/prompts-v0.5.txt art/por5_progress.md
+art/por7_ids.tsv art/por7_scenes.tsv art/por7_focus.tsv art/por7_ab.tsv art/por7_submit.tsv art/prompts-v0.7.txt audio7/jobs.tsv'''.split()
+BAD = ('X-Amz-', 'Signature=', 'AWSAccessKeyId', 'Bearer ', 'cloudfront.net', 'api_key', 'secret')
+parts = ['삼국지 천하도 %s — 소스 묶음. 각 파일은 "=====8<===== 경로" 줄로 시작한다. 생성물(src/assets.js, mapdata.js, map3d.js, sprites.js, roster.js, sfxdata.js)은 index.html 안에 들어 있다. 음악(bgm/*.mp3)과 아이콘(pwa/icons/)은 따로 올린 파일 그대로다. 이전 판의 그림 기록(art/manifest.tsv, spr_jobs.tsv, por2_jobs.tsv)은 dev/sources-v0.3.txt 에 있다.\n' % ver]
+for f in FILES:
+    s = open(os.path.join(root, f), encoding='utf-8').read()
+    for b in BAD:
+        if b in s and f != 'tools/pack_sources.py': raise SystemExit('refusing to pack %s: contains %r' % (f, b))
+    parts.append('\n=====8<===== %s\n' % f); parts.append(s if s.endswith('\n') else s + '\n')
+open(out, 'w', encoding='utf-8').write(''.join(parts))
+print('packed', len(FILES), 'files →', out, os.path.getsize(out), 'bytes')

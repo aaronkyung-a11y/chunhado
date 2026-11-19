@@ -1,0 +1,13 @@
+# v0.7 초선·여포 견줘 보기(모델 3가지 × 장면 2가지). index	key	variant	model	job
+0	lubu	V1-mounted	nano_banana_pro	a249db7d-7a1e-4b16-acf9-d898b3b014aa
+1	lubu	V2-hulao	nano_banana_pro	da6c3888-baa5-4ce7-a334-e8156e67f137
+2	lubu	V1-mounted	gpt_image_2_6	c526c2d0-95e4-48a0-a44e-36f158124b82
+3	lubu	V2-hulao	gpt_image_2_6	0b00e854-2050-4ad7-869e-d1cfe6702fe7
+4	lubu	V1-mounted	nano_banana_2_1	22adba5e-2134-4043-8b0a-a85fdcab4e11
+5	lubu	V2-hulao	nano_banana_2_1	a311d49c-d408-4f6b-a368-ae40000e9824
+6	diaochan	V1-dance	nano_banana_pro	fd05f50f-6940-42bc-86e2-0ce09b7aac26
+7	diaochan	V2-moonfan	nano_banana_pro	4905769c-43e6-4657-8680-a75e32356919
+8	diaochan	V1-dance	gpt_image_2_6	0e5c633e-be2f-45b2-9881-ec002730db41
+9	diaochan	V2-moonfan	gpt_image_2_6	4ea0e2f9-1916-4051-a195-714b2f2a0957
+10	diaochan	V1-dance	nano_banana_2_1	39518ff3-1b1e-486e-8c15-248d432f2a2c
+11	diaochan	V2-moonfan	nano_banana_2_1	0b6a2a4e-aff6-4c8b-a458-eb630858e2d6

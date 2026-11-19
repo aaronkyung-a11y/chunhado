@@ -1,0 +1,153 @@
+# v0.5 초상 장면 지시: key <TAB> 장면(영문). 프롬프트 = 머리말 + 장면 + 맺음말(tools/por5_prompt.py). 견본 12명(guanyu, zhangfei, liubei, caocao, lubu, zhugeliang, zhaoyun, diaochan, sunce, xiahoudun, huangzhong, zhouyu)은 art/prompts-v0.5.txt 의 첫 묶음.
+anliang	Yan Liang, Yuan Shao's champion, in the saddle (horse only hinted by a few strokes), raising his broad saber high with one arm and bellowing a challenge to the right. Expression: overconfident roar.
+caohong	Cao Hong offering the reins of his own horse with an outstretched arm, head bowed toward his lord, sword lowered in the other hand; a horse's head in pale strokes at the edge. Expression: urgent loyalty.
+caopi	Cao Pi seated sideways on a high-backed chair, chin resting on his fist, a rolled scroll in the other hand, looking down and aside. Expression: cold, calculating, faint smile.
+caoren	Cao Ren behind a great shield planted on a rampart, sword drawn and pointing down, looking sideways over the battlements; a few pale strokes of crenellations. Expression: stern, immovable.
+caozhang	Cao Zhang leaning far forward at full gallop (horse hinted by flying mane), halberd couched under his arm, bristling beard and cloak blown back. Expression: wild joy of battle.
+chendeng	Chen Deng on a city wall at dusk, one hand on the parapet, the other pointing a folded fan toward the distance, robe blowing. Expression: shrewd, slightly haughty smile.
+chenggongying	Chenggong Ying kneeling on one knee, presenting a rolled bamboo scroll with both hands while his head turns to watch the horizon. Expression: grave loyalty.
+chengong	Chen Gong at White Gate Tower, hands clasped behind his back, walking away with his head held high and glancing back over his shoulder. Expression: proud, unrepentant.
+chengpu	the old veteran Cheng Pu resting both hands on the shaft of his serpent spear, cloak over his shoulders, looking sideways across a river; two pale wave lines. Expression: weathered dignity.
+chengui	frail old Chen Gui leaning on a staff, stroking his thin white beard with the other hand, bending to whisper aside. Expression: sly, knowing.
+chengyu	tall gaunt Cheng Yu lifting both hands as if raising the sun above a mountain, face tilted up; a pale disc of sun in thin wash overhead. Expression: stern, visionary.
+chenlin	Chen Lin bent over a low writing desk, brush flying across a long blank sheet, holding back his sleeve with the other hand, seen in three-quarter view from above. Expression: fierce inspiration.
+chenqun	Chen Qun at court in profile, holding an official's narrow tablet upright before his chest with both hands, bowing slightly. Expression: upright, serious.
+chenwu	Chen Wu charging to the left, a two-handed saber swung back over his shoulder, torn cloak flying. Expression: grim fury.
+dengai	Deng Ai on a steep mountain ledge wrapped in a felt blanket, pointing down the cliff with his spear and turning back to call his men; a few pale strokes of crags. Expression: daring, resolute.
+dianwei	Dian Wei blocking a camp gate, feet wide apart, a heavy short halberd in each hand crossed low, head lowered and glaring from under his brows; pale strokes of a gate post behind. Expression: bull-like fury.
+donghe	Dong He, plainly dressed, at a desk counting bamboo tally rods, head turned aside to instruct a clerk out of frame. Expression: modest, attentive.
+dongxi	Dong Xi on a pitching ship's deck in a storm, gripping a mast rope with one hand, sword in the other, shouting orders into the wind; pale wave strokes. Expression: stubborn courage.
+dongzhao	Dong Zhao leaning close, one hand shielding his mouth as he whispers advice, eyes sliding sideways. Expression: smooth, persuasive.
+fazheng	Fa Zheng on a hilltop, one arm stretched out pointing down at an enemy camp, a small signal flag raised in the other hand. Expression: sharp eyes, thin fierce smile.
+feiyi	Fei Yi seated half-turned at a go board, placing a stone with two fingers while reading a document held in his other hand. Expression: relaxed, cheerful.
+fengji	Feng Ji half hidden behind his raised wide sleeve, whispering, eyes sliding to the side. Expression: scheming smirk.
+ganning	Gan Ning crouching low before a night raid, saber resting on his shoulder, a string of small bells at his waist and a feather in his hair, grinning back over his shoulder. Expression: reckless grin.
+gaolan	Gao Lan reining his horse around (horse hinted), spear lowered, looking back over his shoulder. Expression: troubled frown.
+gaoshun	Gao Shun standing rigid in profile, one arm raised in a sharp forward command, sword at his side; pale ranks of spear tips behind. Expression: austere, unsmiling.
+gongsundu	Gongsun Du seated sideways on a fur-draped seat, one hand on his knee, the other on the pommel of an upright sword, looking down his nose. Expression: domineering.
+gongsunzan	Gongsun Zan riding a white horse whose head and mane appear in pale outline at the lower corner, spear raised, seen in profile, cloak flying. Expression: fierce pride.
+guanning	the recluse Guan Ning sitting on a straw mat with his back half turned, reading a bamboo book in profile; the mat beside him is cut cleanly in two. Expression: serene detachment.
+guanping	young Guan Ping on guard, half turned, one hand raised to shade his eyes, a saber held low in the other. Expression: earnest, vigilant.
+guanxing	Guan Xing swinging his father's crescent blade overhead with both hands in mid-stroke, shouting. Expression: burning for vengeance.
+guohuai	Guo Huai on a river bank, sword pointing across the water, the other hand holding his horse's reins; two pale wave lines. Expression: cool, composed.
+guojia	frail young Guo Jia half reclining on one elbow at a low table, a wine cup dangling from his fingers, the other hand tracing a route on a map, looking up sideways. Expression: languid brilliance, knowing smile.
+guosi	Guo Si with one boot up on a chest of plunder, saber resting on his shoulder, laughing coarsely to the side. Expression: coarse, cruel.
+guyong	Gu Yong sitting upright in profile at a banquet, hands folded in his sleeves, lips pressed shut, a wine cup pushed away untouched. Expression: grave silence.
+handang	the old soldier Han Dang twisting in the saddle to shoot an arrow backward (horse hinted). Expression: weathered focus.
+hansong	the envoy Han Song holding a tasseled staff of office, bowing stiffly from the waist but with his head raised, speaking frankly. Expression: principled, unbending.
+hansui	old Han Sui on horseback in a fur-trimmed cloak, leaning sideways to talk to someone out of frame, one hand raised in greeting. Expression: wary old fox, half smile.
+haozhao	Hao Zhao on a rampart, shield on his arm, a burning torch held high, shouting down at the besiegers; pale strokes of siege ladders. Expression: unyielding.
+heqi	He Qi in splendid ornate armor at a ship's bow, one foot on the rail, an ornamented spear in hand, head turned proudly. Expression: flamboyant pride.
+huangfusong	old Huangfu Song at night raising a torch high in one hand, sword in the other, signalling a fire attack; a few pale flame strokes far behind. Expression: stern command.
+huanggai	old Huang Gai at the prow of a fire ship, torch in hand, pointing ahead, beard and cloak blown by the wind; pale flame strokes behind. Expression: grim resolve.
+huangquan	the minister Huang Quan at court in formal robes, holding up a memorial tablet in both hands, head lifted as he speaks earnestly to his lord out of frame. Expression: grave, loyal concern.
+huangzu	Huang Zu half hidden behind a ship's bulwark, peering sideways, one hand raised to signal hidden archers. Expression: wary, mean.
+huatuo	the old physician Hua Tuo bending forward, sleeves rolled, a small curved knife held delicately in one hand and a medicine gourd in the other, looking down intently. Expression: calm concentration, kind eyes.
+huaxin	Hua Xin in court robes turning away, clutching an ivory tablet to his chest and glancing back. Expression: cool ambition.
+huchier	Hu Che'er sneaking on tiptoe, hunched over, two heavy halberds tucked under his arm, looking back over his shoulder. Expression: sly grin.
+jiangqin	Jiang Qin sitting on a coil of rope on deck, a saber across his knees, awkwardly reading a book held close, head tilted. Expression: earnest effort.
+jiangwan	Jiang Wan standing with hands clasped behind his back, looking up at a banner in the wind, a document tucked in his belt. Expression: unruffled composure.
+jiangwei	Jiang Wei turning back in the saddle (horse hinted), spear in one hand, the other arm raised to rally his troops, cape flying; pale mountain crags behind. Expression: desperate determination.
+jianyong	Jian Yong lounging sideways on a couch, propped on one elbow, one knee up, wine cup raised, laughing. Expression: carefree humor.
+jiaxu	Jia Xu with hands tucked into his sleeves, shoulders hunched, turning his head only slightly to speak from the corner of his mouth, half his face in gray shadow wash. Expression: unreadable, cold half-smile.
+jiling	Ji Ling gripping a heavy three-pointed double-edged polearm in both hands in a guard stance, glaring to the left. Expression: gruff anger.
+jushou	Ju Shou at night looking up at the stars, one hand raised pointing at them, the other holding a staff, robe blowing; a few pale dots of stars. Expression: sorrowful foresight.
+kanze	Kan Ze disguised in a fisherman's straw cape over his scholar's robe, stepping from a small boat with a sealed letter tube in hand, head thrown back laughing. Expression: bold laughter.
+kongrong	Kong Rong holding forth at a gathering, a wine cup raised in one hand, the other gesturing grandly, sleeves swinging. Expression: witty, a little arrogant.
+kuailiang	Kuai Liang unrolling a map scroll between both hands, a brush tucked behind his ear, looking sideways toward his lord. Expression: thoughtful.
+kuaiyue	Kuai Yue offering a wine cup with a courteous bow while his other hand, behind his back, signals with two fingers. Expression: courteous smile hiding a plot.
+leitong	Lei Tong advancing along a mountain path, saber drawn, shield raised overhead against arrows, looking up. Expression: alarmed bravery.
+lidian	Li Dian with a bamboo book tucked under one arm and a sword in the other hand, turning to give a modest nod of salute. Expression: modest, steady.
+lijue	Li Jue sprawled on a seat, a wine bowl in one hand, a riding crop in the other, leaning forward threateningly. Expression: crooked menacing grin.
+lingtong	Ling Tong in a sword dance, twin sabers sweeping in an arc, body twisting, hair ribbon flying, eyes fixed sideways on a rival out of frame. Expression: cold fury.
+liuba	Liu Ba turning his back in disdain, weighing a string of coins in his palm, chin up. Expression: aloof.
+liubiao	Liu Biao seated half-turned among scrolls, stroking his beard, gazing absently out of a window. Expression: dignified, hesitant.
+liufeng	young Liu Feng gripping his sword hilt, blade half drawn, head bowed and turned away. Expression: torn, conflicted.
+liuyao	Liu Yao looking anxiously over a rampart, one hand clutching his robe at the chest. Expression: anxious dignity.
+liuye	Liu Ye pointing up at the arm of a great stone-throwing engine drawn in pale strokes, a carpenter's square in his other hand, turning back to explain. Expression: eager intelligence.
+liuzhang	Liu Zhang holding out a seal box with both hands in surrender, head bowed, turned three-quarter. Expression: gentle, sorrowful.
+liyan	Li Yan in armor holding a long saber behind his back, looking over his shoulder with a measuring gaze. Expression: proud, calculating.
+lumeng	Lu Meng in a white merchant's robe over his armor at the oar of a river boat at night, a finger to his lips for silence, sword hidden under the robe; pale wave lines. Expression: cunning calm.
+lusu	Lu Su seated at a banquet mat in three-quarter view, calmly raising one open hand to stop a quarrel, a wine cup in the other. Expression: broad-minded, steady smile.
+luxun	young Lu Xun in a scholar's cap and light armor, raising a command baton to give the signal, robe in the wind; far behind, a line of pale flame strokes. Expression: composed, quietly confident.
+machao	Ma Chao leaning forward in the saddle (horse hinted by mane), thrusting his long spear straight ahead, lion-crested helmet, white cloak streaming. Expression: handsome fury.
+madai	Ma Dai in profile, saber raised high behind his shoulder in mid-strike, shouting. Expression: fierce shout.
+maliang	the scholar Ma Liang, famous as 'White Eyebrows': his two eyebrows are thick and pure white, left as blank paper against his black hair, the first thing one notices. He unrolls a map and points to it with a folded fan, face in three-quarter view. Expression: mild, wise.
+manchong	Man Chong on a wall in the wind, a torch held aloft, shield arm braced, glaring down. Expression: severe.
+maojie	Mao Jie in a plain patched robe, raising an open palm to refuse a small lacquered wooden casket held out by a hand entering from the edge of the picture, his face turned aside. The casket is plain, with no ribbon or bow. Expression: incorruptible sternness.
+masu	Ma Su on a hilltop, pointing upward with one hand, a book of strategy in the other, looking down his nose. Expression: smug overconfidence.
+mateng	tall Ma Teng in fur-trimmed armor, one hand resting on his horse's neck (horse hinted), looking off toward distant mountains. Expression: open, honest.
+mengda	Meng Da glancing back over his shoulder while slipping a letter into his sleeve. Expression: shifty.
+menghuo	the burly king Meng Huo in a feathered headdress and beast hide, arms folded behind him by a rope, throwing his head back in defiant laughter. Expression: defiant laughter.
+miheng	wild-haired young Mi Heng beating a great war drum, both sticks raised high, sleeves rolled up on his ragged robe, head thrown back. Expression: scornful ecstasy.
+mizhu	Mi Zhu offering an open chest of coins with both hands, bowing. Expression: generous warmth, kindly smile.
+pangde	Pang De standing beside a plain wooden coffin, one hand resting on its lid, the other gripping a saber, looking ahead. Expression: death-defying resolve.
+pangtong	Pang Tong slouched sideways with a wine gourd in one hand, lazily fanning himself with the other, peering sideways. Expression: sardonic, sharp-eyed crooked grin.
+panzhang	Pan Zhang hauling on a rope net with one hand, saber in the other, shouting orders. Expression: rough, greedy.
+quyi	Qu Yi springing up from behind a big shield, sword thrust forward to signal his crossbowmen. Expression: savage confidence.
+shenpei	Shen Pei kneeling upright with his hands behind his back, turning his whole body to face away to the north, chin high. Expression: unbending loyalty.
+simahui	the old hermit Sima Hui strolling with a staff, head thrown back in laughter, one hand waving agreeably. Expression: genial laughter.
+simayi	Sima Yi seen from behind, hands clasped at his back; without turning his body he twists only his head to look straight back over his shoulder like a wolf. Expression: cold, piercing, patient.
+sunquan	Sun Quan bringing his sword down to cleave the corner of a writing table, robes swinging, glaring at his court to the side. Expression: decisive anger.
+tadun	the steppe chieftain Tadun in furs, drawing a horse bow sideways from the saddle (horse hinted), braids flying. Expression: wild.
+taishici	Taishi Ci has just loosed an arrow: bow arm extended, string hand open by his ear, two short halberds strapped on his back, looking along the shot. Expression: keen, steady.
+taoqian	frail old Tao Qian leaning on a staff, offering the provincial seal wrapped in cloth with a trembling hand. Expression: weary kindness.
+tianfeng	Tian Feng striking the ground with his staff, the other hand raised, shouting his warning. Expression: furious honesty.
+wangcan	the poet Wang Can leaning on a tower railing, writing brush in hand, gazing homeward into the distance. Expression: melancholy.
+wanglang	the old minister Wang Lang on horseback (horse hinted), clutching his chest and reeling backward, mouth open. Expression: stricken outrage.
+wangping	Wang Ping planting a banner pole with one hand, pointing down at the road with the other, arguing over his shoulder. Expression: plain-spoken urgency.
+weiyan	Wei Yan with his head thrown back, shouting at the sky with arms spread wide, a saber in one hand. Expression: arrogant roar.
+wenchou	Wen Chou charging with his spear levelled (horse hinted), face thrust forward, cloak flying. Expression: savage.
+wenping	Wen Ping kneeling on one knee, head turned aside, wiping his eyes with the back of his gauntlet, his sword laid on the ground. Expression: shame and loyalty.
+xiahouyuan	Xiahou Yuan running forward at the head of his men, bow in one hand, the other arm sweeping forward, cloak streaming. Expression: impatient eagerness.
+xuchu	huge Xu Chu, armor cast aside and sleeves torn away from his massive arms, swinging a great saber and bellowing. Expression: simple, ferocious.
+xuhuang	Xu Huang hefting a great battle axe over his shoulder with both hands, striding to the right through pale strokes of a broken palisade. Expression: disciplined ferocity.
+xunchen	Xun Chen bowing slightly, one hand extended palm up in persuasion, a folded fan in the other. Expression: silver-tongued smile.
+xunyou	Xun You quietly moving markers on a map table with a thin rod, eyes half-lidded, face in three-quarter view. Expression: mild, hidden sharpness.
+xunyu	Xun Yu standing in three-quarter view, holding open an empty lacquer food box in both hands and looking down into it. Expression: quiet sorrow, dignity.
+xushao	the critic Xu Shao pointing a folded fan at someone out of frame as he delivers his verdict, stroking his beard with the other hand, one eyebrow raised. Expression: appraising.
+xusheng	Xu Sheng on a river bank holding a signal flag high and shouting; behind him pale strokes of a long palisade. Expression: stout-hearted.
+xushu	Xu Shu on horseback (horse hinted), turning to look back one last time, a hand raised in farewell, sword on his back. Expression: sorrowful farewell.
+xuyou	Xu You striding in, clapping his hands and laughing, head tilted back. Expression: smug.
+yanbaihu	the squat bandit chief Yan Baihu with a heavy saber over his shoulder, jerking a thumb at himself as he boasts. Expression: boastful.
+yangxiu	Yang Xiu holding a chicken rib bone between two fingers, explaining to someone at his side. Expression: clever smirk.
+yanxiang	Yan Xiang kneeling forward, both hands raised to dissuade his lord, shaking his head. Expression: earnest alarm.
+yanxing	Yan Xing lunging forward gripping a snapped spear shaft like a club. Expression: fierce.
+yanyan	white-haired old Yan Yan with his arms held behind his back, chest out and chin up, shouting defiance to the side. Expression: fearless scorn.
+yiji	Yi Ji bowing with a quick sideways smile, one finger raised as he delivers a clever reply. Expression: witty.
+yuanshao	Yuan Shao half drawing his sword from the scabbard, turning away with his chin lifted, cloak sweeping. Expression: aristocratic pride.
+yuanshu	Yuan Shu lolling sideways in an oversized imperial robe, cradling a jade seal against his chest, the other hand flicking away a subordinate. Expression: vain, peevish.
+yuejin	small fierce Yue Jin climbing over a battlement, saber in hand, shield on his back, looking up. Expression: fearless.
+yufan	Yu Fan holding a bundle of divination stalks in one fist, pointing with the other hand as he bluntly rebukes. Expression: blunt, fearless.
+yuji	the old Taoist Yu Ji praying for rain, both arms raised to the sky, staff in hand, hair and robe blown; a few pale rain strokes. Expression: otherworldly calm.
+yujin	Yu Jin standing in rising flood water shown by pale wave strokes, helmet strap loose, sword lowered, looking down. Expression: grim.
+zangba	burly Zang Ba with his arms crossed over the pommel of a great saber planted before him, head turned. Expression: rough grin.
+zhangbao_shu	young round-eyed Zhang Bao levelling a serpent spear with both hands and shouting. Expression: hot-blooded.
+zhanghe	Zhang He pivoting in mid-turn, spear whirling overhead in an arc, cloak spinning. Expression: sharp alertness.
+zhanghong	the elder statesman Zhang Hong holding a large brush upright, sleeve drawn back, about to write, looking thoughtfully to the side. Expression: refined.
+zhangliao	Zhang Liao bursting forward at full charge (horse hinted), a long glaive swung low, mouth open in a war cry, cloak ripped by the wind. Expression: terrifying battle cry.
+zhanglu	the Taoist lord Zhang Lu holding a ritual horsetail whisk in one hand and a bowl of rice in the other, head inclined in blessing. Expression: benign, mystical.
+zhangren	Zhang Ren hidden on a slope, bow in one hand, the other arm raised to signal his archers, looking down into a ravine. Expression: stern resolve.
+zhangsong	short Zhang Song with a big forehead, presenting a half-unrolled map with a sideways look. Expression: clever, resentful.
+zhangxiu	Zhang Xiu spinning his spear down into a low guard, turning sharply, eyes narrowed. Expression: cool menace.
+zhangyan	nimble Zhang Yan leaping lightly from a rock, a short blade reversed in each hand, scarf flying. Expression: nimble grin.
+zhangyang	Zhang Yang bending to extend an open hand as if helping someone up, sword sheathed at his side. Expression: mild, generous.
+zhangyi	Zhang Yi arguing, one arm chopping downward, the other holding his sword hilt. Expression: blunt disapproval.
+zhangzhao	the old minister Zhang Zhao planting his staff and wagging a finger in stern rebuke, beard jutting. Expression: severe.
+zhengdu	Zheng Du holding a torch and pointing urgently at granaries drawn in pale strokes. Expression: urgent.
+zhengxuan	the old scholar Zheng Xuan seated among piles of bamboo books, annotating with a brush, head bent in three-quarter view. Expression: absorbed, benevolent.
+zhongyao	Zhong Yao holding a blank sheet up to the light to examine brushwork, a brush in his other hand. Expression: refined focus.
+zhoutai	Zhou Tai standing with a wine cup offered to him in one hand, the other sleeve pushed up to show a forearm crossed with old scars, head bowed modestly. Expression: stoic.
+zhugejin	long-faced gentle Zhuge Jin bowing with hands cupped in salute, glancing up. Expression: mild, honest smile.
+zhujun	Zhu Jun pointing his sword toward a city wall drawn in pale strokes, turning back to order the assault. Expression: commanding.
+zuoci	the old one-eyed Taoist Zuo Ci in a rattan hat, leaning on a staff, conjuring a plume of mist from a wine cup. Expression: mischievous grin.
+gc1	a court official reading a bamboo scroll held open in both hands, head bowed, seen in profile. Expression: absorbed.
+gc2	an elderly adviser stroking his beard with one hand, a folded fan in the other, glancing sideways. Expression: shrewd.
+gc3	a clerk writing on a wooden tablet with a brush, half turned, looking up from his work. Expression: attentive.
+gc4	an official bowing with both hands clasped in salute, seen in three-quarter view. Expression: respectful.
+gc5	an official walking with a bundle of scrolls under his arm, looking back over his shoulder. Expression: hurried, worried.
+gm1	an officer with one hand on his sword hilt, looking back over his shoulder. Expression: watchful.
+gm2	an officer leaning on his spear, seen in profile, cloak hanging. Expression: tired, steady.
+gm3	a captain raising his saber and shouting to his men, turned three-quarter. Expression: fierce shout.
+gm4	a burly officer with arms crossed, an iron mace resting on his shoulder, head turned. Expression: gruff.
+gm5	an officer drawing a bow sideways at half draw. Expression: focused.

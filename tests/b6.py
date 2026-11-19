@@ -1,0 +1,20 @@
+from browser import *
+def steps(pg):
+    start(pg, 0)
+    b = pg.evaluate('(function(){ var L = off(G.factions[G.player].lord), b = G.bases[L.loc]; return [b.c, b.r, b.id]; })()')
+    taphex(pg, b[0], b[1])
+    tapsel(pg, '#sheet [data-a=tab][data-v=men]'); shot(pg, '70_men')
+    tapsel(pg, '#sheet [data-a=search]'); tapsel(pg, '#modal [data-a=auto]'); shot(pg, '71_search_auto'); tapsel(pg, '#modal [data-a=ok]')
+    tapsel(pg, '#sheet [data-a=tab][data-v=home]'); tapsel(pg, '#sheet [data-a=produce]'); shot(pg, '72_produce'); tapsel(pg, '#modal [data-a=k]', 0); tapsel(pg, '#modal [data-a=sort][data-v=int]'); shot(pg, '73_produce_pick'); tapsel(pg, '#modal [data-a=close]')
+    tapsel(pg, '#sheet [data-a=tab][data-v=mil]'); tapsel(pg, '#sheet [data-a=trans]'); tapsel(pg, '#modal [data-a=auto]'); shot(pg, '74_trans'); tapsel(pg, '#modal [data-a=close]')
+    tapsel(pg, '#sheet [data-a=tab][data-v=fac]'); tapsel(pg, '#sheet [data-a=plot]', 0); shot(pg, '75_facility'); tapsel(pg, '#modal [data-a=close]')
+    pg.evaluate('clearSel()'); tapsel(pg, '#btnMenu'); tapsel(pg, '#modal [data-a=help]'); shot(pg, '76_help')
+    tapsel(pg, '#modal [data-a=close]')
+    # 미니맵을 눌러 건너뛰기
+    box = pg.locator('#mini').bounding_box(); c0 = pg.evaluate('[cam.x, cam.y]')
+    pg.touchscreen.tap(box['x'] + box['width'] * 0.2, box['y'] + box['height'] * 0.7); pg.wait_for_timeout(400)
+    print('minimap jump', c0, '->', pg.evaluate('[cam.x, cam.y]')); shot(pg, '77_mini_jump', 900)
+    # 끌기·확대(휠)
+    pg.mouse.move(200, 500); pg.mouse.wheel(0, -600); pg.wait_for_timeout(300); print('zoom', pg.evaluate('cam.z'))
+run(steps)
+print('ERRORS', [e for e in errors if 'ReadPixels' not in e][:12])

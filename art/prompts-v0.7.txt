@@ -1,0 +1,156 @@
+삼국지 천하도 v0.7 — 그림·소리를 만든 기록 (Higgsfield)
+
+요청: "초선은 확실한 미인으로 다시 그려줘. 너무 슬픈 표정하지 말고. 여포도 좀 강해보이지 않는데.. 밋밋하지 않고 정말 강하게 그려줘. 캐릭터 그림 보강해"
+      → 견본을 본 뒤 "전체적으로 그림체가 너무 좋아졌다 다른 것들도 저렇게 그려야 하는거 아냐?"
+      "음악이나 효과음도 장난식으로 하지 말고 진짜로 보강되면 좋겠어"
+
+==================== 1. 초상 167장 (모델 gpt_image_2_6, 3:4, 1k, quality high → 880×1168) ====================
+[방식] 참고 이미지 한 장 = 그 인물의 v0.5 그림(얼굴·차림·포인트색을 잇는다). 프롬프트 = 머리말 + 장면 + 맺음말 (tools/por7_prompt.py 가 만든다).
+장면 지시는 v0.5의 것(art/por5_scenes*.tsv)을 그대로 쓰고, 문빙·여포·초선만 새로 썼다(art/por7_scenes.tsv).
+작업 ID는 art/por7_ids.tsv (키 · 이름 · 작업 ID, 167줄). 제출 순서와 묶음은 art/por7_submit.tsv, tools/por7_plan.py.
+
+[머리말 · 남성]
+Image 1 = this character (keep his face, age, facial hair, headgear, costume and accent color). Repaint him far more powerfully as a dramatic East Asian ink-brush illustration: 
+[머리말 · 여성(초선·여영기·축융·일반 여성 1)]
+Image 1 = this character (keep her hairstyle, ornaments, costume and accent color). Repaint her far more strikingly as a dramatic East Asian ink-brush illustration, an adult woman with a clearly beautiful face: 
+[맺음말]
+Dynamic camera angle, strong foreshortening, heroic proportions, intense expression, sweeping motion; thick black brushwork, gray wash, dry-brush, ink splatter; one accent color only. Vertical; head fully visible, at least 1/5 of picture height; a quarter left as blank white paper; lower body fades into dry brush. Pure white background, no text, seal or border.
+
+[견줘 보기] 여포·초선을 모델 3가지(nano_banana_pro, gpt_image_2_6, nano_banana_2_1) × 장면 2가지로 12장 그려 견줌(art/por7_ab.tsv, 그림은 art/ab7/).
+gpt_image_2_6 이 붓질·구도·표정 모두 가장 셌음. 고른 것: 여포 = 3번(호뢰관, gpt_image_2_6), 초선 = 9번(달밤의 둥근 부채, gpt_image_2_6). 두 장의 장면 지시는 art/por7_scenes.tsv.
+※ 견줘 보기 12장에 넣은 문구 전문은 파일로 남기지 못했음(작업 ID로 Higgsfield 기록에서 볼 수 있음). 나머지 165장의 문구는 위 방식으로 다시 만들 수 있음.
+
+[얼굴 자르기] tools/facebox.py(YuNet)로 얼굴 자리를 찾아 흉상을 자름. 못 찾은 2장(황충·우길)과 틀리게 잡은 9장은 손으로 자리를 정함(art/por7_focus.tsv, 11줄).
+[크레딧] 한 장 1.5. 제출이 "Bad Gateway"로 끝난 한 번에서 작업 6개가 만들어졌지만 번호를 받지 못해 쓰지 못함(9크레딧).
+
+==================== 2. 음악 8곡 (모델 elevenlabs_music_v2_5, force_instrumental: true) ====================
+작업 ID는 audio7/jobs.tsv. 다듬기(tools/make_audio_v07.py): 앞뒤 무음 정리, 곡마다 목표 음량에 맞춤, mp3 112kbps 스테레오 → bgm/<이름>.mp3
+
+[title] 요청 길이 100초 · 작업 4bdaa3a6-8fc9-4efe-b787-a74c0000ee3d
+Title theme for an ancient China Three Kingdoms strategy game painted in ink wash. Opens with a solo guzheng playing slow spacious arpeggios, joined by an expressive erhu melody and a bamboo dizi flute; deep Chinese war drums and low strings swell in the middle, then it settles back to guzheng and erhu. Majestic, solemn, heroic, wide natural reverb. Pentatonic melody in D minor, about 60 BPM. Real acoustic traditional Chinese instruments with a cinematic film-score orchestra. Instrumental only, no vocals, no choir.
+
+[field1] 요청 길이 150초 · 작업 d310aa91-522a-4365-a713-2068b2273edf
+Calm, contemplative background music for governing a city in ancient China. Guqin and guzheng plucked melody, soft xiao flute, gentle pipa, sparse hand drum, warm low strings underneath. Peaceful, pastoral, unhurried, pentatonic, about 72 BPM. Steady mood without a dramatic climax so it can loop as strategy-game background music. Real acoustic traditional Chinese instruments, intimate studio recording. Instrumental only, no vocals.
+
+[field2] 요청 길이 150초 · 작업 f2368570-b339-409d-9032-8e763527e3b0
+A bright spring morning in an ancient Chinese market town. Lively but relaxed pipa and yangqin hammered dulcimer melody, bamboo dizi flute, light frame drum and woodblock, an erhu countermelody. Hopeful, flowing, pentatonic major, about 84 BPM. Even energy throughout so it can loop as strategy-game background music. Real acoustic traditional Chinese instruments. Instrumental only, no vocals.
+
+[tense] 요청 길이 120초 · 작업 758e558a-d5a5-4254-b51a-dd83af56d53d
+Tense war council music as an enemy army approaches the walls. Low ominous Chinese war drums pulsing slowly, erhu tremolo, deep cello and double-bass drone, sparse dissonant guzheng plucks, distant horn calls. Suspense, foreboding, restrained, about 70 BPM, steady so it can loop. Cinematic orchestra with traditional Chinese instruments. Instrumental only, no vocals.
+
+[battle1] 요청 길이 130초 · 작업 b1cceac6-97e7-4eb6-95fd-bb3340fb7c80
+Fierce battle music for an ancient Chinese war epic. Thunderous Chinese war drums and taiko ensemble driving hard at 140 BPM, fast aggressive pipa and guzheng runs, a soaring erhu melody, blaring suona and brass, cymbals and gongs on the accents. Heroic, relentless, full cinematic orchestra with traditional Chinese instruments. High energy from the first second to the last. Instrumental only, no vocals, no choir.
+
+[battle2] 요청 길이 130초 · 작업 f07ffdfd-3f23-407e-a34d-c1c032e7745b
+Siege battle music for an ancient Chinese war epic. Heavy marching war drums at 120 BPM, low brass and string ostinato, an urgent erhu and dizi melody, pipa tremolo, gong strikes on the accents, intensity building steadily. Dark, powerful, epic Chinese orchestral film score. Instrumental only, no vocals, no choir.
+
+[victory] 요청 길이 40초 · 작업 d000d749-f4e5-4ed1-b2c1-ce018670a6b6
+Triumphant victory fanfare of an ancient Chinese army. Bright suona and horns, festive drums and cymbals, a joyful dizi and pipa flourish, ending on a grand sustained chord with a big gong. About 100 BPM. Ends conclusively. Instrumental only, no vocals.
+
+[defeat] 요청 길이 45초 · 작업 ca005531-ade7-43a5-92b6-2f65c59cf2ca
+Mournful defeat theme. A lone erhu plays a slow sorrowful melody over quiet guzheng and low strings, a single distant drum. Desolate, tragic, about 50 BPM, fading out at the end. Instrumental only, no vocals.
+
+
+==================== 3. 효과음 31개 (모델 mirelo_text_to_audio) ====================
+작업 ID는 audio7/jobs.tsv. 다듬기(tools/make_audio_v07.py): 소리가 시작되는 곳부터 잘라 내고, 낮은 소리는 배음을 더하고(작은 스피커용), 크기를 맞춰 mp3 64kbps 모노 → src/sfxdata.js(base64).
+31개 가운데 쓴 것 25개(→ 표본 27개: step 과 build 는 둘로 나눠 씀), 쓰지 않은 것 6개(파형·스펙트럼으로 보아 소리가 약하거나 뜻과 달랐음 — 귀로 들어 고른 것은 아님).
+
+[ui] 1초 · 작업 e7866ee5-a4cf-4a5f-9c1e-34fa07da1e7e · 쓰임: 쓰지 않음(소리가 약해 build 의 나무 두드리는 소리를 tick 으로 씀)
+A single soft dry tap on a small wooden block, close microphone, very short, no reverb
+
+[brush] 1초 · 작업 0951902d-30a4-48b5-9bef-575614bacb5e · 쓰임: 쓰지 않음
+A quick swish of a wet calligraphy brush stroke across paper, soft and short
+
+[step] 2초 · 작업 f23304b8-321a-4974-8a16-1223f6dfe91d · 쓰임: stomp(0.30초) · march(1.60초)
+Armored foot soldiers marching in step on packed dirt, four heavy footsteps with leather and metal gear rattling
+
+[hoof] 2초 · 작업 501e1d52-36b0-4b1a-9308-02d55c82654d · 쓰임: gallop
+A war horse galloping past on dirt, pounding hooves, close and powerful
+
+[cart] 2초 · 작업 10077e93-a5f0-491a-9bb4-40375e4a2382 · 쓰임: cart
+A heavy wooden siege cart rolling slowly, big wooden wheels creaking and rumbling over dirt
+
+[slash] 1초 · 작업 ce78f5e1-5bd9-4295-b473-a850264094e0 · 쓰임: slash
+A fast sword slash whoosh ending in a sharp metallic clang as the blade strikes armor
+
+[crush] 2초 · 작업 18592d38-52c2-48e8-8ac4-4fa0d41b9194 · 쓰임: crush
+A crushing heavy weapon blow: a big metallic impact with a deep thud, armor breaking, men shouting
+
+[arrows] 2초 · 작업 95b48d90-9565-41f1-bd9b-ca01ea513b4a · 쓰임: arrows(0.55초부터)
+A volley of arrows loosed from many bows at once, whooshing through the air and thudding into wooden shields
+
+[fire] 3초 · 작업 2757a8b1-640c-4c8c-851a-0e249cb8c26d · 쓰임: fire
+A large fire igniting with a sudden whoosh of flame, then crackling and roaring fire
+
+[drum] 2초 · 작업 ece9c6a3-8a78-459f-9d06-d79d8bc2b2d4 · 쓰임: drum
+One single deep booming hit on a huge Chinese war drum with long low resonance, outdoors
+
+[drums] 3초 · 작업 4353507a-01ac-4089-b321-fe558f4b5783 · 쓰임: drums(1.95초부터)
+Huge Chinese war drums pounding a short accelerating battle signal, deep and thunderous, six hits
+
+[horn] 3초 · 작업 13142fd4-dc49-4baa-aa58-d8f240e93efa · 쓰임: horn
+A long low war horn blast echoing across a valley, ancient battlefield signal
+
+[rout] 3초 · 작업 c0e741b0-192b-40ea-94d5-8a8c3da5d955 · 쓰임: rout
+A defeated army breaking and fleeing in panic: frightened shouts, many running feet, dropped weapons clattering
+
+[coin] 2초 · 작업 83593741-ce3d-46fa-918c-bf550ddc18b1 · 쓰임: coin
+A handful of bronze coins poured into a wooden box, bright metallic jingling
+
+[build] 2초 · 작업 be8b5252-8d1e-4a95-be52-322fa613cfd5 · 쓰임: tick(0.16초) · hammer(tick 세 번)
+Carpenters building: three solid blows of a wooden mallet on a timber beam and a short saw stroke
+
+[thud] 1초 · 작업 f9224bec-3c4c-4456-99da-b017a0abffaf · 쓰임: thud
+A dull low muffled wooden thud, like a heavy door bumped shut, short
+
+[duel] 3초 · 작업 1f05a12c-224c-4270-a382-6de30df891d3 · 쓰임: duel
+Two mounted warriors dueling: three sharp ringing clashes of a spear against a halberd and a horse neighing
+
+[scroll] 2초 · 작업 2de0f853-7fdb-43aa-93b9-443c7f9ecce5 · 쓰임: page
+A bamboo slip scroll unrolled quickly on a wooden table, wooden slips clacking
+
+[wind] 2초 · 작업 cbc187ed-056f-4cfa-939f-ac6d867e5615 · 쓰임: wind
+An eerie gust of wind with a low rattling whisper, mysterious and unsettling, short
+
+[neigh] 2초 · 작업 7c8b71e7-0f29-4616-8377-6e9b41a68c20 · 쓰임: 쓰지 않음
+A war horse neighing loudly and rearing, then stamping its hooves
+
+[gong] 3초 · 작업 d11773b9-a437-4443-bec6-c385ea8298db · 쓰임: gong
+A large bronze gong struck once, deep and shimmering with a long decay
+
+[fall] 4초 · 작업 bbef2a1c-37a8-414c-92eb-0f423f2752f2 · 쓰임: fall
+A fortress gate smashed open: heavy timber cracking and collapsing, stones tumbling, then a crowd of soldiers cheering
+
+[cheer] 3초 · 작업 d3d42599-1591-4ae3-ac02-3b9f586d733a · 쓰임: cheer
+A large army of men roaring a victorious war cry together outdoors, powerful and united
+
+[douse] 2초 · 작업 53507fba-6121-4300-966f-0bd7b2633a53 · 쓰임: douse
+Buckets of water thrown onto a fire, a loud hiss of steam as the flames die
+
+[bow] 1초 · 작업 a6db76f0-7755-4700-b287-f6f20cf67107 · 쓰임: bow
+A single bowstring twang and an arrow whooshing away, close and crisp
+
+[sheath] 1초 · 작업 8ab5f7b0-34b2-4759-af93-149480248dd1 · 쓰임: 쓰지 않음
+A sword drawn quickly from its scabbard with a bright metallic ring
+
+[clang] 1초 · 작업 8676d524-ddc3-492e-9279-30565933a9ce · 쓰임: clang
+Two steel swords clashing hard once, a sharp ringing clang
+
+[shout] 2초 · 작업 1b2bafbc-187b-4a28-9308-a27174c5cd33 · 쓰임: shout
+A company of soldiers shouting one short fierce battle shout together as they charge
+
+[cavalry] 2초 · 작업 cf2edec7-ec25-4dd1-b020-741931e7b030 · 쓰임: cavalry
+Several cavalry horses charging at full gallop, thundering hooves on hard ground
+
+[rumble] 2초 · 작업 f00fe449-5907-42b4-af2b-08659063bb1c · 쓰임: 쓰지 않음
+A deep earth-shaking rumble and a heavy impact, like a massive charge slamming into a shield wall
+
+[step2] 1초 · 작업 58242d8a-8f08-4385-a6dc-3cc70d60e6b8 · 쓰임: 쓰지 않음
+Two quick footsteps of a soldier on gravel with a light rattle of armor
+
+
+[표본 → 게임의 장면] src/ui3d.js 의 CUES 표가 정본. 간추리면:
+ 단추 tick · 계략을 걸 때 page · 달려들 때 stomp · 이동(보병 march, 기병 gallop, 충차·수송 cart) · 통상 공격 slash(활은 bow+arrows → thud, 성·시설은 crush+thud)
+ 전법: 기합 shout → 성공 crush+clang / 대성공 crush+clang+gong / 실패 clang+thud · 기병 전법 cavalry · 반격 slash(작게) · 일기토 duel · 궤멸 rout
+ 화계·화시 fire · 소화 douse · 교란·위보 wind · 계략 실패 thud · 함락 fall(+내가 차지하면 cheer) · 출진 drums+horn(다른 세력은 drums) · 새 턴·새 게임·세력 멸망 gong
+ 징병 drums · 순찰 stomp · 훈련 shout · 생산·건설·합병 hammer · 거래·포상 coin · 등용 성공 cheer · 탐색으로 찾음 drum

@@ -1,0 +1,18 @@
+삼국지 천하도 v0.4 — 그림 생성 기록 (Higgsfield, 모델 nano_banana_pro)
+
+[초상 167장] 1:1, 1k. 참고 이미지 두 장: ① 그 인물의 v0.3 초상(인물 본) ② 화풍 견본(작업 b5abd2c2-0473-4e96-807b-4eca385eb1db).
+작업 ID는 art/por3_ids.tsv (키 · 이름 · 작업 ID).
+프롬프트(그대로):
+Image 1 = the person; image 2 = painting style only (never copy its helmet, scarf or face). Paint image 1's person as a freehand East Asian ink brush portrait in image 2's style: bold black brush shapes, a few confident outlines, soft gray wash, dry-brush edges; armor and ornaments simplified into loose strokes, no fine pattern lines. Face in fine ink lines on blank paper; keep image 1's face, age, facial hair, hairstyle, headgear and costume. Close-up bust, centered, head large (headgear top to chin = half the image height), shoulders fading into empty space. Black ink and gray wash plus exactly ONE accent color: a mineral pigment matching image 1's main costume color, laid as one clear wash on one garment element; no other colors. Pure white #FFFFFF background edge to edge, no paper texture, border, text or seal.
+
+다시 그린 8장(여령기·관우·안량·위연·황조·염행·주융·제갈량)에 덧붙인 말(요지, 원문 그대로는 아님):
+"Monochrome first: at least four fifths of the picture is black ink, gray wash and white paper. The face and skin stay white paper… Exactly ONE accent color, <안료>, … on <옷의 한 부분> only" / 여령기: "draw her clearly as a woman: no beard, no mustache".
+첫 그림은 art/raw3_alt/ 에 남겨 둠.
+
+[지도 그림 19장] 1:1, 1k. 참고 이미지: 그 그림의 v0.3판(본) + 화풍 본(건물은 city_L 5cb9731e-ba8b-461a-ae05-f2c9bb1917e5, 부대는 u_spear 95feaa7e-88d9-4391-9585-54785b0181fc).
+작업 ID는 art/spr3_jobs.tsv. 프롬프트 요지(원문 그대로는 아님): 같은 등각 투영 그림을 먹 붓으로 다시 그림, 바닥은 옅게 번지다 사라지는 먹, "one accent color only: a few small vermilion red touches", 순백 바탕.
+시장은 바탕이 종이 사진처럼 나와 "pure flat white… not a photographed sheet of paper"를 넣어 다시 그림(첫 그림 art/raw3_alt/spr_market_v1.png).
+
+[타이틀] 9:16, 2k. 작업 06f4eec3-1e50-4d96-811a-da479a12c7db. 요지: 수묵 산수(겹겹의 산, 굽이치는 강, 아래쪽에 성), 인주색 깃발과 성문, 위쪽은 여백.
+
+[비용] Higgsfield 잔액 3620.28 → 3188.28 = 432 크레딧(화풍 시험 포함). 실패·필터 건은 차감되지 않음.

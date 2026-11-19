@@ -1,0 +1,29 @@
+삼국지 천하도 v0.5 — 초상 다시 그리기 기록 (Higgsfield, 모델 nano_banana_pro, 3:4, 1k = 896×1200)
+
+요청: "초상화가 너무 정면을 보고 밋밋하네. 특유의 포즈나 표정, 유명한 한 장면을 담으면 좋은데"
+
+[방식] 참고 이미지 한 장 = 그 인물의 v0.4 수묵 초상(인물과 화풍을 함께 잡음). 프롬프트 = 머리말 + 장면 + 맺음말.
+작업 ID는 art/por5_ids.tsv (키 · 이름 · 작업 ID). 장면 지시는 art/por5_scenes.tsv(남성 152), art/por5_scenes_f.tsv(여성 3), art/por5_scenes_pilot.tsv(견본 12).
+
+[머리말 · 본 묶음 155장]
+Image 1 = the character and the painting style. Keep his face, age, facial hair, hairstyle, headgear and costume, and the same freehand East Asian ink-brush manner: bold black brush shapes, soft gray wash, dry-brush edges, face in fine ink lines on blank paper, with the same single accent color as image 1 and no other colors. New composition, not a frontal bust:
+(여성은 "Keep her face, age, hairstyle, hair ornaments and costume")
+[맺음말 · 본 묶음]
+Vertical half-length figure in three-quarter view, never facing the viewer straight on; head in the upper half of the picture, large (headgear top to chin about a third of the picture height), face fully visible. Props may run off the edges. At least a third of the picture is empty white paper; the lower body dissolves into dry brush strokes. Pure white #FFFFFF background, no paper texture, border, text or seal.
+
+[머리말 · 견본 12장(조금 더 긴 문구)]
+Image 1 = the character AND the painting style. Keep this person's face, age, facial hair, hairstyle, headgear and costume, and the same freehand East Asian ink-brush manner: bold black brush shapes, confident outlines, soft gray wash, dry-brush edges, the face in fine ink lines on blank paper, plus the same single mineral-pigment accent color as image 1 (no other colors). Paint a NEW composition, not a frontal bust:
+[맺음말 · 견본]
+Vertical half-length figure (head to waist or thighs), body in three-quarter view, never facing the viewer straight on. Head in the upper half of the picture, large (top of headgear to chin about one third of the picture height), face fully visible. Weapons and props may run off the edges. At least a third of the picture stays empty white paper; the lower body dissolves into dry brush strokes. Pure white #FFFFFF background, no paper texture, border, text, seal or signature.
+
+[다시 그린 것]
+- 황권(index 44): "on his knees … pleading" 이 필터에 걸림(오탐) → 조정에서 홀을 들고 간하는 장면으로.
+- 여령기(74)·축융(154): 싸우는 동작 문구가 필터에 걸림(오탐) → 서 있는 자세로. 장면 파일에는 통과한 문구가 적혀 있음.
+- 모개(82): 리본 달린 선물 상자가 나옴 → "plain lacquered casket, no ribbon". 첫 그림 art/raw5_alt/maojie_v1.png
+- 마량(80): 흰 눈썹이 없었음 → 흰 눈썹을 강조. 첫 그림 art/raw5_alt/maliang_v1.png
+필터에 걸린 3건은 차감되지 않음.
+
+[후처리] tools/facebox.py(YuNet 얼굴 검출) → tools/make_assets_v05.py: 얼굴 중심 정사각 흉상 256px(일반 224px) + 장면 320×428px.
+얼굴 상자를 손으로 고친 것: 이각(art/por5_focus.tsv).
+
+[비용] Higgsfield 잔액 3188.28 → 2850.28 = 338 크레딧(169장 × 2: 초상 167 + 다시 그린 모개·마량 2).
