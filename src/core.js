@@ -486,8 +486,8 @@ function apRegen(f) {
 function phaseStart(f) {
   if (f === G.player && G.peace && !G.aiOnly) {                    // 보호가 끝나 가는 것을 미리 알린다
     var pl = G.peace.until - G.turn, cap = facCities(f)[0] || facBases(f)[0];
-    if (pl === 3 && cap) { logMsg('초반 보호가 30일 남았습니다 — ' + dateOfTurn(G.peace.until) + '부터는 다른 세력이 우리 거점을 칠 수 있습니다', cap.c, cap.r, f, 2); ev({ t: 'news', f: f, c: cap.c, r: cap.r, warn: 1, text: '<b>초반 보호가 30일 남았습니다</b> — ' + dateOfTurn(G.peace.until) + '부터는 다른 세력이 우리 거점을 칠 수 있습니다' }); }
-    if (pl === 0 && cap) { logMsg('초반 보호가 끝났습니다 — 이제 다른 세력이 우리 거점을 칠 수 있습니다', cap.c, cap.r, f, 2); ev({ t: 'news', f: f, c: cap.c, r: cap.r, warn: 1, text: '<b>초반 보호가 끝났습니다</b> — 이제 다른 세력이 우리 거점을 칠 수 있습니다' }); }
+    if (pl === 3 && cap) { logMsg('초반 보호가 30일 남았습니다', cap.c, cap.r, f, 2); ev({ t: 'news', f: f, c: cap.c, r: cap.r, warn: 1, text: '<b>초반 보호가 30일 남았습니다</b>' }); }
+    if (pl === 0 && cap) { logMsg('초반 보호가 끝났습니다', cap.c, cap.r, f, 2); ev({ t: 'news', f: f, c: cap.c, r: cap.r, warn: 1, text: '<b>초반 보호가 끝났습니다</b>' }); }
   }
   var F = G.factions[f], i;
   if (!F.alive) return;
@@ -550,7 +550,7 @@ function phaseStart(f) {
     }
     // 상태
     if (u.status) {
-      if (u.stT <= 0) { if (f === G.player && !G.aiOnly) logMsg(uName(u) + ' ' + statusName(u.status) + '에서 벗어남 — 다시 명령을 받습니다', u.c, u.r, f, 1); u.status = null; }
+      if (u.stT <= 0) { if (f === G.player && !G.aiOnly) logMsg(uName(u) + ' ' + statusName(u.status) + '에서 벗어남', u.c, u.r, f, 1); u.status = null; }
       else {
         u.stT--;
         if (u.status === 'rumor') autoRetreat(u);
@@ -1710,7 +1710,7 @@ function actEv(u, t, res, f, name, ac, ar, tf, hf) {
     G.peace.broken[hf] = true;
     if (G.turn < G.peace.until) {                                  // 보호 기간 안에 깼을 때만 화면에 알리고 기록한다
       res.brokePeace = hf;
-      logMsg('우리가 먼저 ' + facName(hf) + '군의 ' + (t.kind === 'base' ? josa(t.b.n, '을를') : '시설을') + ' 쳤다 — 이제 ' + facName(hf) + '군도 우리 거점을 칠 수 있다', t.c, t.r, f, 2);
+      logMsg(facName(hf) + '군과의 보호가 풀렸다 — 우리가 먼저 ' + (t.kind === 'base' ? josa(t.b.n, '을를') : '시설을') + ' 침', t.c, t.r, f, 2);
     }
   }
   if (res && res.ok) {

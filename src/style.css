@@ -84,7 +84,7 @@ button:focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; }
 #sheet { position: absolute; left: 0; right: 0; bottom: calc(var(--barh) + env(safe-area-inset-bottom, 0px)); max-height: 52%; display: none; flex-direction: column; border-top: 2px solid var(--ink); box-shadow: 0 -3px 0 -1px var(--paper), 0 -4px 0 -1px var(--line-2), 0 -10px 24px #1b1a1826; z-index: 10; }
 #sheet.on { display: flex; }
 #sheet.unit { max-height: 42%; }
-#sheet.home { max-height: 47%; }
+#sheet.home { max-height: 44%; }
 #sheet.home.fold { max-height: none; }
 .sh-head { display: flex; align-items: center; gap: 10px; padding: 9px 10px 9px 12px; border-bottom: 1px solid var(--line-2); }
 .sh-title { font-family: var(--font-display); font-weight: 900; font-size: 20px; line-height: 1.2; color: var(--ink); }
@@ -267,7 +267,7 @@ p { margin: 6px 0; }
 .hm-stats b i { font: 600 12px var(--font-body); color: var(--dim); font-style: normal; margin-left: 1px; }
 .hm-stats small { display: block; color: var(--jade); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .todos { display: flex; flex-direction: column; }
-.todo { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 8px 4px 8px 2px; border-bottom: 1px solid var(--line); min-height: 56px; }
+.todo { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 6px 4px 6px 2px; border-bottom: 1px solid var(--line); min-height: 48px; }
 .todo:active { background: var(--paper-2); }
 .todo.end { border-bottom: 0; }
 .todo .n { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--ink); color: var(--ink); font: 900 14px var(--font-display); display: flex; align-items: center; justify-content: center; flex: none; }
@@ -277,8 +277,8 @@ p { margin: 6px 0; }
 .todo.cool .n { border-color: var(--line-2); color: var(--dim); }
 .todo.end .n { background: var(--seal); border-color: var(--seal-2); color: var(--seal-ink); border-radius: 3px; }
 .todo .mid { flex: 1; min-width: 0; }
-.todo b { display: block; font-size: 15px; font-weight: 800; }
-.todo small { display: block; color: var(--dim); font-size: 12.5px; line-height: 1.35; }
+.todo b { display: block; font-size: 15px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.todo small { display: block; color: var(--dim); font-size: 12.5px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .todo .go { color: var(--seal); font-weight: 800; font-size: 13px; white-space: nowrap; }
 
 /* ---------- 고른 무장 얼굴 줄 ---------- */
@@ -399,3 +399,77 @@ p { margin: 6px 0; }
 .todo.advh .n { border-color: var(--indigo); color: var(--indigo); font-family: var(--font-display); }
 .todo.advh b { color: var(--indigo); }
 .hm-adv i { font-style: normal; font-size: 11px; color: var(--dim); margin-left: -3px; }
+
+/* ---- v0.9.2 STATUS 창: 한 줄 머리 + 지금 할 일 ---- */
+.hm-head { padding-top: 8px; padding-bottom: 8px; }
+.hm-head .sh-title { display: flex; align-items: center; gap: 8px; }
+.hm-head .sh-title .pz { margin-left: 0; height: 24px; line-height: 22px; font-size: 12.5px; }
+button.pz:active { background: var(--paper-2); }
+.hm-line { display: flex; align-items: center; gap: 12px; margin-top: 3px; font-size: 13px; color: var(--jade); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hm-line .inc { display: inline-flex; align-items: center; gap: 1px; font-weight: 700; }
+.hm-line .inc i { font-style: normal; font-weight: 500; color: var(--dim); font-size: 11.5px; }
+.hm-line .hm-adv { margin: 0 0 0 auto; padding: 2px 0 2px 8px; }
+.sec .cnt { font: 800 12px var(--font-body); font-style: normal; color: var(--seal-ink); background: var(--seal); border-radius: 9px; min-width: 18px; height: 18px; line-height: 18px; text-align: center; padding: 0 5px; }
+
+/* ---- v0.9.2 부대 창의 숫자 세 칸, 단추의 큰 숫자 ---- */
+.stats.ust { margin-bottom: 8px; }
+.act small .pc { font-style: normal; font-weight: 800; font-size: 13px; color: var(--ink); }
+.act.pri small .pc, .act:active small .pc { color: inherit; }
+/* ---- v0.9.2 전법 풀이: 보통 공격과 나란히 놓은 표 ---- */
+.tacs .who { margin: 0 0 8px; font-size: 14px; }
+.tcmp { width: 100%; border-collapse: collapse; margin: 2px 0 4px; font-variant-numeric: tabular-nums; }
+.tcmp th, .tcmp td { padding: 6px 2px; border-bottom: 1px solid var(--line); text-align: right; font-size: 14px; white-space: nowrap; }
+.tcmp th:first-child { text-align: left; font-weight: 800; }
+.tcmp tr:first-child th { font-weight: 500; font-size: 11.5px; color: var(--dim); padding: 2px; border-bottom-color: var(--ink); }
+.tcmp tr.nrm th, .tcmp tr.nrm td { color: var(--ink-2); font-weight: 500; }
+.tcmp tr.nrm b { font-weight: 600; }
+.tcmp th small { font-weight: 500; font-size: 11px; color: var(--dim); }
+.tcmp em { font-style: normal; font-size: 11.5px; font-weight: 800; display: inline-block; min-width: 38px; }
+.tcmp em.good { color: #2f6b4f; } .tcmp em.bad { color: var(--seal); }
+.tacs .cap { margin: 0 0 10px; font-size: 11.5px; color: var(--dim); }
+details.more { margin-top: 12px; border-top: 1px solid var(--line-2); }
+details.more > summary { list-style: none; cursor: pointer; padding: 9px 0 6px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::after { content: " ▸"; color: var(--seal); }
+details.more[open] > summary::after { content: " ▾"; }
+details.more .rules { margin: 6px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.5; color: var(--ink-2); }
+
+/* ---- v0.9.2 도움말: 접히는 토막 ---- */
+.help.acc details { border-bottom: 1px solid var(--line); }
+.help.acc summary { list-style: none; cursor: pointer; padding: 12px 2px; font: 900 15.5px var(--font-display); color: var(--ink); display: flex; align-items: center; justify-content: space-between; }
+.help.acc summary::-webkit-details-marker { display: none; }
+.help.acc summary::after { content: "▸"; color: var(--seal); font: 800 13px var(--font-body); }
+.help.acc details[open] > summary::after { content: "▾"; }
+.help.acc details[open] { padding-bottom: 8px; }
+.help.acc details > p:first-of-type { margin-top: 0; }
+.cap { margin: 0 0 10px; font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
+
+/* ---- v0.9.2 마무리 ---- */
+#sheet.home .sh-body > .sec:first-child { margin-top: 4px; }
+.wp { flex-wrap: nowrap; overflow: hidden; gap: 4px 10px; }
+
+/* ---- v0.9.2 건설 자리 비추기 ---- */
+#spot { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; display: none; }
+#spot.on { display: block; }
+#app.building #mini { display: none; }                         /* 건설 자리를 보는 동안에는 작은 지도가 칸을 가리지 않게 */
+#modal.see { background: none; pointer-events: none; }         /* 지도를 보여 주는 창: 바탕을 덮지 않고, 창 밖은 지도가 받는다 */
+#modal.see .dlg { pointer-events: auto; max-height: 50%; }
+#app.seeing #sheet, #app.seeing #bar { visibility: hidden; }
+#app.building #toast { top: 96px; }                            /* 알림이 칸을 가리지 않게 위로 */
+.note.fnote { display: flex; justify-content: space-between; gap: 12px; margin: 0 1px 7px; font-variant-numeric: tabular-nums; }
+.note.fnote span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note.fnote span:last-child { flex: none; color: var(--ink-2); }
+.lst-opt.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.row.fcard { min-height: 56px; padding: 4px 8px 4px 6px; gap: 7px; }
+.row.fcard .th { width: 42px; height: 36px; }
+.row.fcard .nm { display: flex; align-items: baseline; gap: 6px; }
+.row.fcard .nm .cost { margin-left: auto; font: 700 12px var(--font-body); font-style: normal; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.row.fcard .ds.no { color: var(--seal); font-weight: 700; }
+.row.fcard .ds.ok { color: #2f6b4f; font-weight: 700; }
+.row.fcard .ds.warn { color: var(--ochre); font-weight: 700; }
+.lots { display: flex; flex-wrap: wrap; gap: 8px 9px; margin: 2px 0 2px; }
+.lot { width: 42px; height: 42px; border-radius: 50%; border: 1.6px solid var(--ink); background: var(--paper); box-shadow: 0 0 0 2.5px #e6b63c; font: 900 18px var(--font-display); color: var(--ink); display: flex; align-items: center; justify-content: center; padding: 0 0 1px; margin: 3px; }
+.lot.no { border: 1.4px dashed var(--dim); box-shadow: none; color: var(--dim); background: none; }
+.note.lotw { margin: -2px 0 6px; padding: 6px 9px; border-left: 4px solid var(--seal); background: var(--paper-2); color: var(--ink-2); font-size: 12.5px; }
+@media (min-width: 700px) { #modal.see { align-items: flex-end; } #modal.see .dlg { margin-bottom: 0; } }
+@media (max-height: 720px) { #modal.see .dlg { max-height: 58%; } }          /* 낮은 화면: 여덟 카드가 다 보이도록 조금 더 */

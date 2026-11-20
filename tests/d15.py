@@ -1,4 +1,5 @@
 # v0.8.1: 초반 보호(화면) + 상태 이상 표시(지도 딱지·소용돌이·창의 풀이) — 화면 조작으로 확인
+# v0.9.2: 글을 덜어 냈다 — '지금 할 일'의 초반 보호 줄이 없어지고 이름 옆의 표(누르면 풀이)만 남는다. 경고·풀이·기록의 문장이 짧아졌다. 도움말은 접힌 토막
 # v0.9.1: 기간을 턴 수가 아니라 날짜·날수·개월로 적는다('보호 36턴' → '6월 하순까지 보호', '혼란 2턴' → '혼란 20일'). 보호 기간은 18/12/9턴(6·4·3개월)
 #   python3 tests/d15.py          찍은 그림은 tests/shots15/
 import sys, os, time
@@ -36,12 +37,13 @@ def steps(pg):
     home = pg.evaluate('''(() => { var pz = document.querySelector("#sheet .pz"), t0 = document.querySelector("#sheet .todo"); return { pz: pz ? pz.innerText : "", t0: t0 ? t0.innerText.replace(/\\n/g, " / ") : "", need: todoList().need, until: G.peace.until, left: peaceLeft() }; })()''')
     print('  home', home)
     ok(home['pz'] == '6월 하순까지 보호' and home['until'] == 19, 'STATUS 창 날짜 옆에 [6월 하순까지 보호] (%s)' % home['pz'])
-    ok('초반 보호 — 194년 6월 하순까지 (180일 남음)' in home['t0'], '지금 할 일 맨 위에 초반 보호 줄(날짜와 남은 날수) [%s]' % home['t0'][:44])
+    ok('초반 보호' not in home['t0'], "v0.9.2: '지금 할 일'에 초반 보호 줄은 없다(이름 옆의 표로 충분) [%s]" % home['t0'][:44])
     B.shot(pg, 'p3_home', 300)
-    tapsel(pg, '#sheet .todo', 0); pg.wait_for_timeout(400)
+    tapsel(pg, '#sheet .pz', 0); pg.wait_for_timeout(400)                    # v0.9.2: 표를 누르면 풀이 창
     dlg = pg.evaluate('document.querySelector("#modal") ? document.querySelector("#modal").innerText : ""')
-    ok('초반 보호' in dlg and '194년 7월 상순부터는 칠 수 있습니다' in dlg and '완충 기간' in dlg, '줄을 누르면 풀이 창이 열린다')
-    ok('194년 6월 하순까지(180일 남음)' in dlg and '1만 미만 6개월, 2만 미만 4개월, 그 밖은 3개월' in dlg and '처음 3개월은' in dlg and '끝난 뒤 8개월은' in dlg and not re.search(r'[0-9]\s*턴', dlg), '풀이 창: 기간을 날짜·날수·개월로 적는다("N턴" 없음)')
+    ok('초반 보호' in dlg and '194년 6월 하순까지' in dlg and '완충 기간' in dlg, '표를 누르면 풀이 창이 열린다')
+    ok('(180일 남음)' in dlg and '끝난 뒤 8개월은' in dlg and not re.search(r'[0-9]\s*턴', dlg), '풀이 창: 기간을 날짜·날수·개월로 적는다("N턴" 없음)')
+    ok(len(dlg) < 190, 'v0.9.2: 풀이 창이 짧다(%d자 — 0.9.1 은 430자쯤)' % len(dlg))
     B.shot(pg, 'p4_info', 200)
     pg.evaluate('closeDialog()'); pg.wait_for_timeout(300)
     # ---------- 3. 먼저 치면 풀린다 ----------
@@ -60,16 +62,18 @@ def steps(pg):
     pg.evaluate('(id) => gotoUnit(UMAP[id])', info['id']); pg.wait_for_timeout(700)
     taphex(pg, *info['t']); pg.wait_for_timeout(500)
     warn = pg.evaluate('document.querySelector("#sheet .pzw") ? document.querySelector("#sheet .pzw").innerText : ""')
-    ok('초반 보호 중' in warn and info['on'] + '군에 대한 보호가 풀려' in warn, '보호 중인 세력의 성을 고르면 경고가 뜬다 [%s]' % warn[:40])
+    ok('먼저 치면' in warn and info['on'] + '군과의 보호가 풀립니다' in warn and len(warn) <= 24, '보호 중인 세력의 성을 고르면 한 줄 경고가 뜬다 [%s]' % warn[:40])
     B.shot(pg, 'p5_warn', 200)
     tapsel(pg, '#sheet [data-a=act]', 0); pg.wait_for_timeout(3600)
     aft = pg.evaluate('''(of) => ({ broken: !!G.peace.broken[of], may: aiMayStrike(of, G.player), mayOther: aiMayStrike(1, G.player), toast: $("toast").textContent, log: G.log[G.log.length - 1].t, t0: document.querySelector("#sheet .todo") ? document.querySelector("#sheet .todo").innerText.replace(/\\n/g, " / ") : "", mul: aiNeedMul(of, G.player), ramp: peaceRamp(of) })''', info['of'])
     print('  after', aft)
     ok(aft['broken'] and aft['may'] is True, '치고 나면 %s군에 대한 보호가 풀린다(그쪽은 이제 칠 수 있다)' % info['on'])
     ok(aft['mayOther'] is False, '다른 세력(여포)과의 보호는 그대로')
-    ok('초반 보호가 풀렸습니다' in aft['toast'], '알림에 적힌다 [%s]' % aft['toast'][-34:])
+    ok(info['on'] + '군과의 보호가 풀림' in aft['toast'], '알림에 적힌다 [%s]' % aft['toast'][-34:])
     ok('먼저' in aft['log'] and info['on'] in aft['log'], '기록에도 남는다 [%s]' % aft['log'][:40])
-    ok('먼저 친 ' + info['on'] + '군은 예외' in aft['t0'], 'STATUS 창의 보호 줄에 예외가 적힌다')
+    pg.evaluate('showPeaceInfo()'); pg.wait_for_timeout(300)
+    pd = pg.evaluate('document.querySelector("#modal").innerText'); pg.evaluate('closeDialog()'); pg.wait_for_timeout(200)
+    ok('먼저 친 세력: ' + info['on'] + '군' in pd, '보호 풀이 창에 먼저 친 세력이 적힌다 [%s]' % pd.replace('\n', ' / ')[:90])
     ok(aft['mul'] == 1.25 and aft['ramp'] is False, '먼저 친 세력에게는 완충도 없다(배수 1.25)')
     B.shot(pg, 'p6_broken', 300)
     # 보호가 끝나 갈 때 / 끝났을 때
@@ -77,7 +81,7 @@ def steps(pg):
       showHome(); var pz1 = document.querySelector("#sheet .pz"), c1 = pz1 ? pz1.className + ":" + pz1.innerText : "";
       G.turn = G.peace.until; REPORT = []; EVQ = []; phaseStart(G.player); var b = REPORT.map(function (e) { return e.t; }).join(" | "), n2 = EVQ.filter(function (e) { return e.t === "news"; }).length;
       showHome(); var pz2 = document.querySelector("#sheet .pz");
-      return { a: a, b: b, n1: n1, n2: n2, c1: c1, pz2: !!pz2, row: document.querySelector("#sheet .todo").innerText.replace(/\\n/g, " / "), may: aiMayStrike(1, G.player), mul: aiNeedMul(1, G.player), ramp: peaceRamp(1) }; })()''')
+      return { a: a, b: b, n1: n1, n2: n2, c1: c1, pz2: !!pz2, row: Array.prototype.map.call(document.querySelectorAll("#sheet .todo"), function (t) { return t.innerText; }).join(" / "), may: aiMayStrike(1, G.player), mul: aiNeedMul(1, G.player), ramp: peaceRamp(1) }; })()''')
     print('  end', end)
     ok('초반 보호가 30일 남았습니다' in end['a'] and end['n1'] == 1 and end['c1'] == 'pz end:보호 30일 남음', '30일 남았을 때: 기록 + 턴 재생 자막 + 붉은 표 [%s]' % end['c1'])
     ok('초반 보호가 끝났습니다' in end['b'] and end['n2'] == 1 and not end['pz2'] and '초반 보호' not in end['row'], '끝났을 때: 기록 + 자막, 표와 줄은 사라진다')
@@ -189,8 +193,12 @@ def steps(pg):
     pg.evaluate('closeDialog()')
     # 도움말
     pg.evaluate('showHelp()'); pg.wait_for_timeout(300)
-    hp = pg.evaluate('document.querySelector("#modal").innerText')
+    hp = pg.evaluate('document.querySelector("#modal").textContent')                     # v0.9.2: 토막이 접혀 있어 보이는 글(innerText)에는 제목만 있다
+    seen = pg.evaluate('document.querySelector("#modal .dlg-b").innerText')
     ok('초반 보호' in hp and '계략과 상태 이상' in hp and '성역의 경계 — 넘으면' not in hp, '도움말에 두 항목이 있다')
+    ok(len(seen) < 260 and '초반 보호' in seen and pg.evaluate('document.querySelectorAll("#modal details").length') >= 15, 'v0.9.2: 도움말은 제목만 보인다(보이는 글 %d자, 토막 %d개)' % (len(seen), pg.evaluate('document.querySelectorAll("#modal details").length')))
+    pg.evaluate('''Array.prototype.forEach.call(document.querySelectorAll("#modal details"), function (d) { if (/초반 보호/.test(d.querySelector("summary").textContent)) d.querySelector("summary").click(); })'''); pg.wait_for_timeout(200)
+    ok('1만 미만이면 6개월' in pg.evaluate('document.querySelector("#modal .dlg-b").innerText'), '제목을 누르면 그 토막이 펼쳐진다')
     bad = re.findall(r'[^\n]{0,14}[0-9]\s*턴[^\n]{0,8}', hp)
     ok(bad == [], '도움말 어디에도 기간을 "N턴"으로 적은 곳이 없다 %s' % bad[:4])
     ok('1만 미만이면 6개월, 2만 미만이면 4개월, 그 밖은 3개월' in hp and '교란으로 걸면 20일, 전법(나선첨 등)으로 걸면 10일' in hp, '도움말: 보호 기간은 개월로, 상태 이상은 날수로')

@@ -16,7 +16,7 @@ def steps(pg):
     # 군사 탭 → 출진
     tabs = pg.locator('#sheet .tabs button'); n = tabs.count(); print('tabs', n, [tabs.nth(i).inner_text() for i in range(n)])
     for i in range(n):
-        if '군사' in tabs.nth(i).inner_text(): tabs.nth(i).tap()
+        if '출진' in tabs.nth(i).inner_text(): tabs.nth(i).tap()      # v0.9.2: 탭 이름 '군사' → '출진'
     pg.wait_for_timeout(300); B.shot(pg, 'd1_06_mil', 200)
     pg.locator('#sheet [data-a=deploy]').tap(); pg.wait_for_timeout(400); B.shot(pg, 'd1_07_deploy0', 200)
     pg.locator('#modal [data-a=auto]').tap(); pg.wait_for_timeout(400); B.shot(pg, 'd1_08_deploy1', 200)

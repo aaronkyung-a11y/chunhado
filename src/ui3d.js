@@ -57,6 +57,7 @@ function apronY(x, z) {
 
 /* ---------- 카메라 ---------- */
 function camDist() { return 62 / cam.z; }
+function pitchAt(z) { var t = clamp(Math.log(z / Z_MIN) / Math.log(Z_MAX / Z_MIN), 0, 1); return (68 - 27 * t) * Math.PI / 180; }
 function camPitch() { var t = clamp(Math.log(cam.z / Z_MIN) / Math.log(Z_MAX / Z_MIN), 0, 1); return (68 - 27 * t) * Math.PI / 180; }
 /* 지도 끝이 화면 안으로 들어오는 한도 — 가려지지 않은 지도 영역의 1/5(적어도 손가락 한 마디)까지. 확대와 아래 창 높이에 따라 달라진다 */
 function camLimits() {
@@ -136,23 +137,44 @@ function resize() {
 /* 상단 HUD와 아래 창(STATUS 창·버튼 줄·재생 줄)에 가려지지 않는 지도 영역 */
 function safeArea() {
   var hud = $('hud'), top = (hud ? hud.offsetHeight : 64) + 6, cover = 0, sh = $('sheet'), bar = $('bar'), pl = $('play');
-  if (pl && pl.offsetHeight) cover = pl.offsetHeight;
+  var md = $('modal'), dl = md && md.classList.contains('see') ? md.querySelector('.dlg') : null;
+  if (dl && dl.offsetHeight) cover = dl.offsetHeight;                         // 지도를 보여 주는 창(건설 자리 고르기)
+  else if (pl && pl.offsetHeight) cover = pl.offsetHeight;
   else cover = (bar ? bar.offsetHeight : 0) + (sh ? sh.offsetHeight : 0);
   var bottom = Math.max(top + 90, CH - cover - 6);
   return { top: top, bottom: bottom, fy: (top + bottom) / 2 / Math.max(1, CH) };
 }
+var camTok = 0;
 function jumpTo(c, r, z, fy, dur) {
-  var p = hexCenter(c, r), z1 = clamp(z || cam.z, Z_MIN, Z_MAX), x0 = cam.x, y0 = cam.y, z0 = cam.z;
+  var p = hexCenter(c, r), z1 = clamp(z || cam.z, Z_MIN, Z_MAX), x0 = cam.x, y0 = cam.y, z0 = cam.z, tok = camTok;
   var D = 62 / z1, pt = (68 - 27 * clamp(Math.log(z1 / Z_MIN) / Math.log(Z_MAX / Z_MIN), 0, 1)) * Math.PI / 180;
   if (!fy) fy = safeArea().fy;
   var ty = p[1] + (0.5 - fy) * D * K3 / Math.sin(pt);
-  anim(dur || 260, function (t) { var e = t * (2 - t); cam.x = x0 + (p[0] - x0) * e; cam.y = y0 + (ty - y0) * e; cam.z = z0 + (z1 - z0) * e; clampCam(); });
+  anim(dur || 260, function (t) { if (tok !== camTok) return; var e = t * (2 - t); cam.x = x0 + (p[0] - x0) * e; cam.y = y0 + (ty - y0) * e; cam.z = z0 + (z1 - z0) * e; clampCam(); });
 }
 function onScreen(c, r, pad) {
   var sa = safeArea(), p = hexPos(c, r), s = w2s(p[0], p[1], p[2]); pad = pad || 0;
   return !!s && s[0] >= 44 + pad && s[0] <= CW - 44 - pad && s[1] >= sa.top + 44 + pad && s[1] <= sa.bottom - 14 - pad;
 }
 function ensureVisible(c, r) { if (!onScreen(c, r, 0)) jumpTo(c, r, Math.max(cam.z, 0.8)); }
+function flyTo(wx, wz, z, fy, dur) {
+  var z1 = clamp(z || cam.z, Z_MIN, Z_MAX), x0 = cam.x, y0 = cam.y, z0 = cam.z, D = 62 / z1, pt = pitchAt(z1), tok = ++camTok;
+  if (!fy) fy = safeArea().fy;
+  var ty = wz + (0.5 - fy) * D * K3 / Math.sin(pt);
+  anim(dur || 260, function (t) { if (tok !== camTok) return; var e = t * (2 - t); cam.x = x0 + (wx - x0) * e; cam.y = y0 + (ty - y0) * e; cam.z = z0 + (z1 - z0) * e; clampCam(); });
+}
+/* 여러 칸이 한눈에 들어오게: 화면의 [top, bottom] 사이에 모두 들어오는 가장 가까운 거리로 옮긴다(zCap 보다 더 다가가지는 않는다) */
+function frameHexes(list, top, bottom, zCap) {
+  var x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, i;
+  for (i = 0; i < list.length; i++) { var p = hexCenter(list[i][0], list[i][1]); x0 = Math.min(x0, p[0] - 1.05); x1 = Math.max(x1, p[0] + 1.05); y0 = Math.min(y0, p[1] - 1.5); y1 = Math.max(y1, p[1] + 1.25); }
+  var h = Math.max(80, bottom - top), z = Z_MAX;
+  for (i = 0; i < 70; i++) {                                                  // 다 들어오는 가장 가까운 거리
+    var ppu = CH / (K3 * 62 / z);
+    if ((x1 - x0) * ppu <= CW - 16 && (y1 - y0) * ppu * Math.sin(pitchAt(z)) <= h - 8) break;
+    z *= 0.96;
+  }
+  flyTo((x0 + x1) / 2, (y0 + y1) / 2, clamp(Math.min(z, zCap || Z_MAX), Z_MIN, Z_MAX), (top + bottom) / 2 / Math.max(1, CH), 300);
+}
 
 /* ---------- 장면 만들기 ---------- */
 var TERRAIN_VS = 'varying vec2 vUv; varying vec2 vW; varying float vD;\nvoid main(){ vUv = uv; vW = position.xz; vec4 mv = modelViewMatrix * vec4(position, 1.0); vD = -mv.z; gl_Position = projectionMatrix * mv; }';
@@ -500,6 +522,7 @@ function syncScene() {
       o.g.position.set(p[0], p[1], p[2]); o.g.add(o.sp); o.g.add(o.lab.sp); o.lab.sp.position.set(0, o.sp.userData.top * 0.74, 0); R3.objs.add(o.g);
     }
     var mineB = b.owner === G.player, col = b.owner >= 0 ? G.factions[b.owner].color : NEUTRAL;
+    o.lab.sp.visible = !(SPOT.on && SPOT.v && SPOT.v.b === b);
     if (b.kind === 'city' && !o.zone) {                                 // 성역(성 둘레 ZONE_R 칸)을 붓으로 두른 고리
       var zr = (ZONE_R + 0.5) * SQ3 * 0.94;
       o.zone = new THREE.Mesh(R3.zoneGeo || (R3.zoneGeo = new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ map: R3.zoneTex || (R3.zoneTex = ensoTexture()), transparent: true, opacity: 0.6, depthTest: false, depthWrite: false }));
@@ -606,7 +629,104 @@ function rebuildOverlay() {
   if (UI.sel && UI.sel.kind === 'unit' && UMAP[UI.sel.id]) ovPut(K(UMAP[UI.sel.id].c, UMAP[UI.sel.id].r), [27, 26, 24], 96);
   if (UI.sel && UI.sel.kind === 'base') ovPut(K(G.bases[UI.sel.id].c, G.bases[UI.sel.id].r), [176, 124, 34], 150);
   if (UI.target) ovPut(K(UI.target.c, UI.target.r), [181, 51, 42], 225);
+  if (SPOT.on && SPOT.v) for (i = 0; i < SPOT.v.lots.length; i++) {            // 건설 자리
+    var sl = SPOT.v.lots[i];
+    if (sl.i === SPOT.v.pi) ovPut(K(sl.c, sl.r), [181, 51, 42], 138); else if (sl.ok) ovPut(K(sl.c, sl.r), [212, 160, 44], 120);
+  }
   R3.ovTex.needsUpdate = true;
+}
+
+/* ---------- 건설 자리 비추기 ----------
+   건설을 고른 동안에는 지도를 어둡게 덮고 지을 수 있는 빈 부지만 뚫어 밝게 보인다(고른 자리는 붉은 테두리와 '여기').
+   무엇을 비출지는 buildView()(ui_panels.js)가 그때그때 정한다 — 창을 여닫는 곳마다 상태를 맞추지 않아도 된다.
+   덮개는 지도 위에 얹은 2D 캔버스(#spot)다: 땅·부대·성·이름표가 한꺼번에 어두워지고 3D 재질은 건드리지 않는다. */
+var SPOT = { cv: null, x: null, a: 0, on: false, sig: '', v: null, tok: 0, shown: false, area: '' }, SPOT_DARK = 0.66;
+function hexRing(c, r, k) {                                    // 칸의 테두리(화면 좌표 12점: 모서리와 변의 가운데 — 땅의 굴곡을 따라간다)
+  var p = hexCenter(c, r), out = [];
+  for (var i = 0; i < 12; i++) {
+    var a = (30 + 30 * i) * Math.PI / 180, rad = (i % 2 ? SQ3 / 2 : 1) * k, x = p[0] + Math.cos(a) * rad, z = p[1] + Math.sin(a) * rad, q = w2s(x, groundY(x, z), z);
+    if (!q) return null;
+    out.push(q);
+  }
+  return out;
+}
+function ringPath(x, pts) { x.beginPath(); x.moveTo(pts[0][0], pts[0][1]); for (var i = 1; i < pts.length; i++) x.lineTo(pts[i][0], pts[i][1]); x.closePath(); }
+function spotCheck() {
+  var v = (typeof buildView === 'function') ? buildView() : null, sig = v ? v.sig : '';
+  if (sig === SPOT.sig) return;
+  var was = SPOT.on, prev = SPOT.v;
+  SPOT.sig = sig; SPOT.on = !!v;
+  if (v) SPOT.v = v;
+  if (was !== SPOT.on) {
+    var tok = ++SPOT.tok, a0 = SPOT.a, a1 = v ? 1 : 0;
+    anim(v ? 220 : 170, function (t) { if (tok !== SPOT.tok) return; SPOT.a = a0 + (a1 - a0) * t; UI.render = true; }, function () { if (tok === SPOT.tok && !SPOT.on) SPOT.v = null; });
+    $('app').classList.toggle('building', SPOT.on);
+  }
+  UI.dirty = true;
+  if (v) spotCam(v, !was || !prev || prev.b !== v.b, was && prev ? prev.pi : -2);
+}
+function spotCam(v, fresh, prevPi) {
+  var sa = safeArea(), top = sa.top + 2, bottom = sa.bottom - 2, i, area = Math.round(top / 10) + '/' + Math.round(bottom / 10);
+  if (fresh || area !== SPOT.area) {                           // 처음 보거나 보이는 영역이 달라졌다(시설 탭 ↔ 고르는 창): 성과 부지 전체가 들어오게
+    SPOT.area = area;
+    var pts = [[v.b.c, v.b.r]];
+    for (i = 0; i < v.b.plots.length; i++) pts.push([v.b.plots[i].c, v.b.plots[i].r]);
+    frameHexes(pts, top, bottom, 1.7);
+    return;
+  }
+  if (v.pi < 0 || v.pi === prevPi) return;                     // 같은 영역에서 자리만 바꿨다: 그 칸이 화면 밖일 때만 옮긴다
+  var L = null; for (i = 0; i < v.lots.length; i++) if (v.lots[i].i === v.pi) L = v.lots[i];
+  if (!L) return;
+  var p = hexPos(L.c, L.r), q = w2s(p[0], p[1], p[2]);
+  if (!q || q[0] < 30 || q[0] > CW - 30 || q[1] < top + 46 || q[1] > bottom - 24) flyTo(p[0], p[2], Math.max(cam.z, 0.9), (top + bottom + 16) / 2 / Math.max(1, CH), 280);
+}
+function spotDraw() {
+  if (!SPOT.cv) { SPOT.cv = $('spot'); if (!SPOT.cv) return; SPOT.x = SPOT.cv.getContext('2d'); }
+  var cvs = SPOT.cv, x = SPOT.x, v = SPOT.v, i;
+  if (!v || SPOT.a < 0.004) { if (SPOT.shown) { SPOT.shown = false; cvs.classList.remove('on'); } return; }
+  if (!SPOT.shown) { SPOT.shown = true; cvs.classList.add('on'); }
+  var pw = Math.round(CW * DPR), ph = Math.round(CH * DPR);
+  if (cvs.width !== pw || cvs.height !== ph) { cvs.width = pw; cvs.height = ph; }
+  x.setTransform(DPR, 0, 0, DPR, 0, 0); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; x.setLineDash([]);
+  x.clearRect(0, 0, CW, CH);
+  x.fillStyle = 'rgba(20,18,16,' + (SPOT_DARK * SPOT.a).toFixed(3) + ')'; x.fillRect(0, 0, CW, CH);
+  var rings = [];
+  for (i = 0; i < v.lots.length; i++) rings.push(hexRing(v.lots[i].c, v.lots[i].r, 1));
+  x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000';
+  for (i = 0; i < v.lots.length; i++) if (rings[i] && v.lots[i].ok) { ringPath(x, rings[i]); x.fill(); }      // 지을 수 있는 칸만 뚫는다
+  x.globalCompositeOperation = 'source-over'; x.globalAlpha = SPOT.a; x.lineJoin = 'round'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  for (i = 0; i < v.facs.length; i++) {                        // 이미 지은 시설: 어둠 속에서도 옆에 무엇이 있는지 이름으로
+    var fp = hexPos(v.facs[i].c, v.facs[i].r), fq = w2s(fp[0], fp[1], fp[2]); if (!fq) continue;
+    var fpu = pxPerUnit(fq[2]); if (fpu < 15) continue;
+    var fpx = clamp(Math.round(fpu * 0.40), 10, 13);
+    x.font = '700 ' + fpx + 'px ' + FONT_B; x.lineWidth = 3; x.strokeStyle = 'rgba(20,18,16,0.72)';
+    x.fillStyle = v.facs[i].done ? 'rgba(244,239,227,0.94)' : 'rgba(244,239,227,0.7)';
+    x.strokeText(v.facs[i].n, fq[0], fq[1] + fpu * 0.16); x.fillText(v.facs[i].n, fq[0], fq[1] + fpu * 0.16);
+    if (!v.facs[i].done) { x.font = '600 ' + (fpx - 1) + 'px ' + FONT_B; x.strokeText('짓는 중', fq[0], fq[1] + fpu * 0.16 + fpx + 1); x.fillText('짓는 중', fq[0], fq[1] + fpu * 0.16 + fpx + 1); }
+  }
+  var ord = []; for (i = 0; i < v.lots.length; i++) if (v.lots[i].i !== v.pi) ord.push(i);
+  for (i = 0; i < v.lots.length; i++) if (v.lots[i].i === v.pi) ord.push(i);       // 고른 칸은 맨 나중에(옆 칸의 테두리가 '여기' 표를 덮지 않게)
+  for (var oi = 0; oi < ord.length; oi++) {
+    var L = v.lots[ord[oi]], R = rings[ord[oi]]; if (!R) continue;
+    var sel = L.i === v.pi, p = hexPos(L.c, L.r), q = w2s(p[0], p[1], p[2]); if (!q) continue;
+    var ppu = pxPerUnit(q[2]);
+    ringPath(x, R);
+    if (!L.ok) { x.setLineDash([5, 4]); x.lineWidth = 1.4; x.strokeStyle = 'rgba(244,239,227,0.62)'; x.stroke(); x.setLineDash([]); continue; }   // 빈 부지이지만 지금은 못 짓는다
+    if (sel) { x.lineWidth = 6.4; x.strokeStyle = PAPER; x.stroke(); x.lineWidth = 3.8; x.strokeStyle = SEAL; x.stroke(); }
+    else { x.lineWidth = 2.6; x.strokeStyle = '#e6b63c'; x.stroke(); }
+    var rad = clamp(ppu * 0.40, 6.5, 13.5);
+    x.beginPath(); x.arc(q[0], q[1], rad, 0, 6.2832); x.fillStyle = sel ? SEAL : PAPER; x.fill(); x.lineWidth = 1.2; x.strokeStyle = sel ? PAPER : INK; x.stroke();
+    x.fillStyle = sel ? '#fff' : INK; x.font = '900 ' + Math.round(rad * 1.3) + 'px ' + FONT_D; x.fillText(String(L.n), q[0], q[1] + rad * 0.08);
+    if (sel) {                                                 // '여기' 표
+      var ty = 1e9; for (var j = 0; j < R.length; j++) ty = Math.min(ty, R[j][1]);
+      x.font = '800 12px ' + FONT_B;
+      var tw = x.measureText('여기').width + 16, bx = q[0] - tw / 2, by = ty - 31;
+      rr(x, bx, by, tw, 22, 3); x.fillStyle = SEAL; x.fill(); x.lineWidth = 1.2; x.strokeStyle = PAPER; x.stroke();
+      x.beginPath(); x.moveTo(q[0] - 5.5, by + 21.4); x.lineTo(q[0], by + 28); x.lineTo(q[0] + 5.5, by + 21.4); x.closePath(); x.fillStyle = SEAL; x.fill();
+      x.fillStyle = '#fff'; x.fillText('여기', q[0], by + 11.5);
+    }
+  }
+  x.globalAlpha = 1;
 }
 
 /* ---------- 연출 ---------- */
@@ -677,6 +797,7 @@ function tick(now) {
     if (t >= 1) { UI.anims.splice(i, 1); if (a.done) a.done(); }
   }
   if (R3 && R3.ready) {
+    spotCheck();
     var nzm = cam.z >= 1.15; if (nzm !== R3.nameZoom) { R3.nameZoom = nzm; UI.dirty = true; }
     var fzm = cam.z >= 0.5; if (fzm !== R3.faceZoom) { R3.faceZoom = fzm; UI.dirty = true; }
     if (UI.dirty) { UI.dirty = false; syncScene(); UI.render = true; }
@@ -702,6 +823,7 @@ function tick(now) {
         for (var f2 in R3.fires) R3.fires[f2].quaternion.copy(q);
       }
       R3.renderer.render(R3.scene, R3.cam);
+      spotDraw();
       if (now - MINI.t > 120) { MINI.t = now; drawMini(); }
     }
     for (i = UI.floats.length - 1; i >= 0; i--) {

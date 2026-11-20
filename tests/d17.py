@@ -30,9 +30,13 @@ def steps(pg):
     ok('194년 6월 하순까지(6개월)' in intro and not TURNS.search(intro), '시작 안내: 194년 6월 하순까지(6개월), "N턴" 없음')
     tapsel(pg, '#modal [data-a=close]'); pg.wait_for_timeout(600)
     home = pg.evaluate('''(() => { var pz = document.querySelector("#sheet .pz"); return { pz: pz ? pz.className + ":" + pz.innerText : "", all: document.querySelector("#sheet").innerText, v: GAME_VERSION, until: G.peace.until, pv: G.peace.v }; })()''')
-    ok(home['v'] == 'v0.9.1', '판 번호 v0.9.1 [%s]' % home['v'])
+    ok(home['v'] == 'v0.9.2', '판 번호 v0.9.2 [%s]' % home['v'])
     ok(home['pz'] == 'pz:6월 하순까지 보호' and home['until'] == 19 and home['pv'] == 2, 'STATUS 창 날짜 옆: [6월 하순까지 보호] (%s)' % home['pz'])
-    ok('초반 보호 — 194년 6월 하순까지 (180일 남음)' in home['all'] and not TURNS.search(home['all']), 'STATUS 창: 초반 보호 줄에 날짜와 남은 날수, 창 어디에도 "N턴" 없음')
+    ok('초반 보호 —' not in home['all'] and not TURNS.search(home['all']), 'STATUS 창: v0.9.2 부터 초반 보호 줄은 없고(이름 옆 표만), 창 어디에도 "N턴" 없음')
+    tapsel(pg, '#sheet .pz'); pg.wait_for_timeout(400)
+    pzd = pg.evaluate('document.querySelector("#modal") ? document.querySelector("#modal").innerText : ""')
+    ok('194년 6월 하순까지' in pzd and '(180일 남음)' in pzd and not TURNS.search(pzd), '표를 누르면 풀이 창: 194년 6월 하순까지 (180일 남음), "N턴" 없음')
+    pg.evaluate('closeDialog()'); pg.wait_for_timeout(200)
     B.shot(pg, 'a2_home', 300)
     # ---------- 2. 전법 풀이의 기대값 ----------
     st = pg.evaluate('''(() => { %s
@@ -68,15 +72,17 @@ def steps(pg):
         print('  %s 단추:' % tag, acts[:4], '| 규칙:', want['n'], want['t'])
         ok(len(atk) == 1 and ('예상 -{:,}'.format(want['n'][0])) in atk[0], '%s: 공격 단추의 예상 = attackExpect 의 피해 (%s)' % (tag, atk[0] if atk else '-'))
         tapsel(pg, '#sheet [data-a=tacinfo]'); pg.wait_for_timeout(400)
-        dlg = pg.evaluate('document.querySelector("#modal").innerText')
-        lines = pg.evaluate('''Array.prototype.map.call(document.querySelectorAll("#modal .tac"), function (t) { var x = t.querySelector(".tl.exv"); return [t.querySelector(".tn b").innerText, x ? x.innerText.replace(/\\n/g, " ") : "", x ? Array.prototype.map.call(x.querySelectorAll("em"), function (m) { return m.className + ":" + m.innerText; }) : []]; })''')
-        print('  %s 풀이:' % tag, lines)
-        ok('보통 공격이면 피해 {:,} · 받는 반격 {:,}쯤'.format(*want['n']) in dlg.replace('\n', ' '), '%s: 풀이 창 위쪽에 보통 공격의 값 (피해 %d · 반격 %d)' % (tag, want['n'][0], want['n'][1]))
+        dlg = pg.evaluate('document.querySelector("#modal").textContent')          # v0.9.2: 셈법은 접혀 있어 보이는 글(innerText)에는 없다
+        # v0.9.2: 문장이 아니라 표 — 첫 줄이 보통 공격, 그 아래 쓸 수 있는 전법마다 [피해, 받는 반격]
+        lines = pg.evaluate('''Array.prototype.map.call(document.querySelectorAll("#modal .tcmp tr[data-t]"), function (t) { var td = t.querySelectorAll("td"); return [t.getAttribute("data-t"), [td[0].querySelector("b").textContent, td[1].querySelector("b").textContent], Array.prototype.map.call(t.querySelectorAll("em"), function (m) { return m.className + ":" + m.textContent; })]; })''')
+        nrm = pg.evaluate('''(() => { var r = document.querySelector("#modal .tcmp tr.nrm"); return r ? Array.prototype.map.call(r.querySelectorAll("td b"), function (b) { return b.textContent; }) : []; })()''')
+        print('  %s 풀이:' % tag, nrm, lines)
+        ok(nrm == ['{:,}'.format(want['n'][0]), '{:,}'.format(want['n'][1])], '%s: 표의 첫 줄에 보통 공격의 값 (피해 %d · 반격 %d)' % (tag, want['n'][0], want['n'][1]))
         good = True
         for t in want['t']:
             ln = [l for l in lines if l[0] == t[0]]
-            if not ln or ('피해 {:,}'.format(t[1])) not in ln[0][1] or ('받는 반격 {:,}'.format(t[2])) not in ln[0][1]: good = False; print('    어긋남', t, ln)
-        ok(good and len(want['t']) >= 1, '%s: 전법마다 "기대 피해 · 받는 반격"이 tacticExpect 와 같다 (%d개)' % (tag, len(want['t'])))
+            if not ln or ln[0][1] != ['{:,}'.format(t[1]), '{:,}'.format(t[2])]: good = False; print('    어긋남', t, ln)
+        ok(good and len(want['t']) >= 1 and len(lines) == len(want['t']), '%s: 표의 전법 줄마다 피해 · 받는 반격이 tacticExpect 와 같다 (%d개)' % (tag, len(want['t'])))
         ok('NaN' not in dlg and 'undefined' not in dlg and 'Infinity' not in dlg, '%s: 풀이 창에 깨진 숫자가 없다' % tag)
         return want, lines, dlg
     w1, l1, d1 = look(st['u'], '강한 쪽(관우)')
@@ -88,7 +94,7 @@ def steps(pg):
     pg.evaluate('closeDialog()'); pg.wait_for_timeout(300)
     w2, l2, d2 = look(st['u2'], '약한 쪽(%s)' % st['names'][1])
     ok(all(t[4] < 0 for t in w2['t']) and all(t[5] is None or t[5] > 0 for t in w2['t'] if t[0] != '돌출'), '약한 쪽이 강한 쪽을 치면: 어느 전법이든 기대 피해는 보통 공격보다 적고(반격은 더 받는다) %s' % [(t[0], t[4], t[5]) for t in w2['t']])
-    ok(all(any(m.startswith('bad:−') for m in l[2]) for l in l2 if l[1]), '줄어든 피해는 나쁜 쪽 빛(bad)으로 적는다')
+    ok(len(l2) >= 1 and all(any(m.startswith('bad:−') for m in l[2]) for l in l2), '줄어든 피해는 나쁜 쪽 빛(bad)으로 적는다')
     ok(w1['t'][0][3] - w2['t'][0][3] >= 25, '성공률: 관우 %d%% · %s %d%% — 무장의 차이가 크게 든다' % (w1['t'][0][3], st['names'][1], w2['t'][0][3]))
     B.shot(pg, 'b2_tacinfo_weak', 300)
     pg.evaluate('closeDialog()'); pg.wait_for_timeout(300)
@@ -113,7 +119,9 @@ def steps(pg):
     print('  이어 하기:', old)
     ok(made['turn'] == 25 and old['turn'] == 25 and old['until'] == 28 and old['v'] == 2 and old['left'] == 3, '25턴째에 이어 하면: 보호의 끝이 37 → 28 (불러온 때부터 30일)')
     ok(old['pz'] == 'pz end:보호 30일 남음', 'STATUS 창의 표가 붉게 [보호 30일 남음] (%s)' % old['pz'])
-    ok('(30일 남음)' in old['t0'], '지금 할 일의 보호 줄에도 30일 남음 [%s]' % old['t0'][:50])
+    pg.evaluate('showPeaceInfo()'); pg.wait_for_timeout(300)
+    pd30 = pg.evaluate('document.querySelector("#modal").innerText'); pg.evaluate('closeDialog()'); pg.wait_for_timeout(200)
+    ok('(30일 남음)' in pd30 and '초반 보호' not in old['t0'], '풀이 창에도 30일 남음(지금 할 일에는 보호 줄이 없다) [%s]' % pd30.replace('\n', ' / ')[:60])
     ok('초반 보호 기간이 짧아졌습니다(v0.9.1)' in old['log'] and '전에는 194년 12월 하순까지' in old['log'], '기록에 한 줄 남는다 [%s]' % old['log'])
     B.shot(pg, 'c1_old_save', 300)
     pg.evaluate('saveGame()'); pg.reload(); pg.wait_for_function('window.R3 && R3.ready', timeout=60000); pg.wait_for_timeout(600)

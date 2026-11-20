@@ -1,5 +1,5 @@
 /* ===== 천하도 — 정적 데이터 ===== */
-var GAME_VERSION = 'v0.9.1';
+var GAME_VERSION = 'v0.9.2';
 var SAVE_KEY = 'chunhado_save_v2';
 
 var UNIT_TYPES = {

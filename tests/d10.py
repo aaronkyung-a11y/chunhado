@@ -138,7 +138,7 @@ def steps(pg):
     check('행동력을 채우고 다시 실행 → 순찰 되고 창 닫힘 (치안 60 → %d)' % o1, s['modal'] is None and o1 > 60 and s['sheet'] == 'base:%d' % info['id'], s)
 
     reset(pg); open_base(pg, 'fac')
-    tap(pg, '#sheet .row[data-a=plot]', 0); s = st(pg); t1 = s['modal']; check('시설 탭 → 빈 부지 → 무엇을 지을까요', s['modal'] and '무엇을 지을까요' in s['modal'], s)
+    tap(pg, '#sheet .lot[data-a=plot]', 0); s = st(pg); t1 = s['modal']; check('건설 탭 → 빈 부지 단추(v0.9.2: 번호 단추) → 무엇을 지을까요', s['modal'] and '무엇을 지을까요' in s['modal'], s)
     tap(pg, '#modal .row[data-a=f]', 0); s = st(pg); check('시설 고르기 → 담당 무장 표가 그 위에', s['modal'] and '건설' in s['modal'] and s['depth'] == 1, s)
     X(pg); s = st(pg); check('담당 무장 표 × → 시설 고르기로', s['modal'] == t1, s)
     X(pg); s = st(pg); check('시설 고르기 × → 거점 창 시설 탭', s['modal'] is None and s['sheet'] == 'base:%d' % info['id'] and s['tab'] == 'fac', s)

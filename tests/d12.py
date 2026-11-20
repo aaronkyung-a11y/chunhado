@@ -97,17 +97,16 @@ def steps(pg):
     # ---------- 3. STATUS 창의 부대 단추, 부대 목록 ----------
     links = pg.evaluate('''() => Array.prototype.map.call(document.querySelectorAll('#sheet .hm-links button'), function (b) { var r = b.getBoundingClientRect(); return [b.getAttribute('data-v'), b.textContent, Math.round(r.width), b.scrollWidth <= b.clientWidth + 1]; })''')
     print('  STATUS 단추:', links)
-    check('STATUS 창에 거점·부대·무장·천하 네 단추', [l[0] for l in links] == ['city', 'unit', 'off', 'fac'], links)
-    check('네 단추의 글씨가 넘치지 않음', all(l[3] for l in links), links)
+    check('v0.9.2: STATUS 창의 거점·부대·무장·천하 네 단추는 없다(아래 [목록] 단추와 같은 일을 했다)', links == [], links)
     S = pg.evaluate(SETUP); print('  setup', S); pg.evaluate('(s) => { window.S = s; }', S)
     # 다른 세력 부대 하나를 멀리(목록의 "가까이"에 안 들게) 옮겨 둔다
     B.shot(pg, 'd12_01_home', 500)
-    tap(pg, '#sheet .hm-links button[data-v=unit]', 0, 500)
+    tap(pg, '#btnList', 0, 500); tap(pg, '#modal .tabs button[data-v=unit]', 0, 500)       # v0.9.2: 아래 [목록] → 부대 탭
     L = pg.evaluate('''() => ({ title: (document.querySelector('#modal .dlg-h h2') || {}).textContent, tab: (document.querySelector('#modal .tabs button.on') || { getAttribute: function () {} }).getAttribute('data-v'),
       secs: Array.prototype.map.call(document.querySelectorAll('#modal .sec'), function (e) { return e.textContent; }),
       rows: Array.prototype.map.call(document.querySelectorAll('#modal .row[data-a=u]'), function (e) { return e.innerText.replace(/\\n+/g, ' | '); }) })''')
     print('  목록:', L['secs']); [print('    ', r) for r in L['rows']]
-    check('부대 단추 → 목록의 부대 탭', L['title'] == '목록' and L['tab'] == 'unit', L)
+    check('[목록] → 부대 탭', L['title'] == '목록' and L['tab'] == 'unit', L)
     check('내 부대 3개와 가까운 다른 세력 부대 2개가 줄로 나옴', len(L['rows']) == 5 and '내 부대 3개' in L['secs'][0] and '2개' in L['secs'][1], L)
     check('내 부대 줄에 위치와 상태(명령 대기)', all(('칸' in r or '성역' in r) and '명령 대기' in r for r in L['rows'][:3]), L['rows'][:3])
     check('다른 세력 부대 줄에 세력·위치·내 부대와의 거리', all('내 ' in r and '칸' in r for r in L['rows'][3:]), L['rows'][3:])
@@ -126,8 +125,9 @@ def steps(pg):
     acts = pg.evaluate('''() => Array.prototype.map.call(document.querySelectorAll('#sheet .act'), function (b) { return [b.getAttribute('data-a'), b.innerText.replace(/\\n+/g, ' | '), b.classList.contains('off'), b.scrollWidth <= b.clientWidth + 1]; })''')
     [print('    ', x) for x in acts]
     od = pg.evaluate('() => tacticOdds(UMAP[S.mine[0]], UMAP[S.foe[0]])'); print('  확률', od)
-    tacs = [x for x in acts if x[0] == 'act' and '대성공' in x[1]]
-    check('전법 단추에 성공률과 대성공률', len(tacs) >= 1 and all((('%d%%' % od['ok']) in x[1] and ('대성공 %d%%' % od['crit']) in x[1]) or '필중' in x[1] for x in tacs), acts)
+    tnames = pg.evaluate('() => tacticList(UMAP[S.mine[0]]).map(function (t) { return t.name; })')
+    tacs = [x for x in acts if x[0] == 'act' and x[1].split(' | ')[0] in tnames]
+    check('전법 단추에 성공률(v0.9.2: 대성공률은 [전법 풀이]에만)', len(tacs) >= 1 and all(((('%d%%' % od['ok']) in x[1]) or '필중' in x[1]) and '대성공' not in x[1] for x in tacs), acts)
     check('단추 글씨가 넘치지 않음', all(x[3] for x in acts), acts)
     check('전법 풀이 단추가 있음', any(x[0] == 'tacinfo' for x in acts), acts)
     B.shot(pg, 'd12_03_target', 300)

@@ -17,11 +17,12 @@ def steps(pg):
     adv = txt(pg, '#sheet .hm-adv')
     info = pg.evaluate('(() => { var A = facAdv(G.player); return { n: A.n, int: A.int, top: advCandidates(G.player)[0].n, n2: advCandidates(G.player)[1].n, i2: advCandidates(G.player)[1].int }; })()')
     print('  군사', adv, info)
-    ok(info['n'] == info['top'] and info['n'] in adv and ('지력 %d' % info['int']) in adv, 'STATUS 창에 군사 단추 — 처음에는 지력이 가장 높은 무장 [%s]' % adv)
+    ok(info['n'] == info['top'] and info['n'] in adv and '군사' in adv and '軍' not in adv, 'STATUS 창에 군사 단추 — 처음에는 지력이 가장 높은 무장 [%s]' % adv)
     B.shot(pg, 'a1_home', 300)
     tapsel(pg, '#sheet .hm-adv'); pg.wait_for_timeout(400)
     d = txt(pg, '#modal')
-    ok('군사(軍師)' in d and '지금의 군사 · ' + info['n'] in d and '조언 적중률' in d, '군사 창: 풀이 · 지금의 군사 · 적중률')
+    ok('군사' in txt(pg, '#modal .dlg-h') and info['n'] in txt(pg, '#modal .advc') and ('지력 %d' % info['int']) in txt(pg, '#modal .advc') and '적중률' in d, '군사 창: 지금의 군사 · 지력 · 적중률')
+    ok(len(txt(pg, '#modal .cap')) <= 60, '군사 창의 풀이는 한두 줄(%d자)' % len(txt(pg, '#modal .cap')))
     rows = pg.evaluate('Array.prototype.map.call(document.querySelectorAll("#modal .row"), function (e) { return e.innerText.replace(/\\n/g, " "); })')
     ok(len(rows) >= 5 and info['n'] in rows[0] and '군사' in rows[0], '후보는 지력 순, 지금의 군사에 딱지 [%s]' % rows[0][:30])
     B.shot(pg, 'a2_advisor', 200)
@@ -43,10 +44,10 @@ def steps(pg):
     hint = pg.evaluate('''(() => { var b = facCities(G.player)[0], ts = poachTargets(b).filter(function (t) { return !bondOf(t); });
       ts.forEach(function (t) { t.loy0 = t.loy; }); var pickT = ts.slice().sort(function (x, y) { return recruitRoll(x) - recruitRoll(y); })[0]; pickT.loy = 75;      // 주사위가 가장 낮은 사람의 충성을 낮춰 '응할 사람'을 하나 만든다
       clearSel(); showHome(); var hs = poachHints(b), rows = Array.prototype.map.call(document.querySelectorAll("#sheet .todo"), function (t) { return t.innerText.replace(/\\n/g, " / "); });
-      var idx = -1; rows.forEach(function (r, i) { if (/등용에 응할 듯한/.test(r)) idx = i; });
+      var idx = -1; rows.forEach(function (r, i) { if (/등용할 만한 무장/.test(r)) idx = i; });
       return { n: hs.length, names: hs.map(function (x) { return x.t.n; }), row: idx >= 0 ? rows[idx] : "", idx: idx, pick: pickT.n, need: todoList().need }; })()''')
     print('  응할 듯', hint)
-    ok(hint['n'] >= 1 and hint['pick'] in hint['names'] and hint['idx'] >= 0 and ('%d명' % hint['n']) in hint['row'] and hint['names'][0] in hint['row'] and '군사 ' in hint['row'], '지금 할 일에 "등용에 응할 듯한 이웃 무장" [%s]' % hint['row'][:70])
+    ok(hint['n'] >= 1 and hint['pick'] in hint['names'] and hint['idx'] >= 0 and ('%d명' % hint['n']) in hint['row'] and hint['names'][0] in hint['row'] and '%' in hint['row'], '지금 할 일에 "등용할 만한 무장 N명"과 이름·성공률 [%s]' % hint['row'][:70])
     B.shot(pg, 'h1_hint', 300)
     tapsel(pg, '#sheet .todo', hint['idx']); pg.wait_for_timeout(600)
     ok('누구를 부를까요' in txt(pg, '#modal .dlg-h') and pg.evaluate('!!document.querySelector("#sheet [data-a=recruit]")'), '누르면 그 거점의 등용 창이 바로 열린다')
@@ -62,7 +63,7 @@ def steps(pg):
     ok(('이웃 %d' % st['n']) in cmdtxt, '인재 탭의 등용 단추에 이웃 %d [%s]' % (st['n'], cmdtxt))
     tapsel(pg, '#sheet [data-a=recruit]'); pg.wait_for_timeout(500)
     d = txt(pg, '#modal')
-    ok('이웃 거점의 다른 세력 무장' in d and '응하면 이 거점으로 넘어옵니다' in d, '등용 창에 이웃 거점의 다른 세력 무장')
+    ok('이웃 거점의 다른 세력 무장' in d and '한 달에 한 번' in d and '거절하면 충성 +3' in d, '등용 창에 이웃 거점의 다른 세력 무장(v0.9.2: 풀이는 한 줄 — 한 달에 한 번 · 거절하면 충성 +3)')
     rows = pg.evaluate('''Array.prototype.map.call(document.querySelectorAll("#modal .row"), function (e) { return { t: e.innerText.replace(/\\n/g, " "), dim: e.classList.contains("dim"), id: +e.getAttribute("data-v") }; })''')
     ok(len(rows) == st['n'] and all('충성' in r['t'] for r in rows), '%d명 모두 충성과 함께 나온다' % len(rows))
     bd = [r for r in rows if any(n in r['t'] for n in st['bonded'])]
@@ -105,7 +106,7 @@ def steps(pg):
     tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(600)
     res2 = pg.evaluate('''((tid) => { var t = off(tid); return { f: t.f, loy: t.loy, wait: askWait(t), toast: $("toast").textContent }; })''', plan['no']['id'])
     print('  거절', res2, '|', pv2)
-    ok(res2['f'] != 0 and '거절했습니다' in res2['toast'] and '다음 달에 다시' in res2['toast'] and res2['loy'] == plan['no']['loy'] + 3 + 2 and res2['wait'] == 3, '거절 → 충성 +3(앞서 한 사람이 떠나 +2 된 데 더해), 다음 달에 다시 [%s]' % res2['toast'])
+    ok(res2['f'] != 0 and '거절했습니다' in res2['toast'] and '(충성 +3)' in res2['toast'] and res2['loy'] == plan['no']['loy'] + 3 + 2 and res2['wait'] == 3, '거절 → 충성 +3(앞서 한 사람이 떠나 +2 된 데 더해), 한 달 뒤에 다시 청할 수 있다 [%s]' % res2['toast'])
     if plan['acc'] == 100: ok('어렵겠습니다' in pv2, '군사는 미리 "어렵겠습니다"라고 했다')
     if pg.evaluate('!MODAL'): tapsel(pg, '#sheet [data-a=recruit]'); pg.wait_for_timeout(400)
     pg.evaluate('refreshDialog()'); pg.wait_for_timeout(200)
@@ -133,7 +134,7 @@ def steps(pg):
     ok(len(pl) == 3 and all(a['m'] in ('adv y', 'adv n') for a in pl), '계략 단추마다 군사의 ○·×')
     ok(not any(a['m'] for a in acts if not a['t'].startswith(('화계', '교란', '위보'))), '공격·전법 단추에는 없다(조언은 등용과 계략에만)')
     note = txt(pg, '#sheet .advn')
-    ok('의 조언' in note and ('적중률 %d%%' % s3['acc']) in note, '대상 줄 아래에 조언 풀이와 적중률 [%s]' % note)
+    ok('군사' in note and '통함' in note and ('적중률 %d%%' % s3['acc']) in note and len(note) <= 40, '대상 줄 아래에 군사의 ○·× 풀이와 적중률 한 줄 [%s]' % note)
     B.shot(pg, 'p1_ploy', 200)
     real = pg.evaluate('''(([uid, eid]) => { var u = UMAP[uid], e = UMAP[eid], t = UI.target; return [1, 2].map(function (i) { var pl = PLOYS[i]; return { name: pl.name, real: ployRoll(pl, t) < ployChance(u, pl, e), says: ployAdvice(u, pl, t).says, p: ployChance(u, pl, e) }; }); })''', [s3['u'], s3['e']])
     print('  실제', real)
@@ -144,13 +145,13 @@ def steps(pg):
     ok((aft[0] == 'confuse') == real[0]['real'] and ((real[0]['name'] + ' 성공') in aft[1]) == real[0]['real'], '%s 실행 → 미리 정해 둔 대로 %s [%s]' % (real[0]['name'], '성공' if real[0]['real'] else '실패', aft[1]))
     # ---------- 4. 내 무장을 데려갈 위험 ----------
     w = pg.evaluate('''(() => { var b = facCities(G.player)[0], o = baseOfficers(b).filter(function (x) { return !isLord(x) && !bondOf(x); })[0]; o.loy = 72; clearSel(); showHome();
-      var before = Array.prototype.some.call(document.querySelectorAll("#sheet .todo"), function (t) { return /데려갈 수 있는/.test(t.innerText); });
+      var before = Array.prototype.some.call(document.querySelectorAll("#sheet .todo"), function (t) { return /떠날 수 있는 무장/.test(t.innerText); });
       G.peace.until = G.turn; showHome();
-      var row = Array.prototype.filter.call(document.querySelectorAll("#sheet .todo"), function (t) { return /데려갈 수 있는/.test(t.innerText); })[0];
+      var row = Array.prototype.filter.call(document.querySelectorAll("#sheet .todo"), function (t) { return /떠날 수 있는 무장/.test(t.innerText); })[0];
       var rk = poachRisk(o); return { n: o.n, before: before, row: row ? row.innerText.replace(/\\n/g, " / ") : "", p: rk ? rk.p : 0, by: rk ? rk.by.n : "", idx: row ? Array.prototype.indexOf.call(document.querySelectorAll("#sheet .todo"), row) : -1, need: todoList().need }; })()''')
     print('  위험', w)
     ok(w['before'] is False, '초반 보호 중에는 뜨지 않는다(그동안은 권하지 않으므로)')
-    ok(w['row'] and w['n'] in w['row'] and '충성 72' in w['row'] and ('(%d%%)' % w['p']) in w['row'] and '포상' in w['row'], '보호가 끝나면: 지금 할 일에 "다른 세력이 데려갈 수 있는 무장" [%s]' % w['row'][:60])
+    ok(w['row'] and w['n'] in w['row'] and '충성 72' in w['row'] and ('(%d%%)' % w['p']) in w['row'] and '포상' in w['row'], '보호가 끝나면: 지금 할 일에 "떠날 수 있는 무장" [%s]' % w['row'][:60])
     B.shot(pg, 'k1_risk', 300)
     tapsel(pg, '#sheet .todo', w['idx']); pg.wait_for_timeout(600)
     ok(pg.evaluate('!!document.querySelector("#sheet [data-a=reward]")'), '누르면 그 거점의 인재 탭(포상)으로')
@@ -165,7 +166,7 @@ def steps(pg):
     ok(len(g['rep']) == 1 and g['rep'][0][0] == 2 and g['rep'][0][1] and len(g['news']) == 1 and '떠났습니다' in g['news'][0], '중요한 일로 기록되고 턴 재생 자막으로 알린다 [%s]' % (g['news'][0] if g['news'] else ''))
     # ---------- 5. 도움말 ----------
     pg.evaluate('showHelp()'); pg.wait_for_timeout(300)
-    hp = pg.evaluate('document.querySelector("#modal").innerText')
+    hp = pg.evaluate('document.querySelector("#modal").textContent')              # v0.9.2: 도움말은 접힌 토막 — 보이는 글에는 제목만 있다
     ok('군사(軍師)' in hp and '다른 세력의 무장' in hp and '미리 정해져 있습니다' in hp, '도움말: 군사 · 다른 세력의 무장 등용')
     pg.evaluate('closeDialog()')
 B.run(steps, 412, 915, 2)

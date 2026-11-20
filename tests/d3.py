@@ -19,7 +19,7 @@ def steps(pg):
     tapsel(pg, '#sheet [data-a=draft]'); tapsel(pg, '#modal [data-a=auto]'); tapsel(pg, '#modal [data-a=ok]')
     print('draft toast', pg.evaluate('$("toast").textContent'))
     tapsel(pg, '#sheet [data-a=tab][data-v=fac]')
-    pg.locator('#sheet [data-a=plot]').filter(has_text='빈 부지').first.tap(); pg.wait_for_timeout(300)
+    pg.locator('#sheet .lot[data-a=plot]').first.tap(); pg.wait_for_timeout(300)        # v0.9.2: 빈 부지는 번호 단추
     tapsel(pg, '#modal [data-a=f][data-v=farm]'); tapsel(pg, '#modal [data-a=auto]'); tapsel(pg, '#modal [data-a=ok]')
     print('develop toast', pg.evaluate('$("toast").textContent'))
     tapsel(pg, '#sheet [data-a=tab][data-v=men]'); tapsel(pg, '#sheet [data-a=search]'); tapsel(pg, '#modal [data-a=auto]'); tapsel(pg, '#modal [data-a=ok]')
