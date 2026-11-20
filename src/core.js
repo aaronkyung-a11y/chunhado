@@ -1426,21 +1426,21 @@ function tacticList(u) {
   for (var i = 0; i < list.length; i++) if (APT_RANK[apt] >= APT_RANK[list[i].need]) out.push(list[i]);
   return out;
 }
-function tacticCrit(u, d) {
-  var c = TACTIC_K.crit, g = TACTIC_K.critGod;
-  if (uHas(u, '신장') && uWar(u) > uWar(d)) return c;
-  if (u.type === 'spear' && (uHas(u, '창장') || uHas(u, '투신'))) return c;
-  if (u.type === 'halberd' && (uHas(u, '극장') || uHas(u, '투신'))) return c;
-  if (u.type === 'bow') { if (uHas(u, '궁신')) return g; if (uHas(u, '궁장')) return c; }
-  if (u.type === 'cav') { if (uHas(u, '기신')) return g; if (uHas(u, '기장')) return c; }
-  return 0;
+function tacticCrit(u, d) {                    // 성공한 전법이 반드시 대성공이 되는가 → 그때의 배수(아니면 0). 여럿이 겹치면 큰 쪽
+  var c = TACTIC_K.crit, g = TACTIC_K.critGod, m = 0;
+  if (critNormal(u, d)) m = uHas(u, '신장') ? g : c;            // v0.9.3: 보통 공격이 치명타가 되는 조건(비장·용장·신장 + 상대보다 무력이 높다)이면 전법도. 신장은 피해 +10%
+  if (u.type === 'spear' && (uHas(u, '창장') || uHas(u, '투신'))) m = Math.max(m, c);
+  if (u.type === 'halberd' && (uHas(u, '극장') || uHas(u, '투신'))) m = Math.max(m, c);
+  if (u.type === 'bow') { if (uHas(u, '궁신')) m = Math.max(m, g); else if (uHas(u, '궁장')) m = Math.max(m, c); }
+  if (u.type === 'cav') { if (uHas(u, '기신')) m = Math.max(m, g); else if (uHas(u, '기장')) m = Math.max(m, c); }
+  return m;
 }
 /* 전법의 성공·대성공 확률(%) — v0.8: 상대와 병력까지 본다. 대성공은 성공 안에 들어 있다.
    성공 = 적성(TACTIC_RATE)
         + 무장: (내 부대 최고 무력×0.6 + 내 주장 통솔×0.4 − 적 부대 최고 통솔) × 0.8      [−30 ~ +15]   (v0.8~0.9: × 0.6 [−24 ~ +12])
         + 병력: log2(내 병력 ÷ 적 병력) × 8                                              [−16 ~ +8]   (절반이면 −8, 두 배면 +8)
         + 적의 병과 적성: C +3 · B 0 · A −3 · S −6
-        + 적이 선 곳: 숲·구릉 −5, 강 +5   + 적이 혼란 중 +10   + 맞는 특기(창장·기장·신장…) +5
+        + 적이 선 곳: 숲·구릉 −5, 강 +5   + 적이 혼란 중 +10   + 맞는 특기(창장·기장…, 무력이 낮은 적을 치는 비장·용장·신장) +5
         → 10 ~ 95
    대성공 = 적성 + 무력 + (내 무력 − 상대 통솔). 맞는 특기가 있으면 성공한 전법은 모두 대성공 */
 var TACTIC_CRIT = { C: 4, B: 8, A: 12, S: 18 };

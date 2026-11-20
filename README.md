@@ -57,6 +57,17 @@
 - **충성과 인연**: `data.js`의 `BONDS`(군주 이름 → { 무장: 사이 }), `core.js`의 `bondWith`·`bondOf`·`loyNat`. 분기마다 `roundEnd`에서 자리 잡는 값 쪽으로 움직인다.
 - **지도 끝**: `ui3d.js`의 `APRON`(지도 밖 띠의 폭)·`apronY`(띠의 높이)·`TERRAIN_FS`의 `edge`(거울 비춤 + 번짐 + 종이로 풀림)·`camLimits`(지도 끝이 화면에 들어오는 한도)·`settleCam`(아래 창 높이가 바뀌면 제자리로).
 
+## v0.9.3에서 바뀐 것의 자리
+바뀐 기록은 `build/v093/p1~p3`(`bash build/v093/apply.sh`가 0.9.2의 소스에 차례로 입힌다). 규칙이 바뀐 곳은 `tacticCrit` 하나다.
+- **대화창**: `index.html`의 `#talk`, `ui_panels.js`의 `talk(무장, 말, 결과 한 줄, 뜨는 시간)`·`talkHide()`. 화면 위쪽에 초상 · 이름 · 딱지(`roleOf` — 군주/군사) · 세력 · 말 · 결과가 뜨고 2.6~5.2초 뒤(말의 길이에 따라) 사라진다. 누르면 바로 닫힌다(`ui3d.js`의 누름 처리). 창(`#modal`)보다 위에 뜨고 명령의 흐름은 막지 않는다. 메뉴의 '대화창 켜짐/꺼짐'(`UI.talk`, 설정 `chunhado_opts.talk`)을 끄면 `talk`이 결과 한 줄만 태그를 떼어 알림 줄(`toast`)로 넘긴다.
+- **말**: `SAY[일][말투]`(일 18가지 × 말투 셋 — `toneOf`: 군주 `L` · 무인 `W`(무력 70 이상이고 지력보다 10 넘게 높다) · 문관 `C`)와 `SAY_OWN[이름][일]`(이름난 무장의 제 말). `sayLine(무장, 일, 넣을 말)`이 하나를 고른다 — `{x}{을}`·`{x}{이라}`는 받침에 맞춰 붙인다. 화면의 말뿐이라 판의 주사위(`rnd`)는 쓰지 않는다.
+- **명령의 결과**: `done(결과, 한 줄, 소리, 말하는 무장, 일, 넣을 말)` — 말하는 무장이 있으면 대화창, 없으면 전처럼 알림 줄. 말하는 사람: 징병·순찰·훈련·생산·건설·흡수합병·탐색·이동은 맨 먼저 고른 무장, 출진·수송은 주장, 등용·포상·포로 해방은 상대, 거래는 군사(없으면 군주). 안 되는 명령의 까닭, 참수 · 철거 · 공사 중단, 부대의 공격 · 전법 · 계략의 결과는 알림 줄 그대로다.
+- **군사의 말**: ① STATUS 창 맨 위 `.hm-advp` — 초상 + '지금 할 일' 가운데 맨 위 것의 말(`todoList`의 줄마다 `say`, `advTop`이 고른다; 누르면 `advgo` → `goTodo`) + [바꾸기]/[임명](`adv` → `showAdvisor`). ② 내 차례가 시작되면 `advBrief()`가 그 말을 대화창으로(한 턴에 한 번 — `UI.briefT`; 같은 말은 세 턴에 한 번 — `UI.briefSay`·`UI.briefAt`; 요약 창이 닫힌 뒤: `closeDialog`가 창의 `onClose`를 부른다). 대화창을 꺼 두면 뜨지 않는다. ③ 창 안의 한 줄 `sayRow`·`advSay` — 등용할 무장을 고르는 표 아래(`pickOfficers`의 `opts.say` → `.pksay`), 계략을 쓸 수 있는 대상을 골랐을 때의 부대 창(`.advn`). ④ 조언이 빗나가면 `advAfter`가 덧붙일 말을 준다(등용은 결과 줄 뒤 `.tk-adv`, 계략은 군사의 대화창).
+- **군사 임명**: `showAdvisor()` — 후보 줄마다 [임명] 단추(`data-a="set"`). 임명하면 새 군사가 대화창에서 답한다.
+- **건설 번호**: `lotNos(b)` — 성을 가운데 두고 북쪽에서 시계 방향으로 부지마다 1, 2, 3 …(같은 방향이면 가까운 것 먼저). 거점마다 한 번 셈해 둔다(`LOTNO`). 창의 단추와 `buildView().lots`는 번호 차례(`emptyLotsByNo`)이고, 지은 칸의 번호는 건너뛴다.
+- **전법의 대성공**: `core.js`의 `tacticCrit(u, d)` — 보통 공격이 치명타가 되는 조건(`critNormal`: 비장·용장·신장 + 상대보다 무력이 높다)이면 전법도 성공했을 때 대성공(`TACTIC_K.crit` 1.25배, 신장은 `critGod` 1.375배). 병과 특기(창장·극장·궁장·기장·투신·궁신·기신)의 대성공과 겹치면 큰 쪽.
+- **초상 17장**: `tools/por93_prompt.py`(문구) → Higgsfield → `tools/dl_por93.py` → `tools/facebox.py` → `tools/make_assets_v08.py`(본은 `art/raw93m` = v0.7 그림에 17장만 바꾼 것). 작업 번호는 `art/por93_ids.tsv`, 얼굴 위치는 `art/por93_out/crops.tsv`.
+
 ## v0.9.2에서 바뀐 화면의 자리
 규칙(`core.js`·`ai.js`)은 0.9.1과 같다. 바뀐 기록은 `build/v092/p1~p6`(0.9.1의 소스에 차례로 입히면 0.9.2가 된다).
 - **STATUS 창**: `ui_panels.js`의 `homeSheet`·`todoList`. 거점·부대·무장·천하 네 칸과 숫자 띠를 없앴다(아래 [목록] 단추와 맨 위 띠에 있다). '지금 할 일'의 줄은 제목 한 줄 + 풀이 한 줄(`.todo b`·`.todo small` — 넘치면 말줄임). 초반 보호는 이름 옆의 표(`button.pz` → `showPeaceInfo`).

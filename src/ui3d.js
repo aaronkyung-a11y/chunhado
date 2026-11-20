@@ -636,6 +636,8 @@ function rebuildOverlay() {
   R3.ovTex.needsUpdate = true;
 }
 
+document.addEventListener('click', function (e) { var t = document.getElementById('talk'); if (t && t.classList.contains('on') && t.contains(e.target)) talkHide(); });      // 대화창: 누르면 닫힌다
+
 /* ---------- 건설 자리 비추기 ----------
    건설을 고른 동안에는 지도를 어둡게 덮고 지을 수 있는 빈 부지만 뚫어 밝게 보인다(고른 자리는 붉은 테두리와 '여기').
    무엇을 비출지는 buildView()(ui_panels.js)가 그때그때 정한다 — 창을 여닫는 곳마다 상태를 맞추지 않아도 된다.
@@ -661,6 +663,7 @@ function spotCheck() {
     var tok = ++SPOT.tok, a0 = SPOT.a, a1 = v ? 1 : 0;
     anim(v ? 220 : 170, function (t) { if (tok !== SPOT.tok) return; SPOT.a = a0 + (a1 - a0) * t; UI.render = true; }, function () { if (tok === SPOT.tok && !SPOT.on) SPOT.v = null; });
     $('app').classList.toggle('building', SPOT.on);
+    if (SPOT.on && typeof talkHide === 'function') talkHide();       // 건설 자리를 볼 때는 앞서 뜬 대화창이 칸을 가리지 않게
   }
   UI.dirty = true;
   if (v) spotCam(v, !was || !prev || prev.b !== v.b, was && prev ? prev.pi : -2);

@@ -32,7 +32,11 @@ def push(pg, z, dx, dz):
     pg.evaluate('''([z, dx, dz]) => { cam.z = z; cam.x = dx ? (dx < 0 ? -999 : 9999) : MAP3D.WX / 2; cam.y = dz ? (dz < 0 ? -999 : 9999) : MAP3D.WZ / 2; clampCam(); applyCam(); }''', [z, dx, dz])
 def fold(pg, want_open):
     cur = pg.evaluate('() => HOME.open')
-    if cur != want_open: B.tapsel(pg, '#sheet [data-a=fold]'); pg.wait_for_timeout(500)
+    if cur != want_open:
+        B.tapsel(pg, '#sheet [data-a=fold]'); pg.wait_for_timeout(500)
+        # 창 높이가 바뀌면 지도가 제자리로 미끄러진다(settleCam: 0.09초 뒤 0.24초 동안). 그 움직임이 끝난 뒤에 재야 한다 —
+        # 기계가 느릴 때 그 움직임이 첫 측정과 겹쳐 한 번 어긋난 적이 있다(v0.9.3 사전 점검, 다시 돌린 세 번은 모두 합격)
+        pg.wait_for_function('!UI.anims.length', timeout=5000); pg.wait_for_timeout(450); pg.wait_for_function('!UI.anims.length', timeout=5000)
 def steps(pg):
     B.start(pg, 0)
     pg.evaluate('() => { clearSel(); }')

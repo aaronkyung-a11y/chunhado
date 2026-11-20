@@ -4,7 +4,7 @@
 #      칸을 고르면 그 칸이 창 위로 보이고 붉은 테두리가 붙는가, 다른 밝은 칸을 누르면 자리가 바뀌는가, 어두운 곳을 누르면 닫히는가,
 #      카드의 수입(금/월·병량/분기)이 규칙의 값과 같은가, 고른 바로 그 칸에 지어지는가, 못 짓는 까닭(무장·금·행동력·부대)이 보이는가, 탭을 떠나면 걷히는가
 #   python3 tests/d18.py          찍은 그림은 tests/shots18/
-import sys, os, re
+import sys, os, math, re
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import browser as B
 from browser import taphex, tapsel
@@ -50,7 +50,7 @@ def steps(pg):
       todos: Array.prototype.map.call(s.querySelectorAll(".todo"), function (t) { var b = t.querySelector("b"), sm = t.querySelector("small"); return [t.offsetHeight, b ? b.getBoundingClientRect().height : 0, sm ? sm.getBoundingClientRect().height : 0, t.innerText.replace(/\\n+/g, " / ")]; }) }; })()''')
     n1 = chars(pg, '#sheet')
     print('  STATUS 창:', home['todos'])
-    ok(home['v'] == 'v0.9.2', '판 번호 v0.9.2 [%s]' % home['v'])
+    ok(home['v'] == 'v0.9.3', '판 번호 v0.9.3 [%s]' % home['v'])
     ok(home['links'] == 0 and home['pz'] and home['adv'], 'STATUS 창: 거점·부대·무장·천하 네 단추와 숫자 띠가 없다 / 보호 표와 군사 단추는 있다')
     ok(len(home['todos']) >= 1 and all(t[0] <= 60 and t[1] <= 24 and t[2] <= 20 for t in home['todos']), "'지금 할 일'은 줄마다 한 줄씩(제목 한 줄 + 풀이 한 줄, 높이 60 이하) — %d줄" % len(home['todos']))
     ok(0 < n1 <= 150, 'STATUS 창의 보이는 글 %d자(150자까지 — 0.9.1 은 같은 판에서 302자)' % n1)
@@ -87,7 +87,18 @@ def steps(pg):
     ok(min(l['ppu'] for l in v['lots']) * 1.73 >= 40, '칸의 너비가 손가락으로 누를 만하다(가장 작은 칸 %d px)' % round(min(l['ppu'] for l in v['lots']) * 1.73))
     ok(v['mini'] == 'none' and v['lab'] is False, '그동안 작은 지도와 이 거점의 이름표는 숨는다(칸을 가리지 않게)')
     em = [r for r in rw if r[1]]
-    ok([r[0] for r in em] == [l['i'] for l in v['lots']] and [r[1] for r in em] == [str(l['n']) for l in v['lots']] and [l['n'] for l in v['lots']] == list(range(1, len(em) + 1)), '창의 번호 단추와 지도의 칸: 같은 차례 · 같은 번호 %s' % [r[1] for r in em])
+    ok([r[0] for r in em] == [l['i'] for l in v['lots']] and [r[1] for r in em] == [str(l['n']) for l in v['lots']], '창의 번호 단추와 지도의 칸: 같은 차례 · 같은 번호 %s' % [r[1] for r in em])
+    # v0.9.3: 번호는 부지마다 정해져 있다 — 성을 가운데 두고 북쪽에서 시계 방향으로 1, 2, 3 … (지은 칸의 번호는 건너뛴다)
+    geo = pg.evaluate('(id) => { var b = G.bases[id], c0 = hexCenter(b.c, b.r); return b.plots.map(function (p, i) { var q = hexCenter(p.c, p.r); return [i, q[0] - c0[0], q[1] - c0[1], !p.fac]; }); }', info['id'])
+    rank = sorted(geo, key=lambda g: (round((math.atan2(g[1], -g[2]) + 2 * math.pi) % (2 * math.pi), 6), g[1] * g[1] + g[2] * g[2]))
+    lotno = dict((g[0], k + 1) for k, g in enumerate(rank))                     # 부지 자리 → 번호
+    nums = [l['n'] for l in v['lots']]
+    ok(nums == sorted(nums) and len(set(nums)) == len(nums) and all(1 <= n <= info['plots'] for n in nums) and all(lotno[l['i']] == l['n'] for l in v['lots']), '번호는 부지마다 고정: 성의 북쪽에서 시계 방향으로 1~%d, 빈 칸만 차례대로 %s' % (info['plots'], nums))
+    ok(nums != list(range(1, len(nums) + 1)) or info['empty'] == info['plots'], '지은 시설이 있는 번호는 건너뛴다(다시 1부터 매기지 않는다) — 지은 칸의 번호 %s' % sorted(lotno[g[0]] for g in geo if not g[3]))
+    scr = pg.evaluate('(id) => { var b = G.bases[id], p = hexPos(b.c, b.r), q = w2s(p[0], p[1], p[2]); return [q[0], q[1]]; }', info['id'])
+    ang = [(math.degrees(math.atan2(l['x'] - scr[0], -(l['y'] - scr[1]))) + 360) % 360 for l in v['lots']]
+    turn = sum(1 for k in range(1, len(ang)) if ang[k] + 12 < ang[k - 1])
+    ok(turn == 0, '화면에서도 번호가 시계 방향으로 돈다(성에서 본 방향 %s도)' % [round(a) for a in ang])
     lotrow = pg.evaluate('''(() => { var e = document.querySelectorAll("#sheet .lot"), r0 = e[0].getBoundingClientRect(); return [r0.width, r0.height, document.querySelector("#sheet .lots").offsetHeight, document.querySelectorAll("#sheet .row[data-a=plot]").length]; })()''')
     ok(lotrow[0] >= 40 and lotrow[1] >= 40 and lotrow[2] <= 130 and lotrow[3] == info['plots'] - info['empty'], '빈 부지는 번호 단추 한두 줄(단추 %dpx, 묶음 높이 %dpx) — 줄로 늘어선 것은 지은 시설 %d곳뿐' % (lotrow[0], lotrow[2], lotrow[3]))
     secs = pg.evaluate('Array.prototype.map.call(document.querySelectorAll("#sheet .sh-body .sec"), function (e) { return e.textContent.replace(/\\s+/g, " ").trim(); })')
@@ -210,16 +221,20 @@ def steps(pg):
     tapsel(pg, '#modal [data-a=auto]'); tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(250)
     fl = pg.evaluate('Array.prototype.map.call(document.querySelectorAll("#fx .flt"), function (e) { return e.textContent; })')
     pg.wait_for_timeout(900)
-    aft = pg.evaluate('''([id, pi]) => { var b = G.bases[id], f = b.plots[pi].fac; return { fac: f ? [f.t, f.done, f.lv] : null, others: b.plots.filter(function (p, i) { return i !== pi && p.fac && !p.fac.done; }).length, gold: b.gold, ap: G.factions[G.player].ap, modal: !!MODAL, toast: $("toast").textContent,
+    aft = pg.evaluate('''([id, pi]) => { var b = G.bases[id], f = b.plots[pi].fac; return { fac: f ? [f.t, f.done, f.lv] : null, others: b.plots.filter(function (p, i) { return i !== pi && p.fac && !p.fac.done; }).length, gold: b.gold, ap: G.factions[G.player].ap, modal: !!MODAL, toast: $("toast").textContent, by: f ? off(f.by[0]).n : "",
+      talk: (function () { var t = $("talk"), r = t.getBoundingClientRect(), q = function (c) { var e = t.querySelector(c); return e ? e.textContent : ""; }; return { on: t.classList.contains("on"), who: q(".tk-who b"), say: q(".tk-say"), sub: q(".tk-sub"), top: Math.round(r.top), bottom: Math.round(r.bottom), por: !!t.querySelector(".por") }; })(),
       tab: (document.querySelector("#sheet .tabs button.on") || { getAttribute: function () {} }).getAttribute("data-v"), app: $("app").className, toastTop: Math.round($("toast").getBoundingClientRect().top), hud: $("hud").offsetHeight }; }''', [info['id'], T['i']])
     v5 = view(pg); rw5 = rows(pg)
     B.shot(pg, 'd18_06_built', 200)
     print('  착공:', aft, '| 떠오른 글:', fl)
     ok(aft['fac'] == ['farm', False, 1] and aft['others'] == 0, '고른 바로 그 칸(%d번)에 농장이 착공된다 — 다른 칸에는 아무것도 생기지 않는다' % T['n'])
-    ok(aft['gold'] == gw[2] - 140 and aft['ap'] == gw[3] - 20 and not aft['modal'] and '농장 착공' in aft['toast'] and aft['tab'] == 'fac', '금 −140 · 행동력 −20, 창이 닫히고 건설 탭으로 [%s]' % aft['toast'])
+    tk = aft['talk']
+    ok(aft['gold'] == gw[2] - 140 and aft['ap'] == gw[3] - 20 and not aft['modal'] and aft['tab'] == 'fac', '금 −140 · 행동력 −20, 창이 닫히고 건설 탭으로')
+    ok(tk['on'] and tk['por'] and tk['who'] == aft['by'] and len(tk['say']) >= 6 and tk['sub'].startswith('농장 착공') and '뒤 완공' in tk['sub'], 'v0.9.3: 맡은 무장(%s)이 대화창에서 답하고, 결과가 그 아래에 ["%s" / %s]' % (aft['by'], tk['say'], tk['sub']))
     ok(any('농장 착공' in t for t in fl), '착공한 칸에서 글자가 떠오른다 %s' % fl)
-    ok(aft['hud'] <= aft['toastTop'] <= aft['hud'] + 40, '건설 자리를 보는 동안 알림 줄은 위로(칸을 가리지 않게) — 위에서 %dpx' % aft['toastTop'])
-    ok(v5['on'] and len(v5['lots']) == info['empty'] - 1 and all(l['i'] != T['i'] for l in v5['lots']) and [l['n'] for l in v5['lots']] == list(range(1, info['empty'])), '착공한 칸은 밝은 칸에서 빠지고 번호는 다시 1부터 %s' % [l['n'] for l in v5['lots']])
+    ok(aft['hud'] <= tk['top'] <= aft['hud'] + 60 and tk['bottom'] - tk['top'] <= 110, '대화창은 위쪽 한 띠(위에서 %d~%dpx)' % (tk['top'], tk['bottom']))
+    ok(v5['on'] and len(v5['lots']) == info['empty'] - 1 and all(l['i'] != T['i'] for l in v5['lots']) and [l['n'] for l in v5['lots']] == [n for n in nums if n != T['n']] and all(lotno[l['i']] == l['n'] for l in v5['lots']), 'v0.9.3: 착공한 칸(%d번)만 밝은 칸에서 빠지고, 남은 칸의 번호는 그대로 %s' % (T['n'], [l['n'] for l in v5['lots']]))
+    ok([r[1] for r in rw5 if r[1]] == [str(n) for n in nums if n != T['n']], '창의 번호 단추도 그대로 %s' % [r[1] for r in rw5 if r[1]])
     ok(any(f['n'] == '농장' and not f['done'] and f['dark'][3] >= 150 for f in v5['facs']), "그 칸은 어두워지고 '농장 짓는 중'으로 적힌다")
     ok(any(r[0] == T['i'] and '건설 중' in r[3] for r in rw5), "목록에서도 '지은 시설' 아래 '건설 중'으로")
     done_gain = pg.evaluate('([id, pi]) => { var b = G.bases[id]; b.plots[pi].fac.done = true; var v = foodIncome(b); b.plots[pi].fac.done = false; return v; }', [info['id'], T['i']])

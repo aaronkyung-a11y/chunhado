@@ -125,10 +125,10 @@ def steps(pg):
     tapsel(pg, '#sheet [data-a=act]', ci[0]); pg.wait_for_timeout(700)
     flt = pg.evaluate('Array.prototype.map.call(document.querySelectorAll("#fx .flt"), function (e) { return e.textContent; })')
     pg.wait_for_timeout(3000)
-    a1 = pg.evaluate('''(e) => { ployRoll = window._pr; var u = UMAP[e], o = R3.units[e]; return { st: u.status, stT: u.stT, left: statusLeft(u), toast: $("toast").textContent, on: o.stOn, sw: o.sw.visible, segs: statusSegs(u).map(function (g) { return g.t; }), swcol: o.sw.material.color.getHexString(), tint: o.sp.material.color.getHexString() }; }''', st['e1'])
+    a1 = pg.evaluate('''(e) => { ployRoll = window._pr; var u = UMAP[e], o = R3.units[e]; return { st: u.status, stT: u.stT, left: statusLeft(u), toast: (function () { var t = $("talk"), q = t && t.classList.contains("on") ? t.querySelector(".tk-sub") : null; return q && /교란/.test(q.textContent) ? q.textContent : $("toast").textContent; })(), on: o.stOn, sw: o.sw.visible, segs: statusSegs(u).map(function (g) { return g.t; }), swcol: o.sw.material.color.getHexString(), tint: o.sp.material.color.getHexString() }; }''', st['e1'])
     print('  ploy', a1, flt)
     ok(a1['st'] == 'confuse' and a1['left'] == 2, '교란 성공 → 혼란, 남은 차례 2')
-    ok('혼란 20일' in a1['toast'] and '턴' not in a1['toast'], '알림에 날수까지 [%s]' % a1['toast'])
+    ok('혼란 20일' in a1['toast'] and '턴' not in a1['toast'], '알림에 날수까지 [%s]' % a1['toast'])      # v0.9.3: 군사의 조언이 빗나갔으면(시험은 성패를 고정하므로 판에 따라 그럴 수 있다) 결과는 군사의 대화창에 실린다 — 그때는 거기서 읽는다
     ok(any('혼란 20일' in f for f in flt), '걸리는 순간 떠오르는 글씨에도 [혼란 20일] %s' % flt)
     ok(a1['on'] and a1['sw'] and a1['segs'] == ['혼란 20일'] and a1['swcol'] == '2f4f6f' and a1['tint'] == 'aebdd2', '지도: 딱지 [혼란 20일] + 쪽빛 소용돌이 + 바랜 빛')
     pg.evaluate('([c, r]) => { clearSel(); jumpTo(c, r, 1.9); }', st['me']); pg.wait_for_timeout(900)
