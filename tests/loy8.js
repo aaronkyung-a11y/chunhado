@@ -32,6 +32,7 @@ var ups = rest.filter(function (o, i) { return i % 3 === 0 && loyNat(o) <= 92; }
 ups.forEach(function (o) { o._f = o.f; o._n = loyNat(o); o.loy = o._n + 6; o._l = o.loy; });
 downs.forEach(function (o) { o._f = o.f; o._n = loyNat(o); o.loy = o._n - 10; o._l = o.loy; });
 g.loy = 60;
+if (typeof aiPoach === 'function') aiPoach = function () {};      // v0.9: 다른 세력 무장 등용(거절하면 충성 +3, 떠나면 남은 무장 +2)은 여기서 보는 '분기마다의 흐름'과 별개라 꺼 둔다 — 그쪽은 tests/adv9.js
 function stay(o) { return o.f === o._f && o.st === 'active'; }
 quarter();
 chk('인연 무장은 분기가 바뀌면 100 으로 돌아온다', by('관우').loy === 100 || by('관우').f !== by('유비').f, by('관우').loy);
@@ -58,9 +59,9 @@ var other = by('장료'); var of0 = other.f; other.f = -1; other.st = 'free'; ot
 var pz = recruitChance(home, rec, zy), po = recruitChance(home, rec, other);
 chk('내 군주와 인연이 있는 재야 무장은 등용 확률 +30', pz === Math.min(95, po + 30), po + ' → ' + pz);
 G.factions[home.owner].ap = 999; var joined = false;
-for (var k = 0; k < 60 && !joined; k++) { rec.acted = false; var r = cmdRecruit(home, rec.id, zy.id); G.factions[home.owner].ap = 999; joined = r.ok && r.joined; }
+for (var k = 0; k < 60 && !joined; k++) { rec.acted = false; var r = cmdRecruit(home, rec.id, zy.id); G.factions[home.owner].ap = 999; joined = r.ok && r.joined; G.turn++; }      // v0.9: 한 무장에게는 한 턴에 한 번만 권할 수 있고 결과가 턴마다 정해져 있으므로, 턴을 넘겨 가며 권한다
 chk('인연이 있는 무장은 등용되면 바로 충성 100', joined && zy.loy === 100, zy.loy);
-for (k = 0, joined = false; k < 200 && !joined; k++) { rec.acted = false; r = cmdRecruit(home, rec.id, other.id); G.factions[home.owner].ap = 999; joined = r.ok && r.joined; }
+for (k = 0, joined = false; k < 200 && !joined; k++) { rec.acted = false; r = cmdRecruit(home, rec.id, other.id); G.factions[home.owner].ap = 999; joined = r.ok && r.joined; G.turn++; }
 chk('보통 무장은 등용되면 70~85 에서 시작', joined && other.loy >= 70 && other.loy <= 85, other.loy);
 // 포로: 주군과 인연이 있으면 5% 까지
 var xh = by('하후돈'), cc = by('조조');

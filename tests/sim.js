@@ -58,13 +58,19 @@ function invariants() {
     } else if (p.st === 'free') { if (p.f !== -1) errs.push('free officer with faction ' + p.n); if (p.unit !== null) errs.push('free officer in unit ' + p.n); if (G.bases[p.loc].kind !== 'city') errs.push('free officer at gate ' + p.n); }
     else if (p.st === 'captive') { if (G.bases[p.loc].captives.indexOf(p.id) < 0) errs.push('captive not listed ' + p.n); }
     else if (p.st === 'travel') { if (p.f < 0 || !G.factions[p.f].alive) errs.push('traveler w/o faction ' + p.n); }
-    num(p.loy, p.n + '.loy'); num(p.merit, p.n + '.merit');
+    num(p.loy, p.n + '.loy'); num(p.merit, p.n + '.merit'); if (p.loy < 0 || p.loy > 100) errs.push('loyalty out of range ' + p.n + ' ' + p.loy);
   }
   for (i = 0; i < G.factions.length; i++) {
     var F = G.factions[i], nb = facBases(i).length;
     num(F.ap, F.name + '.ap');
     if (F.alive !== (nb > 0)) errs.push('alive mismatch ' + F.name + ' bases=' + nb);
     if (F.alive) { var L = G.officers[F.lord]; if (L.f !== i || (L.st !== 'active' && L.st !== 'travel')) errs.push('lord invalid ' + F.name + ' st=' + L.st + ' f=' + L.f); }
+    // 군사(v0.9): 번호가 있으면 있는 무장이어야 하고 군주가 아니어야 한다. facAdv 가 돌려주는 사람은 그 세력의 무장이어야 한다
+    if (typeof facAdv === 'function' && F.alive) {
+      if (F.adv !== undefined && F.adv >= 0 && !G.officers[F.adv]) errs.push('advisor id invalid ' + F.name + ' ' + F.adv);
+      if (F.adv === F.lord) errs.push('lord is advisor ' + F.name);
+      var A = facAdv(i); if (A && (A.f !== i || (A.st !== 'active' && A.st !== 'travel'))) errs.push('advisor not ours ' + F.name + ' ' + A.n);
+    }
   }
   return errs;
 }

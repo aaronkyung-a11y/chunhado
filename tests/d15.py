@@ -109,7 +109,7 @@ def steps(pg):
     ok(m0['col2'] != 'ffffff' and m0['swcol2'] == '8a5a12', '부대 그림의 빛이 바래고 소용돌이는 황토빛')
     B.shot(pg, 's1_map_rumor_fire', 300)
     # 계략으로 건다(성공하도록 고정)
-    pg.evaluate('(id) => { window._ch = chance; chance = function () { return true; }; gotoUnit(UMAP[id]); }', info['id']); pg.wait_for_timeout(600)
+    pg.evaluate('(id) => { window._pr = ployRoll; ployRoll = function () { return 0; }; gotoUnit(UMAP[id]); }', info['id']); pg.wait_for_timeout(600)      # v0.9: 계략의 성패는 ployRoll 로 미리 정해진다 — 시험에서는 통하게 고정
     taphex(pg, *st['p1']); pg.wait_for_timeout(500)
     acts = [pg.locator('#sheet [data-a=act]').nth(i).inner_text().replace('\n', ' / ') for i in range(pg.locator('#sheet [data-a=act]').count())]
     ci = [i for i, a in enumerate(acts) if a.startswith('교란')]
@@ -117,7 +117,7 @@ def steps(pg):
     tapsel(pg, '#sheet [data-a=act]', ci[0]); pg.wait_for_timeout(700)
     flt = pg.evaluate('Array.prototype.map.call(document.querySelectorAll("#fx .flt"), function (e) { return e.textContent; })')
     pg.wait_for_timeout(3000)
-    a1 = pg.evaluate('''(e) => { chance = window._ch; var u = UMAP[e], o = R3.units[e]; return { st: u.status, stT: u.stT, left: statusLeft(u), toast: $("toast").textContent, on: o.stOn, sw: o.sw.visible, segs: statusSegs(u).map(function (g) { return g.t; }), swcol: o.sw.material.color.getHexString(), tint: o.sp.material.color.getHexString() }; }''', st['e1'])
+    a1 = pg.evaluate('''(e) => { ployRoll = window._pr; var u = UMAP[e], o = R3.units[e]; return { st: u.status, stT: u.stT, left: statusLeft(u), toast: $("toast").textContent, on: o.stOn, sw: o.sw.visible, segs: statusSegs(u).map(function (g) { return g.t; }), swcol: o.sw.material.color.getHexString(), tint: o.sp.material.color.getHexString() }; }''', st['e1'])
     print('  ploy', a1, flt)
     ok(a1['st'] == 'confuse' and a1['left'] == 2, '교란 성공 → 혼란, 남은 차례 2')
     ok('혼란 2턴' in a1['toast'], '알림에 턴 수까지 [%s]' % a1['toast'])

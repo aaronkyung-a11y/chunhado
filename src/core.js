@@ -53,6 +53,23 @@ function rnd() {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 function ri(a, b) { return a + Math.floor(rnd() * (b - a + 1)); }
+/* ---------- 미리 정해 둔 결과(v0.9) ----------
+   등용과 계략의 성패는 '때(턴 또는 달) · 대상(· 계략 종류)'으로 미리 정해져 있다: 성공률이 p 일 때 주사위(0~100) < p 이면 성공.
+   같은 턴에 같은 대상이면 몇 번을 물어도, 창을 다시 열어도, 저장을 다시 불러도 같다 — 그래서 군사가 하기 전에 말할 수 있다.
+   G.rnd 흐름(G.seed)과는 따로 논다. */
+function strHash(s) { var h = 2166136261 | 0; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h | 0; }
+function omenRoll(key, monthly) {                                  // 0 이상 100 미만. monthly = 턴이 아니라 달마다 한 번 정해지는 것(그 달에는 같다)
+  var e = monthly ? 0x40000 + G.year * 12 + G.month : (G.turn | 0);
+  var t = (G.seed0 | 0) ^ Math.imul(e + 0x7F4A7C15, 0x9E3779B1) ^ strHash(key);
+  t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); t = Math.imul(t ^ (t >>> 13), 0x5bd1e995 | 1);
+  return ((t ^ (t >>> 15)) >>> 0) / 4294967296 * 100;
+}
+/* 등용의 주사위: 대상에만 건다. 재야·포로는 턴마다, 다른 세력의 무장(st 'active')은 달마다 한 번 */
+function recruitRoll(t) { return omenRoll('r' + t.id, t.st === 'active'); }
+function recruitRollA(t) { return omenRoll('a|r' + t.id, t.st === 'active'); }            // 군사의 조언이 맞는가
+function ployKey(ploy, t) { return 'p' + ploy.id + (t.u ? 'u' + t.u.id : 'k' + K(t.c, t.r)); }   // 계략: 종류 + 대상 부대(부대가 없으면 칸). 턴마다
+function ployRoll(ploy, t) { return omenRoll(ployKey(ploy, t)); }
+function ployRollA(ploy, t) { return omenRoll('a|' + ployKey(ploy, t)); }
 function chance(p) { return rnd() * 100 < p; }
 function pick(arr) { return arr[Math.floor(rnd() * arr.length)]; }
 
@@ -104,6 +121,23 @@ function reindex() {
 }
 function facName(f) { return f < 0 ? '재야' : G.factions[f].name; }
 function isLord(o) { return o.f >= 0 && G.factions[o.f].lord === o.id; }
+/* ---------- 군사(軍師, v0.9) ----------
+   세력마다 한 사람. 군주는 될 수 없다. 출진해 있거나 다른 거점으로 가는 중이어도 군사다. 사로잡히거나 죽거나 떠나면 자리가 비고, 그 세력의 차례가 올 때 지력이 가장 높은 무장으로 채운다. */
+function advOk(o, f) { return !!o && o.f === f && (o.st === 'active' || o.st === 'travel') && G.factions[f].lord !== o.id; }
+function facAdv(f) { var F = G.factions[f]; if (!F || F.adv === undefined || F.adv < 0) return null; var o = off(F.adv); return advOk(o, f) ? o : null; }
+function advCandidates(f) { return G.officers.filter(function (o) { return advOk(o, f); }).sort(function (a, b) { return b.int - a.int || a.id - b.id; }); }
+function autoAdvisor(f) { var c = advCandidates(f); G.factions[f].adv = c.length ? c[0].id : -1; return c.length ? c[0] : null; }
+function setAdvisor(f, id) { var o = off(id); if (!advOk(o, f)) return ERR('군사로 삼을 수 없는 무장입니다'); G.factions[f].adv = o.id; return { ok: true }; }
+/* 조언이 맞을 확률(%) */
+function adviceAcc(A, tInt) { return clamp(Math.round(A.int + (A.int - tInt) * ADVISE.k), ADVISE.min, 100); }
+/* 조언: { adv, acc, says } — says = "통한다"고 말하는가. 군사가 없으면 null.
+   roll = 그 일의 주사위(recruitRoll·ployRoll), rollA = '조언이 맞는가'의 주사위(recruitRollA·ployRollA), p = 성공률, tInt = 상대의 지력.
+   실제 결과(roll < p)를 acc% 의 확률로 바르게, 나머지는 거꾸로 말한다. '맞는가'도 대상에만 걸려 있어, 군사를 바꿔 물어도 새 정보가 생기지 않는다 */
+function advise(f, roll, rollA, p, tInt) {
+  var A = facAdv(f); if (!A) return null;
+  var real = roll < p, acc = adviceAcc(A, tInt);
+  return { adv: A, acc: acc, says: rollA < acc ? real : !real };
+}
 function dateStr() { return G.year + '년 ' + G.month + '월 ' + ['상순', '중순', '하순'][G.xun]; }
 function dateOfTurn(t) { var m = Math.floor((t - 1) / 3); return (194 + Math.floor(m / 12)) + '년 ' + (m % 12 + 1) + '월 ' + ['상순', '중순', '하순'][(t - 1) % 3]; }   // 턴 번호 → 날짜(1턴 = 194년 1월 상순)
 /* ---------- 초반 보호 ---------- */
@@ -366,9 +400,10 @@ function newGame(playerFaction, seed) {
     ver: 2, year: 194, month: 1, xun: 0, turn: 1, seed: (seed === undefined ? (Date.now() & 0x7fffffff) : seed) | 0,
     player: playerFaction, factions: [], officers: [], bases: [], units: [], fires: {}, nextUnit: 1, log: [], over: null, aiOnly: false
   };
+  G.seed0 = G.seed;                                                // 판마다 고정된 씨앗(G.seed 는 난수를 뽑을 때마다 바뀐다) — 미리 정해 두는 결과(omenRoll)에 쓴다
   for (i = 0; i < SCENARIO.factions.length; i++) {
     var sf = SCENARIO.factions[i];
-    G.factions.push({ id: i, name: sf.n, color: sf.color, lord: -1, ap: 80, alive: true });
+    G.factions.push({ id: i, name: sf.n, color: sf.color, lord: -1, ap: 80, alive: true, adv: -1 });
   }
   for (i = 0; i < MAPDATA.bases.length; i++) {
     var mb = MAPDATA.bases[i];
@@ -409,6 +444,7 @@ function newGame(playerFaction, seed) {
   }
   for (i = 0; i < G.officers.length; i++) { var lo = G.officers[i]; if (lo.f >= 0 && G.factions[lo.f].lord !== lo.id) lo.loy = loyNat(lo); }   // 군주가 정해진 뒤에 매긴다
   G.peace = { until: 1 + peaceTurns(G.player), broken: {} };      // 초반 보호: until 턴부터 AI 가 플레이어의 거점을 칠 수 있다
+  for (i = 0; i < G.factions.length; i++) autoAdvisor(i);          // 군사: 처음에는 지력이 가장 높은 무장(군주 제외)
   reindex();
   REPORT = []; EVQ = [];
   phaseStart(G.player);
@@ -455,6 +491,10 @@ function phaseStart(f) {
   }
   var F = G.factions[f], i;
   if (!F.alive) return;
+  if (!facAdv(f)) {                                                // 군사 자리가 비었으면 채운다
+    var hadAdv = F.adv !== undefined && F.adv >= 0, na = autoAdvisor(f);
+    if (f === G.player && !G.aiOnly && na && G.turn > 1) logMsg((hadAdv ? '군사 자리가 비어 ' : '') + josa(na.n, '을를') + ' 군사로 삼았다 (지력 ' + na.int + ')', undefined, undefined, f, 1);
+  }
   F.ap = Math.min(255, F.ap + apRegen(f));
   for (i = 0; i < G.officers.length; i++) {
     var o = G.officers[i];
@@ -917,9 +957,43 @@ function cmdSearch(b, id) {
   if (chance(35)) { var g = ri(5, 20) * 10; b.gold += g; return { ok: true, gold: g }; }
   return { ok: true };
 }
+/* 다른 세력의 무장 가운데 거점 b 에서 등용을 권할 수 있는 사람: b 와 길로 바로 이어진 이웃 거점에 머무는 무장(군주 제외, 출진·이동 중 제외) */
+function isNeighbor(b, id) { var a = ADJ[b.id]; for (var i = 0; i < a.length; i++) if (a[i].to === id) return true; return false; }
+function canPoach(b, t) { return !!t && t.st === 'active' && t.unit === null && t.f >= 0 && t.f !== b.owner && !isLord(t) && G.bases[t.loc].owner === t.f && isNeighbor(b, t.loc); }
+function poachTargets(b) {
+  var out = [], seen = {};
+  if (b.owner < 0) return out;
+  ADJ[b.id].forEach(function (e) {
+    var nb = G.bases[e.to]; if (seen[nb.id] || nb.owner < 0 || nb.owner === b.owner) return; seen[nb.id] = 1;
+    baseOfficers(nb).forEach(function (o) { if (!isLord(o)) out.push(o); });
+  });
+  return out;
+}
+/* 무장 o 를 이웃 세력이 데려갈 위험: 이웃 거점에 있는 다른 세력 무장 가운데 가장 잘 권하는 사람과 그 성공률 { p, by, base }. 위험이 없으면 null */
+function poachRisk(o) {
+  if (!o || o.st !== 'active' || o.unit !== null || o.f < 0 || isLord(o) || bondOf(o) || o.loy >= POACH.wall) return null;
+  if (facOfficers(o.f).length <= POACH_AI.spare) return null;          // AI 는 무장이 몇 안 되는 세력의 무장에게는 권하지 않는다
+  var best = null;
+  ADJ[o.loc].forEach(function (e) {
+    var nb = G.bases[e.to]; if (nb.owner < 0 || nb.owner === o.f) return;
+    baseOfficers(nb).forEach(function (r) { var q = recruitChance(nb, r, o); if (q > 0 && (!best || q > best.p)) best = { p: q, by: r, base: nb }; });
+  });
+  return best;
+}
+/* 등용을 권한 뒤 다시 권할 수 있을 때까지 남은 턴(0 이면 권할 수 있다). 재야·포로는 한 턴에 한 번, 다른 세력의 무장은 한 달에 한 번(다음 달 상순부터 다시) */
+function askWait(t) { return (t.ask !== undefined && t.ask > G.turn) ? t.ask - G.turn : 0; }
 function recruitChance(b, o, t) {
-  var p = 35 + (o.cha - 50) * 0.7 + (o.pol - 50) * 0.2;
   var L = off(G.factions[b.owner].lord);
+  if (t.st === 'active') {                                              // 다른 세력의 무장(v0.9)
+    var mine = bondWith(t, b.owner);
+    if (bondOf(t)) return 0;                                            //   제 주군과 인연이 있으면 응하지 않는다
+    if (t.loy >= POACH.wall && !mine) return 0;                         //   충성이 아주 높아도 응하지 않는다
+    var q = POACH.base + (o.cha - 50) * POACH.cha + (o.pol - 50) * POACH.pol + (L.cha - off(G.factions[t.f].lord).cha) * POACH.lord - (t.loy - POACH.loy0) * POACH.loyK;
+    if (o.sk === '논객') q += POACH.talker;
+    if (mine) q += POACH.bond;
+    return clamp(Math.round(q), 0, POACH.max);
+  }
+  var p = 35 + (o.cha - 50) * 0.7 + (o.pol - 50) * 0.2;
   p += (L.cha - 70) * 0.4;
   if (o.sk === '논객') p += 20;
   if (bondWith(t, b.owner)) p += 30;                                    // 내 군주와 인연이 있는 사람
@@ -930,18 +1004,34 @@ function recruitChance(b, o, t) {
 }
 function cmdRecruit(b, id, tid) {
   var os = getIdle(b, [id]); if (!os) return ERR('담당 무장을 고르세요');
-  var t = off(tid);
-  if (!t || t.loc !== b.id || !((t.st === 'free') || (t.st === 'captive' && t.capF === b.owner))) return ERR('등용할 수 없는 대상입니다');
+  var t = off(tid), far = canPoach(b, t);
+  if (!t || !(far || (t.loc === b.id && ((t.st === 'free') || (t.st === 'captive' && t.capF === b.owner))))) return ERR('등용할 수 없는 대상입니다');
+  if (askWait(t)) return ERR(far ? '이번 달에는 이미 권했습니다 — 다음 달에 다시 권할 수 있습니다' : '이번 턴에는 이미 권했습니다 — 다음 턴에 다시');
   if (!needAP(b.owner, AP.recruit)) return ERR('행동력이 부족합니다');
   useAP(b.owner, AP.recruit);
   var o = os[0]; markActed(os, 15);
-  if (chance(recruitChance(b, o, t))) {
+  var p = recruitChance(b, o, t), okR = recruitRoll(t) < p;             // 미리 정해 둔 결과(군사가 미리 말해 줄 수 있다)
+  t.ask = G.turn + (far ? 3 - G.xun : 1);                               // 다른 세력의 무장: 다음 달 상순부터 다시
+  if (okR) {
+    var from = far ? t.f : -1, fb = far ? G.bases[t.loc] : null;
     if (t.st === 'captive') { var i = b.captives.indexOf(t.id); if (i >= 0) b.captives.splice(i, 1); }
+    if (far) {                                                          // 맡던 공사·군사 자리를 두고 이쪽으로 넘어온다
+      t.job = null; t.loc = b.id; if (G.factions[from].adv === t.id) G.factions[from].adv = -1;
+      for (var qi = 0; qi < G.officers.length; qi++) { var q = G.officers[qi]; if (q.f === from && q !== t && (q.st === 'active' || q.st === 'travel') && G.factions[from].lord !== q.id && q.loy < 100) q.loy = Math.min(100, q.loy + POACH.tighten); }   // 남은 무장들이 마음을 다잡는다(주군의 단속)
+    }
     t.st = 'active'; t.f = b.owner; t.capF = -1; t.unit = null; t.acted = true; t.loy = 70 + ri(0, 15); t.merit = Math.round(t.merit * 0.5); if (bondOf(t)) t.loy = 100;
-    o.merit += 60;
-    return { ok: true, joined: true };
+    o.merit += far ? 100 : 60;
+    if (far) {
+      logMsg(facName(b.owner) + '군 ' + josa(o.n, '이가') + ' ' + facName(from) + '군의 ' + josa(t.n, '을를') + ' 등용 (' + fb.n + ' → ' + b.n + ')', b.c, b.r, from === G.player ? G.player : b.owner, from === G.player ? 2 : 1);
+      if (from === G.player && !G.aiOnly) ev({ t: 'news', f: b.owner, c: fb.c, r: fb.r, warn: 1, text: '<b>' + fb.n + '의 ' + josa(t.n, '이가') + ' ' + facName(b.owner) + '군의 등용에 응해 떠났습니다</b> — 남은 무장들의 충성 +' + POACH.tighten });
+    }
+    return { ok: true, joined: true, p: p, far: far, from: from };
   }
-  return { ok: true, joined: false };
+  if (far) {                                                            // 거절: 마음을 다잡는다
+    var l0 = t.loy; t.loy = Math.min(100, t.loy + POACH.up);
+    if (t.f === G.player && !G.aiOnly) logMsg(facName(b.owner) + '군 ' + josa(o.n, '이가') + ' 우리 ' + t.n + '에게 등용을 권했으나 거절 (충성 ' + l0 + ' → ' + t.loy + ')', G.bases[t.loc].c, G.bases[t.loc].r, G.player, 1);
+  }
+  return { ok: true, joined: false, p: p, far: far };
 }
 function cmdReward(b, tid) {
   var t = off(tid);
@@ -1537,7 +1627,7 @@ function unitPloy0(u, ploy, t) {
   if (ploy.id === 'douse') { delete G.fires[K(u.c, u.r)]; nbrs(u.c, u.r).forEach(function (n) { delete G.fires[K(n[0], n[1])]; }); res.success = true; return res; }
   var tu = t.u || null, p = ployChance(u, ploy, tu);
   res.p = p;
-  if (chance(p)) {
+  if (ployRoll(ploy, t) < p) {                                          // v0.9: 미리 정해 둔 결과(같은 턴·같은 계략·같은 대상이면 같다)
     res.success = true;
     applyPloy(u, ploy, t.c, t.r, tu, res);
     addMerit(u, 30);
@@ -1604,7 +1694,9 @@ function deserialize(s) {
   }
   // v0.8.1: 초반 보호. 0.8까지의 저장에는 없다 — 그 세력의 시작 병력으로 기간을 정해 붙인다(아직 그 기간 안이면 보호받는다. 누구를 먼저 쳤는지는 알 수 없어 비워 둔다)
   if (!g.peace && SCENARIO.factions[g.player]) g.peace = { until: 1 + peaceFor(startTroops(g.player)), broken: {} };
+  if (g.seed0 === undefined) g.seed0 = (g.seed ^ 0x2545F491) | 0;        // v0.9: 미리 정해 두는 결과의 고정 씨앗(옛 저장에는 없다 — 열 때 한 번 정해 저장본에 남는다)
   G = g; reindex(); REPORT = []; EVQ = [];
+  for (var fi = 0; fi < G.factions.length; fi++) if (G.factions[fi].adv === undefined) { G.factions[fi].adv = -1; if (G.factions[fi].alive) autoAdvisor(fi); }   // v0.9: 군사
   for (var oi = 0; oi < G.officers.length; oi++) { var go = G.officers[oi]; if (go.f >= 0 && go.st !== 'hidden' && bondOf(go)) go.loy = 100; }   // v0.8: 인연이 있는 무장
   return true;
 }

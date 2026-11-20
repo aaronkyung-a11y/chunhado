@@ -374,3 +374,21 @@ p { margin: 6px 0; }
 .stb span { flex-basis: 100%; color: var(--ink-2); }
 .note.stn { margin: -2px 0 8px; color: var(--ink-2); }
 .todo.warn .n { font-family: var(--font-display); }
+
+/* v0.9 군사와 조언 */
+.adv { font-style: normal; font-weight: 900; margin: 0 3px; }
+.adv.y { color: var(--jade); }
+.adv.n { color: var(--seal); }
+.hm-adv { display: inline-flex; align-items: baseline; gap: 5px; margin-top: 4px; padding: 1px 8px 1px 0; color: var(--ink-2); font-size: 13px; }
+.hm-adv b { color: var(--ink); font-weight: 800; font-size: 14px; }
+.hm-adv small { color: var(--dim); font-size: 12px; }
+.hm-adv span { color: var(--seal); font-weight: 800; }
+.advt { font-style: normal; font-weight: 700; font-size: 11px; color: var(--indigo); border: 1px solid var(--indigo); border-radius: 2px; padding: 0 4px; margin-left: 4px; font-family: var(--font-body); vertical-align: 2px; }
+.card.advc { align-items: center; }
+.card.advc p { margin: 0 0 3px; }
+.note.advn { margin: -2px 0 8px; color: var(--ink-2); }
+.dlg-f .pv small { margin-left: 2px; }
+.act small .adv { font-size: 13px; }
+.todo.advh .n { border-color: var(--indigo); color: var(--indigo); font-family: var(--font-display); }
+.todo.advh b { color: var(--indigo); }
+.hm-adv i { font-style: normal; font-size: 11px; color: var(--dim); margin-left: -3px; }

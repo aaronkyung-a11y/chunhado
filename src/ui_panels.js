@@ -160,11 +160,12 @@ function showOfficer(o) {
   var where = o.st === 'free' ? '재야 (' + G.bases[o.loc].n + ')' : o.st === 'captive' ? '포로 (' + G.bases[o.loc].n + ')' : (o.unit !== null ? '출진 중' : G.bases[o.loc].n);
   showDialog({
     render: function () {
-      return dlgHead(o.n + ' ' + (o.f >= 0 ? facChip(o.f) : '')) + '<div class="dlg-b"><div class="card">' + sceneTag(o) + '<div class="bars">' + bars + '</div></div>' +
+      return dlgHead(o.n + ' ' + (o.f >= 0 ? facChip(o.f) : '') + (advTag(o) ? ' <em class="advt">군사</em>' : '')) + '<div class="dlg-b"><div class="card">' + sceneTag(o) + '<div class="bars">' + bars + '</div></div>' +
         '<div class="apt">' + a + '</div>' +
         (o.sk ? '<p><b class="hi">특기 · ' + o.sk + '</b><br>' + SKILLS[o.sk] + '</p>' : '<p class="note">특기 없음</p>') +
-        '<div class="stats"><div><span>소재</span><b>' + where + '</b></div>' + (o.f >= 0 ? '<div><span>충성</span><b>' + (isLord(o) ? '군주' : o.loy + (bondOf(o) ? ' <em class="bond">' + bondOf(o) + '</em>' : '')) + '</b></div><div><span>지휘</span><b>' + fmt(cmdCap(o)) + '</b></div><div><span>공적</span><b>' + fmt(o.merit) + '</b></div>' : '') + '</div></div>';
-    }, on: {}
+        '<div class="stats"><div><span>소재</span><b>' + where + '</b></div>' + (o.f >= 0 ? '<div><span>충성</span><b>' + (isLord(o) ? '군주' : o.loy + (bondOf(o) ? ' <em class="bond">' + bondOf(o) + '</em>' : '')) + '</b></div><div><span>지휘</span><b>' + fmt(cmdCap(o)) + '</b></div><div><span>공적</span><b>' + fmt(o.merit) + '</b></div>' : '') + '</div></div>' +
+        ((o.f === G.player && advOk(o, G.player)) ? '<div class="dlg-f"><div class="pv">' + (advTag(o) ? '지금의 <b>군사</b>입니다 · 적중률은 지력에 따릅니다' : '군사로 삼으면 등용·계략 전에 조언합니다') + '</div>' + (advTag(o) ? '' : '<button class="btn" type="button" data-a="adv">군사로 삼기</button>') + '</div>' : '');
+    }, on: { adv: function () { var r = setAdvisor(G.player, o.id); if (!r.ok) return toast(r.msg); sfx('ui'); toast(josa(o.n, '을를') + ' 군사로 삼았습니다 (지력 ' + o.int + ')'); refreshDialog(); refreshSheet(); } }
   }, true);                                              // 목록 같은 창 위에서 열었으면 ×로 그 창에 돌아간다
 }
 
@@ -183,6 +184,39 @@ function refreshHud() {
   var n = pendingUnits().length;
   $('btnNext').querySelector('.n').textContent = n ? n : '';
   $('btnNext').style.display = facUnits(G.player).length ? '' : 'none';
+}
+/* ---------- 군사의 조언(v0.9) ---------- */
+function advMark(a) { return a ? '<i class="adv ' + (a.says ? 'y' : 'n') + '">' + (a.says ? '○' : '×') + '</i>' : ''; }
+function advLine(a) { return a ? '군사 ' + a.adv.n + ': <b class="' + (a.says ? 'ok' : 'bad') + '">' + (a.says ? '통할 것입니다' : '어렵겠습니다') + '</b> <small>적중률 ' + a.acc + '%</small>' : ''; }
+function recruitAdvice(b, o, t) { return advise(G.player, recruitRoll(t), recruitRollA(t), recruitChance(b, o, t), t.int); }
+function ployAdvice(u, pl, t) { return advise(G.player, ployRoll(pl, t), ployRollA(pl, t), ployChance(u, pl, t.u || null), t.u ? uInt(t.u) : 0); }
+/* 거점 b 에서 대상 t 에게 가장 잘 권하는 쉬는 무장과 그때의 성공률·조언 { o, p, adv } (쉬는 무장이 없으면 o = null) */
+function bestRecruiter(b, t) {
+  var bo = null, bp = -1; idleOfficers(b).forEach(function (o) { var q = recruitChance(b, o, t); if (q > bp) { bp = q; bo = o; } });
+  return { o: bo, p: Math.max(0, bp), adv: bo ? recruitAdvice(b, bo, t) : null };
+}
+/* 군사가 "응할 것"이라고 보는 이웃 무장(가장 잘하는 무장을 보냈을 때) */
+function poachHints(b) {
+  var out = [];
+  if (!idleOfficers(b).length) return out;
+  poachTargets(b).forEach(function (t) { if (askWait(t)) return; var x = bestRecruiter(b, t); if (x.p > 0 && x.adv && x.adv.says) out.push({ t: t, p: x.p, adv: x.adv }); });
+  return out.sort(function (x, y) { return y.p - x.p; });
+}
+function advTag(o) { return (o.f >= 0 && facAdv(o.f) === o) ? '군사' : ''; }
+function showAdvisor() {
+  var f = G.player;
+  showDialog({
+    render: function () {
+      var A = facAdv(f), cs = advCandidates(f), i, h = dlgHead('군사(軍師)') + '<div class="dlg-b"><div class="help"><p>군사는 <b>등용</b>과 <b>계략</b>을 하기 전에 통할지 미리 말해 줍니다 — <i class="adv y">○</i> 통한다 · <i class="adv n">×</i> 어렵다. 맞힐 확률은 <b>군사의 지력 + (군사의 지력 − 상대의 지력) × ' + ADVISE.k + '</b>이고 ' + ADVISE.min + '~100% 사이입니다. 지력이 높을수록, 상대의 지력이 낮을수록 잘 맞습니다. 군주는 군사가 될 수 없습니다.</p></div>';
+      if (A) h += '<div class="card advc">' + porTag(A, 'md') + '<div><p><b class="hi">지금의 군사 · ' + A.n + '</b> 지력 ' + A.int + '</p><p class="note">조언 적중률 — 지력 60인 상대 <b>' + adviceAcc(A, 60) + '%</b> · 75인 상대 <b>' + adviceAcc(A, 75) + '%</b> · 90인 상대 <b>' + adviceAcc(A, 90) + '%</b></p></div></div>';
+      else h += '<p class="note">군사가 없습니다 — 아래에서 고르세요.</p>';
+      h += '<div class="sec">군사로 삼을 무장 <small>지력 순 · 누르면 바꿉니다(행동력을 쓰지 않습니다)</small></div><div class="rows">';
+      for (i = 0; i < cs.length; i++) { var o = cs[i], cur = A && A.id === o.id; h += offRow(o, { a: 'set', sel: cur, badge: cur ? '군사' : '', hi: 'int', rt: '지력 <b>' + o.int + '</b><br>' + (o.unit !== null ? '출진' : G.bases[o.st === 'travel' ? o.dest : o.loc].n) }); }
+      if (!cs.length) h += '<p class="note">군사로 삼을 무장이 없습니다.</p>';
+      return h + '</div></div>';
+    },
+    on: { set: function (el) { var o = off(+el.getAttribute('data-v')), r = setAdvisor(f, o.id); if (!r.ok) return toast(r.msg); sfx('ui'); toast(josa(o.n, '을를') + ' 군사로 삼았습니다 (지력 ' + o.int + ')'); refreshDialog(); refreshSheet(); } }
+  }, true);
 }
 /* ---------- 상태 이상(혼란·위보·불길)을 글로 ---------- */
 function stChips(u) {
@@ -292,6 +326,14 @@ function todoList() {
     var ft = unitFoodTurns(u);
     if (ft <= 3) out.push({ cls: 'warn', ic: '!', t: uName(u) + ' — 군량이 ' + days(ft) + '분뿐', s: '아군 거점에 들어가면 보급됩니다', go: ['unit', u.id], lb: '보기' });
   });
+  if (F.ap >= AP.recruit) bs.forEach(function (b) {            // 군사가 '응할 것'이라고 보는 이웃 무장
+    var hs = poachHints(b); if (!hs.length) return;
+    out.push({ cls: 'cool advh', ic: '招', t: b.n + ' — 등용에 응할 듯한 이웃 무장 ' + hs.length + '명', s: hs.slice(0, 3).map(function (x) { return facName(x.t.f) + ' ' + x.t.n + '(' + x.p + '%)'; }).join(' · ') + ' — 군사 ' + hs[0].adv.adv.n + '의 조언(적중률 ' + hs[0].adv.acc + '%)', go: ['recruit', b.id], lb: '등용', info: 1 });
+  });
+  if (!peaceLeft()) bs.forEach(function (b) {                  // 이웃 세력이 데려갈 수 있는 무장(초반 보호 중에는 권하지 않으므로 그 뒤부터)
+    var rk = baseOfficers(b).map(function (o) { return { o: o, r: poachRisk(o) }; }).filter(function (x) { return x.r && x.r.p >= POACH_AI.min; }).sort(function (x, y) { return y.r.p - x.r.p; });
+    if (rk.length) out.push({ cls: 'warn', ic: '離', t: b.n + ' — 다른 세력이 데려갈 수 있는 무장 ' + rk.length + '명', s: rk.slice(0, 3).map(function (x) { return x.o.n + ' 충성 ' + x.o.loy + '(' + x.r.p + '%)'; }).join(' · ') + ' — 포상으로 충성을 ' + POACH.wall + '까지 올리면 응하지 않습니다', go: ['base', b.id, 'men'], lb: '포상', info: 1 });
+  });
   if (F.ap >= 10) {
     var nb = 0, more = 0, lordLoc = off(F.lord).unit === null ? off(F.lord).loc : -1;
     bs.slice().sort(function (x, y) { return (y.id === lordLoc) - (x.id === lordLoc) || (y.kind === 'city') - (x.kind === 'city') || idleOfficers(y).length - idleOfficers(x).length; }).forEach(function (b) {
@@ -316,6 +358,7 @@ function goTodo(g) {
   else if (g[0] === 'base') gotoBase(G.bases[g[1]], g[2]);
   else if (g[0] === 'list') showLists(g[1]);
   else if (g[0] === 'peace') showPeaceInfo();
+  else if (g[0] === 'recruit') { gotoBase(G.bases[g[1]], 'men'); flowRecruit(G.bases[g[1]]); }
   else if (g[0] === 'end') doEndTurn();
 }
 function homeSheet() {
@@ -326,6 +369,7 @@ function homeSheet() {
       fold: function () { HOME.open = !HOME.open; saveOpts(); showHome(); requestDraw(); },
       go: function (el) { var t = st.todo[+el.getAttribute('data-v')]; if (t && t.go) goTodo(t.go); },
       lord: function () { showOfficer(off(G.factions[G.player].lord)); },
+      adv: function () { showAdvisor(); },
       lists: function (el) { showLists(el.getAttribute('data-v')); }
     },
     render: function () {
@@ -336,7 +380,8 @@ function homeSheet() {
       var h = '<div class="sh-head hm-head"><button class="porb" type="button" data-a="lord" aria-label="군주 정보">' + porTag(L, HOME.open ? 'xl' : 'md') + '</button><div class="hm-id">' +
         '<div class="sh-title">' + F.name + '군 <span class="chip" style="background:' + F.color + '">군주 ' + L.n + '</span></div>' +
         '<div class="sh-sub">' + dateStr() + ' · ' + (need ? '<b class="hi">할 일 ' + need + '건</b>' : '<b class="ok">할 일 없음</b>') + (peaceLeft() > 0 ? ' <span class="pz' + (peaceLeft() <= 3 ? ' end' : '') + '">보호 ' + peaceLeft() + '턴</span>' : '') + '</div>' +
-        (HOME.open ? '<div class="hm-ap">행동력 <span class="gauge"><u style="width:' + Math.round(F.ap / 255 * 100) + '%"></u></span><b>' + F.ap + '</b></div>' : '') + '</div>' +
+        (HOME.open ? '<div class="hm-ap">행동력 <span class="gauge"><u style="width:' + Math.round(F.ap / 255 * 100) + '%"></u></span><b>' + F.ap + '</b></div>' +
+          '<button class="hm-adv" type="button" data-a="adv">군사<i>軍師</i> ' + (facAdv(f) ? '<b>' + facAdv(f).n + '</b> <small>지력 ' + facAdv(f).int + '</small>' : '<b class="bad">없음</b>') + ' <span>▸</span></button>' : '') + '</div>' +
         '<button class="x fold" data-a="fold" type="button" aria-label="' + (HOME.open ? 'STATUS 창 접기' : 'STATUS 창 펼치기') + '">' + (HOME.open ? '▾' : '▴') + '</button></div>';
       if (!HOME.open) return h;
       h += '<div class="sh-body"><div class="hm-stats">' +
@@ -497,7 +542,7 @@ function targetActions(u, t) {
     }
     for (i = 0; i < 3; i++) {
       var pl = PLOYS[i], inP = ployTargets(u, pl).some(function (x) { return x.u === t.u; });
-      out.push({ kind: 'ploy', ploy: pl, label: pl.name, sub: inP ? '기력 ' + pl.cost + ' · ' + ployChance(u, pl, t.u) + '%' : (u.morale < pl.cost ? '기력 부족' : (t.u.status && i > 0 ? '이미 걸림' : '사거리 밖')), ok: inP });
+      out.push({ kind: 'ploy', ploy: pl, label: pl.name, adv: inP ? ployAdvice(u, pl, t) : null, sub: inP ? '기력 ' + pl.cost + ' · ' + ployChance(u, pl, t.u) + '%' + advMark(ployAdvice(u, pl, t)) : (u.morale < pl.cost ? '기력 부족' : (t.u.status && i > 0 ? '이미 걸림' : '사거리 밖')), ok: inP });
     }
   } else if (t.kind === 'base') {
     var e = estBase(u, t.b), fresh = justOut(u);
@@ -505,7 +550,7 @@ function targetActions(u, t) {
   } else {
     out.push({ kind: 'attack', label: '시설 파괴', sub: justOut(u) ? '출진한 턴 — 다음 턴부터' : (d <= 1 ? '공격' : '옆 칸에서만'), ok: d <= 1 && !justOut(u), pri: true });
     var inF = ployTargets(u, PLOYS[0]).some(function (x) { return x.c === t.c && x.r === t.r; });
-    out.push({ kind: 'ploy', ploy: PLOYS[0], label: '화계', sub: inF ? '기력 10' : '불가', ok: inF });
+    out.push({ kind: 'ploy', ploy: PLOYS[0], label: '화계', adv: inF ? ployAdvice(u, PLOYS[0], t) : null, sub: inF ? '기력 10' + advMark(ployAdvice(u, PLOYS[0], t)) : '불가', ok: inF });
   }
   return out;
 }
@@ -693,6 +738,8 @@ function unitSheet(u) {
           h += '<div class="tgt">대상 — <b>' + tn + '</b>' + (t.kind === 'unit' && stChips(t.u) ? ' ' + stChips(t.u) : '') + '</div>';
           if (t.kind === 'unit' && t.u.status) h += '<p class="note stn">' + (t.u.status === 'confuse' ? '<b>혼란 중</b> — 반격하지 못하고 피해를 25% 더 받습니다. 전법도 더 잘 통합니다.' : '<b>위보에 속은 중</b> — 반격하지 못하고 자기 거점 쪽으로 물러나고 있습니다.') + ' ' + statusLeftText(t.u) + '.</p>';
           if (t.kind !== 'unit' && peaceWouldBreak(t.b.owner)) h += '<p class="note pzw"><b>초반 보호 중</b> — ' + facName(t.b.owner) + '군은 아직 우리 거점을 치지 못합니다. 우리가 먼저 치면 <b>' + facName(t.b.owner) + '군에 대한 보호가 풀려</b> 그쪽도 우리를 칠 수 있게 됩니다.</p>';
+          var adv1 = null; st.acts.forEach(function (a0) { if (a0.adv && !adv1) adv1 = a0.adv; });
+          if (adv1) h += '<p class="note advn">군사 <b>' + adv1.adv.n + '</b>의 조언 — 계략 단추의 <i class="adv y">○</i> 통한다 · <i class="adv n">×</i> 어렵다 <small>적중률 ' + adv1.acc + '%</small></p>';
           h += '<div class="acts">';
           for (i = 0; i < st.acts.length; i++) { var a = st.acts[i]; h += '<button class="act' + (a.pri && a.ok ? ' pri' : '') + (a.ok ? '' : ' off') + '" type="button" data-a="act" data-v="' + i + '"><b>' + a.label + '</b><small>' + a.sub + '</small></button>'; }
           if (t.kind === 'unit' && (TACTICS[x.type] || []).length) h += '<button class="act" type="button" data-a="tacinfo"><b>전법 풀이</b><small>효과·확률</small></button>';
@@ -759,12 +806,12 @@ function baseSheet(b0, tab0) {
         var mu = facUnits(G.player).filter(function (u) { return u.home === b.id; });
         if (mu.length) h += '<p class="note">이 거점에서 나간 부대 ' + mu.length + '개</p>';
       } else if (st.tab === 'men') {
-        var fr = freeOfficers(b), cp = b.captives.length;
-        h += '<div class="cmds">' + (city ? cmd('search', '탐색', '행 ' + AP.search) : '') + cmd('recruit', '등용', (fr.length || cp) ? '재야 ' + fr.length + ' · 포로 ' + cp : '대상 없음', fr.length + cp > 0, !(fr.length + cp)) + cmd('reward', '포상', '금 ' + COST.reward + ' · 행 ' + AP.reward) +
+        var fr = freeOfficers(b), cp = b.captives.length, nbO = poachTargets(b).length;
+        h += '<div class="cmds">' + (city ? cmd('search', '탐색', '행 ' + AP.search) : '') + cmd('recruit', '등용', (fr.length || cp || nbO) ? [fr.length ? '재야 ' + fr.length : '', cp ? '포로 ' + cp : '', nbO ? '이웃 ' + nbO : ''].filter(function (x) { return x; }).join(' · ') : '대상 없음', fr.length + cp > 0 || poachHints(b).length > 0, !(fr.length + cp + nbO)) + cmd('reward', '포상', '금 ' + COST.reward + ' · 행 ' + AP.reward) +
           cmd('move', '이동', '행 ' + AP.move) + (cp ? cmd('captive', '포로', cp + '명') : '') + '</div><div class="sec">무장</div><div class="rows">';
         var all = G.officers.filter(function (o) { return o.f === b.owner && ((o.st === 'active' && o.loc === b.id && o.unit === null) || (o.st === 'travel' && o.dest === b.id)); });
         all.sort(function (x, y) { return (isLord(y) ? 1000 : 0) + (y.ldr + y.war + y.int + y.pol) / 4 - (isLord(x) ? 1000 : 0) - (x.ldr + x.war + x.int + x.pol) / 4; });
-        for (i = 0; i < all.length; i++) h += offRow(all[i], { badge: isLord(all[i]) ? '군주' : '', dim: all[i].acted || all[i].st === 'travel', rt: '<span class="' + (all[i].loy < 70 ? 'bad' : '') + '">충 ' + all[i].loy + '</span><br>' + offStatus(all[i]) });
+        for (i = 0; i < all.length; i++) h += offRow(all[i], { badge: isLord(all[i]) ? '군주' : advTag(all[i]), dim: all[i].acted || all[i].st === 'travel', rt: '<span class="' + (all[i].loy < 70 ? 'bad' : '') + '">충 ' + all[i].loy + '</span><br>' + offStatus(all[i]) });
         if (fr.length) { h += '</div><div class="sec">재야</div><div class="rows">'; for (i = 0; i < fr.length; i++) h += offRow(fr[i], {}); }
         h += '</div>';
       } else {
@@ -854,19 +901,46 @@ function flowSearch(b) {
     });
 }
 function flowRecruit(b) {
-  var ts = freeOfficers(b).concat(baseCaptives(b).filter(function (o) { return o.capF === b.owner; }));
-  if (!ts.length) return toast('등용할 대상이 없습니다 — 탐색으로 재야 인재를 찾으세요');
+  var here = freeOfficers(b).concat(baseCaptives(b).filter(function (o) { return o.capF === b.owner; })), far = poachTargets(b);
+  if (!here.length && !far.length) return toast('등용할 대상이 없습니다 — 탐색으로 재야 인재를 찾으세요');
+  function bestP(t) { return bestRecruiter(b, t).p; }
+  function bestM(t) { return advMark(bestRecruiter(b, t).adv); }
+  function why(t) {                                            // 권할 수 없는 까닭(없으면 '')
+    if (askWait(t)) return t.st === 'active' ? '다음 달에 다시' : '다음 턴에 다시';
+    if (t.st === 'active' && bondOf(t)) return '주군과 ' + bondOf(t);
+    if (t.st === 'active' && t.loy >= POACH.wall && !bondWith(t, b.owner)) return '충성 ' + POACH.wall + ' 이상';
+    return '';
+  }
   showDialog({
     render: function () {
-      var h = dlgHead('등용 — 누구를 부를까요') + '<div class="dlg-b"><div class="rows">';
-      for (var i = 0; i < ts.length; i++) h += offRow(ts[i], { a: 't', badge: ts[i].st === 'captive' ? '포로' : '재야' });
-      return h + '</div></div>';
+      var idle = idleOfficers(b).length, i, t, w, h = dlgHead('등용 — 누구를 부를까요') + '<div class="dlg-b">';
+      if (!idle) h += '<p class="note">이 거점에 쉬는 무장이 없어 지금은 권할 수 없습니다.</p>';
+      if (here.length) {
+        h += '<div class="sec">이 거점의 재야·포로</div><div class="rows">';
+        for (i = 0; i < here.length; i++) { t = here[i]; w = why(t); h += offRow(t, { a: 't', dim: !!w, badge: t.st === 'captive' ? '포로' : '재야', rt: w ? '<span class="bad">' + w + '</span>' : (idle ? bestM(t) + '최고 <b>' + bestP(t) + '%</b>' : '') }); }
+        h += '</div>';
+      }
+      if (far.length) {
+        var L = far.map(function (x) { return { t: x, p: bestP(x), w: why(x) }; }).sort(function (x, y) { return (x.w ? 1 : 0) - (y.w ? 1 : 0) || y.p - x.p || x.t.loy - y.t.loy; });
+        h += '<div class="sec">이웃 거점의 다른 세력 무장 <small>응하면 이 거점으로 넘어옵니다</small></div><div class="rows">';
+        for (i = 0; i < L.length; i++) { t = L[i].t; w = L[i].w; h += offRow(t, { a: 't', dim: !!w || !L[i].p, badge: facName(t.f) + '·' + G.bases[t.loc].n, rt: '충성 <b>' + t.loy + '</b><br>' + (w ? '<span class="bad">' + w + '</span>' : (idle ? (L[i].p ? bestM(t) : '') + '최고 <b>' + L[i].p + '%</b>' : '')) }); }
+        h += '</div><p class="note">성공률은 <b>그 달에 응할 확률</b>입니다 — 마음은 달마다 바뀌고, 한 무장에게는 한 달에 한 번 권할 수 있습니다. 거절한 무장은 충성이 ' + POACH.up + ' 오르고, 한 사람이 넘어오면 그 세력에 남은 무장들의 충성이 ' + POACH.tighten + '씩 오릅니다. 제 주군과 인연이 있거나 충성이 ' + POACH.wall + ' 이상이면 응하지 않습니다. 출진 중인 무장과 군주에게는 권할 수 없습니다.</p>';
+      }
+      return h + '</div>';
     },
     on: { t: function (el) {
-      var t = off(+el.getAttribute('data-v'));
-      pickOfficers({ push: true, title: t.n + ' 등용 — 누구를 보낼까요', list: idleOfficers(b), max: 1, hi: 'cha', key: function (o) { return recruitChance(b, o, t); }, rt: function (o) { return '<b>' + recruitChance(b, o, t) + '%</b>'; }, rtHead: '성공률', auto: function () { return autoPick('recruit', b, { target: t }, 1); },
-        preview: function (os) { return '성공률 <b>' + recruitChance(b, os[0], t) + '%</b>'; } },
-        function (os) { var r = cmdRecruit(b, os[0].id, t.id); if (r.ok && r.joined) sfx('cheer'); return done(r, r.ok ? (r.joined ? josa(t.n, '이가') + ' 합류했습니다!' : josa(t.n, '이가') + ' 거절했습니다') : ''); });
+      var t = off(+el.getAttribute('data-v')), w = why(t), farT = t.st === 'active';
+      if (w) return toast(t.n + ' — ' + w + (farT && !askWait(t) ? '이라 응하지 않습니다' : ''));
+      if (farT && !canPoach(b, t)) return toast('지금은 권할 수 없습니다 — 자리를 옮겼습니다');
+      pickOfficers({ push: true, title: t.n + ' 등용 — 누구를 보낼까요', list: idleOfficers(b), max: 1, hi: 'cha', key: function (o) { return recruitChance(b, o, t); },
+        rt: function (o) { return advMark(recruitAdvice(b, o, t)) + '<b>' + recruitChance(b, o, t) + '%</b>'; }, rtHead: '성공률', auto: function () { return autoPick('recruit', b, { target: t }, 1); },
+        preview: function (os) { var a = recruitAdvice(b, os[0], t); return '성공률 <b>' + recruitChance(b, os[0], t) + '%</b>' + (farT ? ' · 충성 ' + t.loy : '') + (a ? '<br>' + advLine(a) : ''); } },
+        function (os) {
+          var r = cmdRecruit(b, os[0].id, t.id); if (r.ok && r.joined) sfx('cheer');
+          var ok = done(r, r.ok ? (r.joined ? (r.far ? josa(t.n, '이가') + ' ' + facName(r.from) + '군을 떠나 합류했습니다!' : josa(t.n, '이가') + ' 합류했습니다!') : josa(t.n, '이가') + ' 거절했습니다' + (r.far ? ' — 다음 달에 다시 권할 수 있습니다 (충성 +' + POACH.up + ')' : ' — 다음 턴에 다시 권할 수 있습니다')) : '');
+          if (ok) { here = freeOfficers(b).concat(baseCaptives(b).filter(function (o) { return o.capF === b.owner; })); far = poachTargets(b); }
+          return ok;
+        });
     } }
   });
 }
@@ -1132,7 +1206,7 @@ function showLists(tab) {
         if (!st.allU && total > foes.length) h += '<button class="row more" type="button" data-a="allu"><span class="mid"><span class="nm">다른 세력 부대 모두 보기</span><span class="ds">천하에 ' + total + '개</span></span><span class="rt">▸</span></button>';
       } else if (st.tab === 'off') {
         var os = facOfficers(G.player).sort(function (x, y) { return (isLord(y) ? 1000 : 0) + (y.ldr + y.war + y.int + y.pol) - (isLord(x) ? 1000 : 0) - (x.ldr + x.war + x.int + x.pol); });
-        os.forEach(function (o) { h += offRow(o, { badge: isLord(o) ? '군주' : '', rt: (o.unit !== null ? '출진' : G.bases[o.st === 'travel' ? o.dest : o.loc].n) + '<br><span class="' + (o.loy < 70 ? 'bad' : '') + '">충 ' + o.loy + '</span>' }); });
+        os.forEach(function (o) { h += offRow(o, { badge: isLord(o) ? '군주' : advTag(o), rt: (o.unit !== null ? '출진' : G.bases[o.st === 'travel' ? o.dest : o.loc].n) + '<br><span class="' + (o.loy < 70 ? 'bad' : '') + '">충 ' + o.loy + '</span>' }); });
       } else {
         G.factions.filter(function (F) { return F.alive; }).map(function (F) { var t = 0; facBases(F.id).forEach(function (b) { t += b.troops; }); facUnits(F.id).forEach(function (u) { t += u.troops; }); return { F: F, t: t, c: facCities(F.id).length }; })
           .sort(function (x, y) { return y.c - x.c || y.t - x.t; })
@@ -1180,6 +1254,10 @@ var HELP_HTML = '<div class="help">' +
   '<h3>계략과 상태 이상</h3><p>부대는 기력을 써서 <b>화계·교란·위보</b>를 겁니다(성공률은 양쪽 지력의 차이로 정해집니다). 걸린 부대는 지도에서 바로 알아볼 수 있습니다 — <b>머리 위에 색 딱지</b>가 뜨고(혼란은 쪽빛, 위보는 황토빛, 불길은 붉은빛) 딱지의 숫자는 <b>남은 턴</b>입니다. 혼란·위보에 걸린 부대는 머리 위에 소용돌이가 돌고 빛이 바래며, 혼란이면 비틀거립니다.</p>' +
   '<ul><li><b>혼란</b>: 움직이지도 싸우지도 못합니다. 받는 피해가 25% 늘고 반격하지 못하며, 전법이 더 잘 통합니다. 교란으로 걸면 2턴, 전법(나선첨 등)으로 걸면 1턴입니다.</li><li><b>위보</b>: 2턴 동안 명령을 듣지 않고 가까운 자기 거점 쪽으로 물러납니다. 반격하지 못합니다.</li><li><b>불길</b>: 불 위에 머무는 부대는 턴마다 병력 250~400명과 기력 5를 잃습니다. 불 밖으로 옮기거나 <b>소화</b>로 끕니다.</li><li>이미 혼란·위보에 걸린 부대에는 교란·위보를 다시 걸 수 없습니다.</li><li>부대를 누르면 창 맨 위에 걸린 상태·남은 턴·효과가 적혀 있습니다. 내 부대가 걸리면 <b>지금 할 일</b>과 <b>지난 열흘의 일</b>에도 나옵니다.</li></ul>' +
   '<h3>인재</h3><p>탐색으로 재야의 인재를 찾아 등용합니다. 사로잡은 적장도 등용할 수 있습니다. 해가 바뀌면 새 인물이 세상에 나옵니다.</p>' +
+  '<p><b>다른 세력의 무장</b>도 등용할 수 있습니다 — 내 거점과 길로 바로 이어진 <b>이웃 거점에 머무는 무장</b>이 대상입니다(인재 → 등용). 응하면 그 자리에서 내 거점으로 넘어옵니다. 성공률은 보내는 무장의 매력·정치, 두 군주의 매력 차이, 그리고 <b>대상의 충성</b>으로 정해집니다. 제 주군과 인연이 있거나 충성이 ' + POACH.wall + ' 이상이면 응하지 않고, 군주와 출진 중인 무장에게는 권할 수 없습니다. 성공률은 <b>그 달에 응할 확률</b>입니다 — 다른 세력 무장의 마음은 달마다 한 번 정해지고, 한 무장에게는 한 달에 한 번 권할 수 있습니다. 거절한 무장은 충성이 ' + POACH.up + ' 오르고, 한 사람이 넘어가면 그 세력에 남은 무장들의 충성이 ' + POACH.tighten + '씩 오릅니다.</p>' +
+  '<p>다른 세력도 같은 규칙으로 <b>내 무장을 데려갑니다</b>(초반 보호 기간에는 권하지 않고, 무장이 ' + POACH_AI.spare + '명 이하인 세력의 무장에게도 권하지 않습니다). 위험한 무장이 있으면 지금 할 일에 "다른 세력이 데려갈 수 있는 무장"이 뜹니다 — <b>포상</b>으로 충성을 ' + POACH.wall + '까지 올리면 응하지 않습니다.</p>' +
+  '<h3>군사(軍師)</h3><p>세력마다 군사를 한 사람 둡니다(STATUS 창의 <b>군사</b> 단추, 또는 무장 창의 <b>군사로 삼기</b>). 처음에는 지력이 가장 높은 무장이 맡고, 군주는 될 수 없습니다. 군사는 <b>등용과 계략을 하기 전에</b> 통할지 미리 말해 줍니다 — 무장을 고르는 표와 계략 단추의 <i class="adv y">○</i>(통한다)·<i class="adv n">×</i>(어렵다). 맞힐 확률은 <b>군사의 지력 + (군사의 지력 − 상대의 지력) × ' + ADVISE.k + '</b>, ' + ADVISE.min + '~100%입니다(지력 90인 군사가 지력 70인 상대를 보면 100%, 지력 70인 군사가 지력 90인 상대를 보면 60%).</p>' +
+  '<p>등용과 계략의 성패는 <b>대상마다 미리 정해져 있습니다</b>(계략과 재야·포로 등용은 턴마다, 다른 세력 무장의 등용은 달마다). 그래서 그동안에는 누구에게 다시 물어도 답이 같고, 가장 잘하는 무장이 안 되면 누구도 안 됩니다. 군사를 바꿔 물어도 새로 알 수 있는 것은 없습니다 — 지력이 더 높은 군사의 말이 더 자주 맞을 뿐입니다.</p>' +
   '<h3>충성과 인연</h3><p>군주와 <b>인연</b>(의형제·혈연·부부·인척·심복)이 있는 무장은 충성이 100이고 내려가지 않습니다 — 무장 창의 충성 옆에 그 사이가 적혀 있습니다. 포로가 되어도 주군의 세력이 남아 있는 한 등용에 거의 응하지 않습니다. 그 밖의 무장은 군주의 매력에 따라 80~98 사이에 자리를 잡습니다. 새로 등용한 무장은 70~85에서 시작해 분기마다 2씩 오르고, 포상으로 올린 충성은 천천히 제자리로 돌아옵니다.</p>' +
   '<h3>닫기(×)와 뒤로 가기</h3><p><b>×는 한 단계만 뒤로</b> 갑니다. 무장 정보를 닫으면 보던 목록으로, 무장 고르는 표를 닫으면 그 앞 창으로 돌아갑니다. 부대에서 대상이나 행군을 고르던 중이면 그것만 물립니다. 막 출진한 부대의 창을 닫으면 나온 성의 군사 탭으로 돌아갑니다.</p>' +
   '<p>목록·기록·지난 열흘의 일에서 줄을 눌러 지도로 건너뛰면 왼쪽 위에 <b>‹ 목록</b> 같은 단추가 생깁니다. 누르면 보던 자리 그대로 다시 열립니다. 그렇게 열린 거점·부대 창은 ×로도 목록에 돌아갑니다.</p>' +
@@ -1189,7 +1267,7 @@ var HELP_HTML = '<div class="help">' +
   '<h3>소리</h3><p>효과음과 음악은 메뉴에서 따로 끌 수 있습니다. 음악은 형편에 따라 바뀝니다 — 평시에는 두 곡이 번갈아 나오고, 다른 세력의 부대가 가까이 오면 긴장된 곡으로, 싸움이 벌어지면 전투 곡으로 넘어갑니다.</p>' +
   '<h3>앱으로 설치</h3><p>휴대폰 브라우저에서 <b>aaronkyung-a11y.github.io/chunhado</b> 를 열면 제목 화면에 <b>앱으로 설치</b> 단추가 나옵니다(안 나오면 브라우저 메뉴의 <b>홈 화면에 추가</b>). 설치하면 앱처럼 전체 화면으로 열리고, 한 번 연 뒤에는 인터넷이 없어도 됩니다. 저장은 여는 곳마다 따로라서, 다른 주소에서 하던 판은 넘어오지 않습니다.</p>' +
   '<h3>무장이 묶이는 일</h3><p>대부분의 명령은 그 턴에 끝나서, 맡은 무장은 다음 턴에 다시 쓸 수 있습니다. <b>시설 건설</b>만은 여러 턴이 걸리고, 맡은 무장은 <b>완공될 때까지</b> 다른 명령도 출진도 이동도 못 합니다(무장 목록에 "○○ 건설 중"). 급하면 그 시설을 눌러 <b>공사 중단</b>을 하면 풀려납니다 — 들인 금은 돌아오지 않습니다. 성이 함락되면 짓다 만 시설은 버려집니다.</p>' +
-  '<h3>이번 판에 아직 없는 것</h3><p>직접 조작하는 일기토·설전, 외교, 기교·능력 연구, 군사 시설, 항구와 수군은 다음 판에서 넣습니다.</p></div>';
+  '<h3>이번 판에 아직 없는 것</h3><p>직접 조작하는 일기토·설전, 외교, 기교·능력 연구, 진·요새 같은 야전 시설, 항구와 수군은 다음 판에서 넣습니다.</p></div>';
 function showHelp() { showDialog({ render: function () { return dlgHead('도움말') + '<div class="dlg-b">' + HELP_HTML + '</div>'; }, on: {} }, true); }
 function showMenu() {
   showDialog({
@@ -1617,6 +1695,7 @@ function showIntro() {
         '<li><b>군사 → 출진</b>으로 부대를 성 앞에 내보낸 뒤, <b>파란 칸</b>을 눌러 움직이고 <b>적</b>을 눌러 공격합니다. 이웃 거점까지는 가까우면 20일, 보통 30~50일이 걸립니다.</li>' +
         '<li>명령은 <b>행동력</b>을 씁니다. 할 일을 마치면 <b>턴 종료</b> — 열흘 동안 일어난 일을 차례로 보여 줍니다.</li>' +
         (peaceLeft() > 0 ? '<li><b>초반 보호</b>: <b>' + dateOfTurn(G.peace.until - 1) + '까지(' + peaceLeft() + '턴)</b> 다른 세력은 우리 거점과 시설을 먼저 치지 않습니다. 그동안 병력과 내정을 키우세요. 우리가 먼저 친 세력에게는 보호가 풀립니다.</li>' : '') +
+        '<li><b>군사</b>(STATUS 창의 군사 단추)는 등용과 계략이 통할지 미리 말해 줍니다. <b>인재 → 등용</b>에서 이웃 거점에 있는 다른 세력의 무장도 부를 수 있습니다.</li>' +
         '<li>자세한 규칙은 메뉴 → 도움말에 있습니다.</li></ul></div></div><div class="dlg-f"><div class="pv">도시 42곳을 모두 차지하면 천하통일</div><button class="btn pri" type="button" data-a="close">시작</button></div>';
     }, on: {}
   });

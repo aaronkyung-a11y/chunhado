@@ -33,7 +33,7 @@ function fuzzTurn() {
       // 자동 추천: 고른 무장이 모두 대기 중인 무장이어야 한다
       var ak = fpick(['develop', 'draft', 'patrol', 'train', 'search', 'merge', 'produce', 'recruit']), actx = null;
       if (ak === 'produce') actx = { kind: fpick(['spear', 'halberd', 'bow', 'horse', 'ram']) };
-      if (ak === 'recruit') { var rts = freeOfficers(b).concat(baseCaptives(b)); actx = rts.length ? { target: fpick(rts) } : null; }
+      if (ak === 'recruit') { var rts = freeOfficers(b).concat(baseCaptives(b)).concat(typeof poachTargets === 'function' ? poachTargets(b) : []); actx = rts.length ? { target: fpick(rts) } : null; }
       if (ak !== 'recruit' || actx) {
         var ao = autoPick(ak, b, actx, 1 + Math.floor(fr() * 3));
         note('auto_' + ak, { ok: ao.length > 0 && ao.length <= 3 && ao.every(function (id) { return idle.some(function (o) { return o.id === id; }); }) });
@@ -46,7 +46,7 @@ function fuzzTurn() {
       else if (k === 4) note('produce', cmdProduce(b, fpick(['spear', 'halberd', 'bow', 'horse', 'ram']), os));
       else if (k === 5) note('trade', cmdTrade(b, fpick(['buy', 'sell']), Math.floor(fr() * 500)));
       else if (k === 6) note('search', cmdSearch(b, os[0]));
-      else if (k === 7) { var ts = freeOfficers(b).concat(baseCaptives(b)); if (ts.length) note('recruit', cmdRecruit(b, os[0], fpick(ts).id)); }
+      else if (k === 7) { var ts = freeOfficers(b).concat(baseCaptives(b)); if (typeof poachTargets === 'function' && fr() < 0.6) ts = ts.concat(poachTargets(b)); if (ts.length) { var rt = fpick(ts), farT = rt.st === 'active', rr = cmdRecruit(b, os[0], rt.id); note(farT ? 'poach' : 'recruit', rr); if (rr.ok && rr.joined && farT) note('poached', rr); } if (typeof setAdvisor === 'function' && fr() < 0.15) { var ac = advCandidates(f); if (ac.length) note('advisor', setAdvisor(f, fpick(ac).id)); } }
       else if (k === 8) { var bo = baseOfficers(b); note('reward', cmdReward(b, fpick(bo).id)); }
       else if (k === 9) { var ds = facBases(f).filter(function (x) { return x.id !== b.id; }); if (ds.length) note('move', cmdMoveOfficers(b, os, fpick(ds).id)); }
       else if (k === 10 && b.captives.length) note('captive', cmdCaptive(b, fpick(b.captives), fpick(['release', 'execute', 'release'])));

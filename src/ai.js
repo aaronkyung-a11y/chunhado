@@ -233,6 +233,29 @@ function aiCaptives(f) {
     }
   }
 }
+/* ---------- 다른 세력 무장 등용(v0.9) ---------- */
+function aiPoachScore(o) { return o.cha * POACH.cha + o.pol * POACH.pol + (o.sk === '논객' ? POACH.talker : 0); }
+function aiPoach(f) {
+  var F = G.factions[f];
+  if (F.ap < AP.recruit + 20 || !chance(POACH_AI.tryPct)) return;
+  var bs = facBases(f), best = null, bv = 0;
+  for (var bi = 0; bi < bs.length; bi++) {
+    var b = bs[bi], os = idleOfficers(b); if (!os.length) continue;
+    var ts = poachTargets(b); if (!ts.length) continue;
+    os.sort(function (a, c) { return aiPoachScore(c) - aiPoachScore(a) || a.id - c.id; });
+    var o = os[0];
+    for (var i = 0; i < ts.length; i++) {
+      var t = ts[i];
+      if (askWait(t)) continue;
+      if (t.f === G.player && G.peace && G.turn < G.peace.until) continue;      // 초반 보호: 그동안은 플레이어의 무장에게 권하지 않는다
+      if (facOfficers(t.f).length <= POACH_AI.spare) continue;                  // 무장이 몇 안 되는 세력은 건드리지 않는다
+      var p = recruitChance(b, o, t); if (p < POACH_AI.min) continue;
+      var v = p * (t.ldr + t.war + t.int + t.pol);
+      if (v > bv) { bv = v; best = { b: b, o: o, t: t }; }
+    }
+  }
+  if (best) cmdRecruit(best.b, best.o.id, best.t.id);
+}
 function aiInternal(f) {
   var F = G.factions[f], cities = facCities(f), ci, i;
   for (ci = 0; ci < cities.length; ci++) {
@@ -465,7 +488,7 @@ function aiPhaseStepper(f) {
     if (stage === 0) { list = facUnits(f); list.sort(function (a, b) { return a.id - b.id; }); i = 0; stage = 1; }
     if (stage === 1) { if (oneUnit()) return true; stage = 2; }
     if (stage === 2) {
-      aiDefense(f); aiCaptives(f); aiInternal(f); aiOffense(f); aiLogistics(f);
+      aiDefense(f); aiCaptives(f); aiPoach(f); aiInternal(f); aiOffense(f); aiLogistics(f);
       list = facUnits(f).filter(function (u) { return !u.done; }); i = 0; stage = 3;
       return true;
     }
