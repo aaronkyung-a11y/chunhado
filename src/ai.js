@@ -87,7 +87,7 @@ function aiUnitAct(u) {
         k = stops[s]; c = k % W; r = (k - c) / W;
         var db = hdist(c, r, T.c, T.r);
         if (db < 1 || db > rg) continue;
-        if (ZONE[k] === T.id && (ZONE[K(u.c, u.r)] !== T.id || u.zin === T.id)) continue;   // 성역에 막 들어선 턴에는 그 성을 칠 수 없다
+        if (justOut(u)) continue;                                                          // 출진한 턴에는 거점을 칠 수 없다
         var vb = 260 + durDmgUB(u) * 0.5 + (terr(c, r) === 'w' ? -150 : 0) + (db > 1 ? 60 : 0);
         if (T.troops < 800) vb += 500;
         if (vb > bv) { bv = vb; best = { kind: 'base', b: T, k: k }; }
@@ -120,10 +120,12 @@ function aiUnitAct(u) {
       var tt = tacticTargets(u, tl[i]), okT = false;
       for (var q = 0; q < tt.length; q++) if (tt[q].u === tg) okT = true;
       if (!okT) continue;
-      var m = tl[i].mult + (tl[i].all || tl[i].splash || tl[i].arc ? 0.2 : 0);
+      // 기대 피해(보통 공격 = 1): 성공률 × 배수 × 병력 비 × 대성공 몫 + 실패했을 때의 피해. 여럿을 치는 전법은 조금 더 쳐 준다
+      var od0 = tacticOdds(u, tg), p0 = od0.ok / 100;
+      var m = p0 * tl[i].mult * tacticSizeK(u, tg) * (1 + (od0.mult - 1) * od0.crit / Math.max(1, od0.ok)) + (1 - p0) * TACTIC_K.failDmg + (tl[i].all || tl[i].splash || tl[i].arc ? 0.2 * p0 : 0);
       if (m > bm) { bm = m; bt = tl[i]; }
     }
-    if (bt && chance(75)) { aiReport(u, unitTactic(u, bt, tgt), tg); return; }
+    if (bt && bm >= 1.1 && chance(85)) { aiReport(u, unitTactic(u, bt, tgt), tg); return; }      // 보통 공격보다 나을 때만 쓴다(v0.7: 가장 센 전법을 75% 확률로 무조건)
     aiReport(u, unitAttack(u, tgt), tg);
     return;
   }
@@ -239,22 +241,26 @@ function aiInternal(f) {
     var os, o;
     // 포상
     os = baseOfficers(b);
-    for (i = 0; i < os.length; i++) if (os[i].loy < 72 && !isLord(os[i]) && b.gold >= 250 && F.ap >= AP.reward) cmdReward(b, os[i].id);
+    for (i = 0; i < os.length; i++) if (os[i].loy < 72 && !isLord(os[i]) && b.gold >= COST.reward + 110 && F.ap >= AP.reward) cmdReward(b, os[i].id);
     // 재야 등용
     var fr = freeOfficers(b);
     for (i = 0; i < fr.length; i++) { os = idle(); if (!os.length || F.ap < AP.recruit) break; os.sort(function (a, c2) { return c2.cha - a.cha; }); cmdRecruit(b, os[0].id, fr[i].id); }
     // 순찰
-    if (b.order < 60 && b.gold >= 150 && F.ap >= AP.patrol) { os = idle(); if (os.length) { os.sort(function (a, c2) { return Math.max(c2.war, c2.ldr) - Math.max(a.war, a.ldr); }); cmdPatrol(b, [os[0].id]); } }
-    // 개발
-    for (var rep = 0; rep < 2; rep++) {
-      os = idle(); if (!os.length || F.ap < AP.develop + 10) break;
+    if (b.order < 60 && b.gold >= COST.patrol + 40 && F.ap >= AP.patrol) { os = idle(); if (os.length) { os.sort(function (a, c2) { return Math.max(c2.war, c2.ldr) - Math.max(a.war, a.ldr); }); cmdPatrol(b, [os[0].id]); } }
+    // 개발 — 공사를 맡은 무장은 완공까지 묶이므로: 적이 가까우면 새로 짓지 않고, 싸움에 가장 쓸모 있는 둘은 남겨 두고, 한꺼번에 벌이는 공사 수를 줄인다
+    var nOff = baseOfficers(b).length, building = b.plots.filter(function (p) { return p.fac && !p.fac.done; }).length;
+    var keep = nOff > 3 ? baseOfficers(b).sort(function (a, c2) { return aiMilScore(c2) - aiMilScore(a); }).slice(0, 2) : [];
+    for (var rep = 0; rep < 2 && !threatened; rep++) {
+      if (building >= (nOff <= 4 ? 1 : 2)) break;
+      os = idle().filter(function (x) { return keep.indexOf(x) < 0; }); if (!os.length || F.ap < AP.develop + 10) break;
       var type = aiPickFacility(b), pi = aiPickPlot(b, type);
-      if (pi < 0 || b.gold < FAC[type].cost + (threatened ? 400 : 100)) break;
+      if (pi < 0 || b.gold < FAC[type].cost + 70) break;
       os.sort(function (a, c2) { return c2.pol - a.pol; });
-      cmdDevelop(b, pi, type, os.slice(0, Math.min(2, os.length)).map(function (x) { return x.id; }));
+      var rdev = cmdDevelop(b, pi, type, os.slice(0, Math.min(nOff <= 5 ? 1 : 2, os.length)).map(function (x) { return x.id; }));
+      if (rdev.ok) building++; else break;
     }
     // 흡수합병: 부지가 다 찼으면 붙어 있는 같은 시설을 합친다
-    if (F.ap >= AP.merge + 10 && b.gold >= 600 && !b.plots.some(function (p) { return !p.fac; })) {
+    if (F.ap >= AP.merge + 10 && b.gold >= COST.merge * 2 + 200 && !b.plots.some(function (p) { return !p.fac; })) {
       for (var mp = 0; mp < b.plots.length; mp++) {
         var mc = mergeCandidates(b, mp);
         if (!mc.length) continue;
@@ -265,11 +271,11 @@ function aiInternal(f) {
     // 징병
     var cap = Math.min(45000, 10000 + baseOfficers(b).length * 3500);
     if (!threatened && !aiIsFront(f, b)) cap = Math.min(cap, 8000);
-    if (hasFac(b, 'barracks') && b.gold >= 420 && b.order >= 55 && b.troops < cap && b.food >= Math.ceil((b.troops + 2500) / 60) * 10 && F.ap >= AP.draft) {
+    if (hasFac(b, 'barracks') && b.gold >= COST.draft + 80 && b.order >= 55 && b.troops < cap && b.food >= Math.ceil((b.troops + 2500) / 60) * 10 && F.ap >= AP.draft) {
       os = idle(); if (os.length) { os.sort(function (a, c2) { return c2.cha - a.cha; }); cmdDraft(b, os.slice(0, Math.min(2, os.length)).map(function (x) { return x.id; })); }
     }
     // 생산
-    if (b.gold >= 380 && F.ap >= AP.produce) {
+    if (b.gold >= COST.produce + 50 && F.ap >= AP.produce) {
       os = idle();
       if (os.length) {
         os.sort(function (a, c2) { return c2.int - a.int; });
@@ -280,7 +286,7 @@ function aiInternal(f) {
           for (i = 0; i < 3; i++) { var sc = APT_RANK[lead.apt.charAt(i)] * 3 - b.w[kinds[i]] / 4000 + (i === 0 ? 0.5 : 0); if (sc > bsc) { bsc = sc; bk = kinds[i]; } }
           cmdProduce(b, bk, [os[0].id]);
         } else if (hasFac(b, 'stable') && b.w.horse < b.troops * 0.35) cmdProduce(b, 'horse', [os[0].id]);
-        else if (hasFac(b, 'workshop') && b.w.ram < 1 && b.gold >= 900) cmdProduce(b, 'ram', [os[0].id]);
+        else if (hasFac(b, 'workshop') && b.w.ram < 1 && b.gold >= COST.ram + 200) cmdProduce(b, 'ram', [os[0].id]);
       }
     }
     // 훈련

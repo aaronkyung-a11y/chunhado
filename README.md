@@ -1,6 +1,6 @@
 # 삼국지 천하도 (三國志 天下圖)
 
-삼국지 11 PK식 시스템의 모바일 단일 HTML 게임. 현재 v0.7(앱으로 설치·초상 전면 보강·녹음된 소리와 음악·전법의 세 결과·부대 목록) — 변경 내역은 `CHANGELOG.md`.
+삼국지 11 PK식 시스템의 모바일 단일 HTML 게임. 현재 v0.8(건설 담당 묶기·성역 멈춤 없앰·돈과 병량 약 2배·전법 균형·부지 10·13·16곳·충성과 인연·지도 끝·초상 가운데 맞춤) — 변경 내역은 `CHANGELOG.md`.
 
 - **바로 하기 / 앱으로 설치**: https://aaronkyung-a11y.github.io/chunhado/ — 휴대폰 크롬에서 열고 제목 화면의 **앱으로 설치**(또는 브라우저 메뉴의 *홈 화면에 추가*)를 누르면 앱처럼 전체 화면으로 열리고, 한 번 연 뒤에는 인터넷 없이도 된다.
 - 저장소에 올라 있는 것: 맨 위의 `index.html`·`manifest.webmanifest`·`sw.js`·`icons/`·`bgm/`가 게임(= `tools/build.py --pwa`의 결과), 나머지가 소스.
@@ -9,7 +9,7 @@
 - `src/` — 손으로 쓰는 소스
   - `data.js` 정적 수치, `core.js` 규칙 엔진(DOM 없음), `ai.js` AI
   - `ui3d.js` 3D 지도(three.js)·입력·효과음·음악, `fx.js` 이동·공격·전법·계략 연출(v0.4)과 그 순간의 소리(v0.7), `ui_panels.js` 패널·대화상자·조작 흐름
-  - v0.5부터 `src/`의 파일은 모두 직접 고침. `build/patch_v04_ui3d.py`·`build/patch_v04_panels.py`는 v0.3 → v0.4 작업 기록(다시 돌리면 v0.5 변경이 사라지니 돌리지 않음). 판별 원본은 `build/*.v03.js`·`build/*.v04.js`·`build/*.v05.js`·`build/*.v06.*`. v0.6 → v0.7에서 고친 자리는 `build/v07/p1~p4_*.py`에 기록(역시 다시 돌리지 않음)
+  - v0.5부터 `src/`의 파일은 모두 직접 고침. `build/patch_v04_ui3d.py`·`build/patch_v04_panels.py`는 v0.3 → v0.4 작업 기록(다시 돌리면 v0.5 변경이 사라지니 돌리지 않음). 판별 원본은 `build/*.v03.js`·`build/*.v04.js`·`build/*.v05.js`·`build/*.v06.*`. v0.6 → v0.7에서 고친 자리는 `build/v07/p1~p4_*.py`에, v0.7 → v0.8에서 고친 자리는 `build/v071/p1~p9_*.py`에 기록(역시 다시 돌리지 않음 — 순서대로 p1 건설 담당 묶기, p2 그 화면, p3 수송, p4 지도 끝, p5·p5b·p5c 성역 멈춤 없애기, p6 돈과 병량, p7·p7b 전법, p8·p8b 부지, p9 충성과 인연). 판별 원본에 `build/*.v07.*` 추가
   - `style.css`, `index.html`(틀)
   - 생성물: `mapdata.js`(지형·거점·도로), `map3d.js`(높이맵·도로 선·미니맵), `sprites.js`(지도 그림), `assets.js`(초상 `PORTRAITS` = 얼굴 중심 정사각 흉상, `SCENES` = 3:4 장면, 타이틀, 한지 무늬), `roster.js`(세력·무장), `sfxdata.js`(효과음 27개 — mp3를 base64로, v0.7)
 - `tools/` — 생성 스크립트
@@ -26,7 +26,8 @@
   - v0.7 초상: `por7_prompt.py batch|text <key>`(v0.5 그림을 본으로 더 세게 다시 그리는 문구), `por7_plan.py`(순서·묶음), `dl_por7.py`(내려받기), `qa_por7.py <out.jpg> <key…>`(얼굴 상자 확인), `make_assets_v05.py`는 환경 변수 `FOCUS=<손으로 정한 얼굴 자리.tsv>`를 받음
   - v0.7 소리: `dl_audio7.py`(내려받기), `make_audio_v07.py [music] [sfx]`(`audio7/raw/` → `bgm/*.mp3`, `src/sfxdata.js`)
   - v0.7 앱: `make_icons.py [미리 보기.jpg]`(관우 초상 + 낙관 → `pwa/icons/`)
-- `tests/` — `sim.js`(AI 대 AI + 불변식), `fuzz.js`(무작위 명령), 성역 규칙 `dist.js`(길 따라 행군 일수)·`floor.js`(빈 지도 전수 탐색: 가장 이른 공격 턴)·`zonecheck.js`(AI 대전에서 규칙 위반 감시), `browser.py`와 v0.4 화면 `d1.py`(둘러보기)·`d2.py`/`d2b.py`(전투 연출: 장면 찍기 / 전법·계략 전부)·`d3.py`(회귀)·`d4.py`/`d5.py`(적 턴 재생·시간)·`d6.py`(모든 창)·`d7.py`(성역에 막 들어선 부대)·`d8.py <옛 판.html>`(옛 저장 호환), `d9.py`(여는 시간 비교), `b9.py`(CDN), v0.6 뒤로 가기 `d10.py`(경로마다 눌러서 확인 — `PAGE=../chunhado-v0.5-offline.html`로 예전 판과 견줌)·`d11.py <걸음> <씨앗> <세력>`(마구 눌러 보기), v0.7 `tac7.js [횟수]`(전법의 성공·대성공 확률과 효과를 되풀이해 확인)·`d12.py`(소리·음악·전법 표시·부대 목록 — `PAGE=pwa/index.html`로 돌려야 음악 파일까지 봄)·`d13.py`(앱판을 내 컴퓨터의 http 서버로 띄워 서비스 워커·오프라인을 확인)·`d11.py <걸음> <씨앗> <세력>`(마구 눌러 보기: 상태 어긋남·오류·×만으로 STATUS 창까지). 헤드리스 Chrome, 기본은 `dist/offline.html`. `c1~c7.py`는 v0.3, `b1~b6.py`는 v0.2 화면 기준이라 지금은 맞지 않음(기록용)
+  - v0.8: `add_plots.py <mapdata.js> [mapdata.json…]`(성마다 부지를 10·13·16곳으로 — 있던 부지는 순서까지 그대로 두고 뒤에 덧붙임. 두 번 돌려도 같음), `make_assets_v08.py`(초상을 가운데로 다시 자름 — 인자는 `make_assets_v05.py`와 같고, `<out_dir>/crops.tsv`에 인물마다 자른 틀과 전후 수치를 남김. `KEEP=키,키`로 장면을 그대로 둘 인물을 정함)
+- `tests/` — `sim.js`(AI 대 AI + 불변식), `fuzz.js`(무작위 명령), 행군 규칙 `floor.js`(빈 지도 전수 탐색: 출진한 턴에 거점·시설을 칠 수 있는 길이 없는가)·`zonecheck.js`(AI 대전에서 규칙 위반 감시) — v0.7까지는 성역 멈춤 규칙을 봤고 `dist.js`는 그때의 것, v0.8 규칙 `job8.js`(건설 담당 묶기)·`loy8.js`(충성·인연·부지 채우기)·`tac7.js`(전법 — v0.8 항목 포함)·`bal8.js <턴> <씨앗>`(균형 재기: 돈·병량·병력·시설·전투 집계, `SRC=<폴더>`로 다른 판과 견줌), 화면 `d14.py`(지도 끝 — `PAGE=../chunhado-v0.7-offline.html python3 tests/d14.py old`로 예전 판의 수치를 잼), `browser.py`와 v0.4 화면 `d1.py`(둘러보기)·`d2.py`/`d2b.py`(전투 연출: 장면 찍기 / 전법·계략 전부)·`d3.py`(회귀)·`d4.py`/`d5.py`(적 턴 재생·시간)·`d6.py`(모든 창)·`d7.py`(v0.8: 성역에서 멈추지 않음·출진한 턴에는 거점을 못 침)·`d8.py <옛 판.html>`(옛 저장 호환), `d9.py`(여는 시간 비교), `b9.py`(CDN), v0.6 뒤로 가기 `d10.py`(경로마다 눌러서 확인 — `PAGE=../chunhado-v0.5-offline.html`로 예전 판과 견줌)·`d11.py <걸음> <씨앗> <세력>`(마구 눌러 보기), v0.7 `tac7.js [횟수]`(전법의 성공·대성공 확률과 효과를 되풀이해 확인)·`d12.py`(소리·음악·전법 표시·부대 목록 — `PAGE=pwa/index.html`로 돌려야 음악 파일까지 봄)·`d13.py`(앱판을 내 컴퓨터의 http 서버로 띄워 서비스 워커·오프라인을 확인)·`d11.py <걸음> <씨앗> <세력>`(마구 눌러 보기: 상태 어긋남·오류·×만으로 STATUS 창까지). 헤드리스 Chrome, 기본은 `dist/offline.html`. `c1~c7.py`는 v0.3, `b1~b6.py`는 v0.2 화면 기준이라 지금은 맞지 않음(기록용)
 - `build/` — 중간 산출물과 판별 백업(`*.v03.js`, `*.v04.js`, `*.v05.js` 등). `patch_v04_*.py`는 v0.3 → v0.4 패치 기록. `patch_c.py`·`v03_home.js`·`v03_play.js`는 v0.2 → v0.3 작업 기록(다시 돌리지 않음)
 - `pwa/` — 앱판에만 들어가는 것: `manifest.webmanifest`, `sw.js`(서비스 워커), `icons/`
 - `bgm/` — 음악 8곡(v0.7, HTML 옆에 두면 재생 — 없으면 코드로 만든 음악). `audio7/` — 소리 원본 기록(`jobs.tsv`). `versions/` — 버전별 스냅샷.
@@ -37,11 +38,23 @@
 - **음악**: `BGM_TRACKS`가 장면(title·field·tense·battle·victory·defeat)마다 곡을 정한다. 여러 곡이면 끝날 때마다 다음 곡으로 돌아간다. 지금의 장면은 `bgmForState()` — 싸운 지 한 턴 안이거나 적이 내 성 2칸 안이면 전투, 적 부대가 내 성 7칸·내 부대 4칸 안이거나 내 부대가 남의 성역에 있으면 긴장, 아니면 평시.
   - 곡을 바꾸려면 `bgm/<이름>.mp3`를 바꿔 넣으면 된다(앱판은 `pwa/sw.js`의 `BGM` 번호도 올린다). 곡을 늘리려면 `BGM_TRACKS`에 이름을 더한다.
 
-## 전법의 세 결과(v0.7)
-- 판정은 `src/core.js`의 `tacticOdds(u, d)` 한 곳: 성공률 = 적성(C 65·B 72·A 80·S 88) + (무력−70)/3 [−5~+8], 대성공률 = 적성(C 4·B 8·A 12·S 18) + (무력−70)×0.5 [−4~+15] + (내 무력−상대 통솔)×0.15 [−6~+6], 2~45%. 대성공은 성공 안에 들어 있다. 특기(창장·극장·궁장·기장·투신·신장·기신·궁신)가 맞으면 반드시 대성공.
-- 실패: 피해 60%(통상 공격 기준), 효과 없음, 반격 40%. 성공: 전법 배율과 효과. 대성공: 피해 1.3배(기신·궁신 1.43배) + `TACTICS[..].great`가 효과를 덮어씀(`tacticEff`) — 밀어내기 칸 수, 혼란 확률, 기력 깎기, 옆·뒤 적의 피해 비율, 불의 지속.
+## 전법(v0.7 세 결과 → v0.8 양쪽을 다 보는 판정)
+- 판정은 `src/core.js`의 `tacticOdds(u, d)` 한 곳. 성공률의 조각은 `tacticParts`가 돌려준다(화면의 "성공률 72% = 적성 80 · 무장 +4 · …"가 이것).
+  - 성공률 = 적성(`TACTIC_RATE` C 55·B 63·A 71·S 80) + 무장 (내 부대 최고 무력×0.6 + 주장 통솔×0.4 − 상대 부대 최고 통솔)×0.6 [−24~+12] + 병력 log2(내 병력÷상대 병력)×8 [−16~+8] + 상대 적성(C +3·B 0·A −3·S −6) + 상대가 선 곳(숲·구릉 −5, 강 +5) + 상대 혼란 +10 + 맞는 특기 +5 → 10~95%.
+  - 대성공률 = 적성(C 4·B 8·A 12·S 18) + (무력−70)×0.5 [−4~+15] + (내 무력−상대 통솔)×0.15 [−6~+6], 2~45%. 대성공은 성공 안에 들어 있다. 특기(창장·극장·궁장·기장·투신·신장·기신·궁신)가 맞으면 **성공한 전법은 모두 대성공**(v0.7에서는 성공까지 보장했다).
+- 피해 = 통상 공격의 식 × 전법 배수 × 병력 비 `tacticSizeK` = (내 병력÷상대 병력)^0.25, 0.75~1.1. 배수는 `TACTICS`(v0.8에서 약 13% 내림: 돌출 1.25 나선첨 1.35 이단첨 1.55 / 갈퀴 1.25 횡치 1.15 선풍 1.05 / 화시 1.1 관시 1.3 난사 1.05 / 돌격 1.3 돌파 1.35 돌진 1.6).
+- 반격은 `TACTIC_K`: 성공했을 때 0.4(통상 공격의 반격 0.55의 73%), 실패했을 때 피해 0.5·반격 0.7. 원거리 전법은 노병에게만 반격을 받는다. 대성공: 피해 1.3배(기신·궁신 1.43배) + `TACTICS[..].great`가 효과를 덮어씀(`tacticEff`).
 - 혼란 확률은 `confuseOdds`: 기본 확률 + (70 − 상대의 (지력+통솔)/2) × 0.6, 5~95%. `confuse`가 1이면 반드시.
-- 화면: 대상 창의 전법 단추에 성공률·대성공률, **전법 풀이**(`showTacticInfo`)에 그 상대에 대한 확률과 결과별 효과. 결과는 `res.fail / res.crit / res.mor / res.pushed / res.confused`로 전해져 글씨와 한 줄 기록에 나온다.
+- AI는 기대 피해(성공률 × 배수 × 병력 비 × 대성공 몫 + 실패 때의 피해)가 통상 공격의 1.1배를 넘을 때만 전법을 쓴다(`ai.js`).
+- 화면: 대상 창의 전법 단추에 성공률·대성공률, **전법 풀이**(`showTacticInfo`)에 양쪽의 적성·무력·통솔·병력과 성공률의 조각, 결과별 효과.
+
+## v0.8에서 바뀐 규칙의 자리
+- **건설 담당 묶기**: `core.js`의 `jobOf`·`builders`·`freeBuilders`. 시설에 `by`(담당 무장), 무장에 `job`(거점·부지 번호). `phaseStart`에서 `acted = !!jobOf(o)`.
+- **행군**: 성역(`ZONE`, 성 둘레 2칸)은 이름·고리·음악의 기준으로만 남고 이동을 막지 않는다. 급습 막이는 `justOut(u)`(출진한 턴 = `u.born === G.turn`) 하나 — 그 턴에는 거점과 시설을 칠 수 없다.
+- **돈과 병량**: `data.js`의 `BASE_GOLD`·`MARKET_INC`·`BASE_FOOD`·`FARM_INC`·`FAC[..].cost`와 `COST`(징병·순찰·생산·충차·포상·합병). 화면과 AI의 문턱도 이 표를 읽는다.
+- **부지**: `mapdata.js`의 `plots`(성마다 S 10·M 13·L 16). 옛 저장은 `deserialize`가 모자란 부지를 뒤에 채운다.
+- **충성과 인연**: `data.js`의 `BONDS`(군주 이름 → { 무장: 사이 }), `core.js`의 `bondWith`·`bondOf`·`loyNat`. 분기마다 `roundEnd`에서 자리 잡는 값 쪽으로 움직인다.
+- **지도 끝**: `ui3d.js`의 `APRON`(지도 밖 띠의 폭)·`apronY`(띠의 높이)·`TERRAIN_FS`의 `edge`(거울 비춤 + 번짐 + 종이로 풀림)·`camLimits`(지도 끝이 화면에 들어오는 한도)·`settleCam`(아래 창 높이가 바뀌면 제자리로).
 
 ## 앱(PWA)과 GitHub Pages(v0.7)
 - `python3 tools/build.py --pwa` → `dist/pwa/`를 저장소 맨 위에 그대로 올린다(GitHub Pages: main 브랜치 / 루트).
@@ -82,10 +95,14 @@ python3 tools/facebox.py art/raw7 art/por7_faces.tsv
 FOCUS=art/por7_focus.tsv python3 tools/make_assets_v05.py art/raw7 art/por7_faces.tsv art/por7_out src/assets.js build/assets.v04.js src/roster.js 256 320 72 56
 python3 tools/make_audio_v07.py          # audio7/raw → bgm/*.mp3, src/sfxdata.js
 python3 tools/make_icons.py              # pwa/icons/
+# v0.8(부지·초상 다시 자르기)
+python3 tools/add_plots.py src/mapdata.js src/mapdata.json build/mapdata.json && cp src/mapdata.js build/mapdata.js
+FOCUS=art/por7_focus.tsv python3 tools/make_assets_v08.py art/raw7 art/por7_faces.tsv art/por8_out src/assets.js build/assets.v07.js src/roster.js 256 320 72 52
 python3 tools/build.py && python3 tools/build.py --embed && python3 tools/build.py --pwa && node --check dist/code.js
 node tests/sim.js 540 101 && node tests/fuzz.js 200 201 0 && node tests/floor.js && node tests/zonecheck.js 360 1 && node tests/tac7.js 4000
 python3 tests/d10.py && python3 tests/d11.py 400 1 4      # v0.6 뒤로 가기
 PAGE=pwa/index.html python3 tests/d12.py && python3 tests/d13.py   # v0.7 소리·전법·부대 목록 / 앱판
+node tests/job8.js && node tests/loy8.js && node tests/bal8.js 216 1 && python3 tests/d7.py && python3 tests/d14.py   # v0.8
 ```
 `<geo_dir>`에 필요한 파일: `elev_bump_4k.jpg`, `land10.geojson`, `lakes10.geojson`, `rivers10.geojson`.
 

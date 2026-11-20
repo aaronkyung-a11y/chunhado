@@ -342,3 +342,11 @@ p { margin: 6px 0; }
 .tac .tl i { flex: none; width: 44px; font-style: normal; font-size: 11.5px; color: var(--dim); padding-top: 1px; }
 .tac .tl.g i { color: var(--seal); font-weight: 800; }
 .tacs .note { margin-top: 8px; }
+
+/* v0.8 — 공사에 매인 무장, 안내 글 */
+.job { color: var(--seal); font-weight: 800; }
+.warn { color: var(--seal); font-size: 12px; }
+
+.tacs .sum { margin: 6px 0 2px; font-size: 12px; color: var(--ink-2, #55504a); line-height: 1.5; }
+
+.bond { font-style: normal; font-size: 11.5px; font-weight: 800; color: var(--seal); border: 1px solid var(--seal); border-radius: 2px; padding: 0 4px; margin-left: 3px; vertical-align: 1px; }

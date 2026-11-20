@@ -45,15 +45,45 @@ function groundY(x, z) {
   return (HMAP[i] * (1 - fx) + HMAP[i + 1] * fx) * (1 - fz) + (HMAP[i + GX] * (1 - fx) + HMAP[i + GX + 1] * fx) * fz;
 }
 function hexPos(c, r) { var p = hexCenter(c, r); return [p[0], groundY(p[0], p[1]), p[1]]; }
+/* 지도 밖: 그림이 뚝 끊기지 않게, 끝에서 APRON 만큼은 안쪽 땅을 거울처럼 비춰 이어 그리고 종이로 풀어 낸다(칸·부대는 없다. 지도 단위 — 한 칸의 폭이 약 1.7) */
+var APRON = 13;
+function outDist(x, z) { var dx = Math.max(-x, x - MAP3D.WX, 0), dz = Math.max(-z, z - MAP3D.WZ, 0); return Math.sqrt(dx * dx + dz * dz); }
+function apronY(x, z) {
+  var od = outDist(x, z); if (od <= 0) return groundY(x, z);
+  var mx = x < 0 ? -x : x > MAP3D.WX ? 2 * MAP3D.WX - x : x, mz = z < 0 ? -z : z > MAP3D.WZ ? 2 * MAP3D.WZ - z : z;
+  var t = clamp(od / APRON, 0, 1), base = MAP3D.hmin - 0.05;
+  return base + (groundY(mx, mz) - base) * (1 - t * t * (3 - 2 * t));     // 바깥으로 갈수록 바닥(여백의 높이)으로 잦아든다
+}
 
 /* ---------- 카메라 ---------- */
 function camDist() { return 62 / cam.z; }
 function camPitch() { var t = clamp(Math.log(cam.z / Z_MIN) / Math.log(Z_MAX / Z_MIN), 0, 1); return (68 - 27 * t) * Math.PI / 180; }
+/* 지도 끝이 화면 안으로 들어오는 한도 — 가려지지 않은 지도 영역의 1/5(적어도 손가락 한 마디)까지. 확대와 아래 창 높이에 따라 달라진다 */
+function camLimits() {
+  if (CW < 60 || CH < 60) return { x0: 6, x1: MAP3D.WX - 6, y0: 8, y1: MAP3D.WZ - 3 };
+  var D = camDist(), p = camPitch(), sa = safeArea(), h = Math.max(1, sa.bottom - sa.top);
+  var hw = D * K3 * (CW / CH) / 2, mx = hw * (1 - 2 * clamp(70 / CW, 0.2, 0.45));     // 바라보는 깊이에서 화면 반폭(지도 단위)
+  var iy = Math.max(0.2 * h, Math.min(60, 0.45 * h));
+  function north(y) { var a = Math.atan((0.5 - y / CH) * K3); return D * (Math.sin(p) / Math.tan(Math.max(0.08, p - a)) - Math.cos(p)); }   // 화면의 y 줄에 놓인 땅이 바라보는 점보다 얼마나 북쪽인가
+  return { x0: mx, x1: MAP3D.WX - mx, y0: north(sa.top + iy), y1: MAP3D.WZ + north(sa.bottom - iy) };
+}
 function clampCam() {
   cam.z = clamp(cam.z, Z_MIN, Z_MAX);
-  cam.x = clamp(cam.x, 6, MAP3D.WX - 6); cam.y = clamp(cam.y, 8, MAP3D.WZ - 3);
+  var L = camLimits();
+  cam.x = L.x0 > L.x1 ? MAP3D.WX / 2 : clamp(cam.x, L.x0, L.x1);
+  cam.y = L.y0 > L.y1 ? (L.y0 + L.y1) / 2 : clamp(cam.y, L.y0, L.y1);
   UI.render = true;
 }
+/* 아래 창 높이가 바뀌어 한도가 달라졌으면 부드럽게 제자리로(끌거나 다른 움직임이 있을 때는 건드리지 않는다) */
+var _settleT = 0;
+function settleCam() {
+  if (!R3 || !R3.ready || UI.anims.length || ptList().length) return;
+  var x0 = cam.x, y0 = cam.y; clampCam(); var x1 = cam.x, y1 = cam.y;
+  if (Math.abs(x1 - x0) + Math.abs(y1 - y0) < 0.02) return;
+  cam.x = x0; cam.y = y0;
+  anim(240, function (t) { var e = t * (2 - t); cam.x = x0 + (x1 - x0) * e; cam.y = y0 + (y1 - y0) * e; UI.render = true; });
+}
+function settleSoon() { clearTimeout(_settleT); _settleT = setTimeout(settleCam, 90); }
 function applyCam() {
   var D = camDist(), p = camPitch(), ty = groundY(cam.x, cam.y), c = R3.cam;
   c.position.set(cam.x, ty + D * Math.sin(p), cam.y + D * Math.cos(p));
@@ -128,11 +158,14 @@ function ensureVisible(c, r) { if (!onScreen(c, r, 0)) jumpTo(c, r, Math.max(cam
 var TERRAIN_VS = 'varying vec2 vUv; varying vec2 vW; varying float vD;\nvoid main(){ vUv = uv; vW = position.xz; vec4 mv = modelViewMatrix * vec4(position, 1.0); vD = -mv.z; gl_Position = projectionMatrix * mv; }';
 var TERRAIN_FS = [
   'uniform sampler2D map; uniform sampler2D detail; uniform sampler2D hexOv; uniform sampler2D hexSt;',
-  'uniform vec2 hexN; uniform vec3 fogColor; uniform float fogNear; uniform float fogFar; uniform float gridK; uniform vec3 tint;',
+  'uniform vec2 hexN; uniform vec3 fogColor; uniform float fogNear; uniform float fogFar; uniform float gridK; uniform vec3 tint; uniform vec3 edge;',
   'varying vec2 vUv; varying vec2 vW; varying float vD;',
   'const float SQ3 = 1.7320508;',
   'void main(){',
-  '  vec3 col = texture2D(map, vUv).rgb;',
+  '  float od = length(max(max(-vW, vW - edge.xy), 0.0)), inMap = 1.0 - smoothstep(0.0, 0.05, od), et = od / edge.z;',   // 지도 밖으로 나간 거리(안이면 0)
+  '  float ew = (texture2D(detail, vW * 0.011 + 0.13).r - 0.5) * 2.0 + (texture2D(detail, vW * 0.047 + 0.61).g - 0.5) * 0.9;',
+  '  float eo = et + ew * min(1.0, et * 3.0);',                                                           // 그림이 얼마나 풀렸나 — 잡음 때문에 곳에 따라 더 멀리까지 이어진다(끝이 들쭉날쭉)
+  '  vec3 col = texture2D(map, 1.0 - abs(1.0 - abs(vUv)), clamp(eo * 13.0, 0.0, 7.0)).rgb;',              // 밖은 안쪽을 거울처럼 비추되 풀릴수록 번지게(흐리게)
   '  float dn = texture2D(detail, vW * 0.21).r, dn2 = texture2D(detail, vW * 1.17 + 0.37).g;',
   '  float nearK = 1.0 - smoothstep(25.0, 120.0, vD);',
   '  col *= 0.955 + 0.09 * dn + nearK * 0.10 * (dn2 - 0.5);',
@@ -148,16 +181,17 @@ var TERRAIN_FS = [
   '  vec4 ov = texture2D(hexOv, huv); float pass = texture2D(hexSt, huv).r;',
   '  float aa = fwidth(e) + 0.0006;',
   '  float line = 1.0 - smoothstep(0.0, aa * 1.5, e - 0.008);',
-  '  float gk = gridK * pass * (1.0 - smoothstep(0.03, 0.10, aa));',
+  '  float gk = gridK * pass * inMap * (1.0 - smoothstep(0.03, 0.10, aa));',                           // 칸 줄은 지도 끝에서 멈춘다
   '  col = mix(col, vec3(0.105, 0.10, 0.094), line * gk * 0.21);',
   '  if (ov.a > 0.004) {',
   '    if (ov.a < 0.30) {',                                      // 담채: 세력권·성역. 칸 테두리 없이 번지듯
   '      col = mix(col, col * mix(vec3(1.0), ov.rgb, 0.85), ov.a * 2.6);',
-  '    } else {',                                                // 이동·공격 범위: 칸 가장자리를 짙게
+  '    } else if (inMap > 0.5) {',                               // 이동·공격 범위: 칸 가장자리를 짙게
   '      float edge = 1.0 - smoothstep(0.03, 0.06 + aa * 2.0, e);',
   '      col = mix(col, ov.rgb, ov.a * (0.34 + 0.66 * edge));',
   '    }',
   '  }',
+  '  col = mix(fogColor, col, (1.0 - smoothstep(0.0, 0.70, eo)) * (1.0 - smoothstep(0.72, 1.0, et)));',  // 지도 밖: 먹이 종이로 스며들 듯 풀린다
   '  col = mix(col, fogColor, smoothstep(fogNear, fogFar, vD));',
   '  gl_FragColor = vec4(col, 1.0);',
   '}'].join('\n');
@@ -202,7 +236,7 @@ function init3d() {
   var blank = new THREE.DataTexture(new Uint8Array([120, 130, 100, 255]), 1, 1); blank.needsUpdate = true;
   R3.tmat = new THREE.ShaderMaterial({
     uniforms: { map: { value: blank }, detail: { value: noiseTexture() }, hexOv: { value: R3.ovTex }, hexSt: { value: R3.stTex }, hexN: { value: new THREE.Vector2(W, H) },
-      fogColor: { value: new THREE.Color(FOGC) }, fogNear: { value: 60 }, fogFar: { value: 200 }, gridK: { value: 1 }, tint: { value: new THREE.Vector3(1, 1, 1) } },
+      fogColor: { value: new THREE.Color(FOGC) }, fogNear: { value: 60 }, fogFar: { value: 200 }, gridK: { value: 1 }, tint: { value: new THREE.Vector3(1, 1, 1) }, edge: { value: new THREE.Vector3(MAP3D.WX, MAP3D.WZ, APRON) } },
     vertexShader: TERRAIN_VS, fragmentShader: TERRAIN_FS, extensions: { derivatives: true }
   });
   buildTerrain(); buildRoads(); buildTrees();
@@ -211,12 +245,13 @@ function init3d() {
 }
 function buildTerrain() {
   var GX = MAP3D.GX, GZ = MAP3D.GZ, NX = 8, NZ = 8, sx = MAP3D.WX / (GX - 1), sz = MAP3D.WZ / (GZ - 1);
+  var ax = Math.ceil(APRON / sx), az = Math.ceil(APRON / sz), X0 = -ax, XN = GX - 1 + 2 * ax, Z0 = -az, ZN = GZ - 1 + 2 * az;   // 지도 밖 띠까지
   for (var cz = 0; cz < NZ; cz++) for (var cx = 0; cx < NX; cx++) {
-    var x0 = Math.floor(cx * (GX - 1) / NX), x1 = Math.floor((cx + 1) * (GX - 1) / NX), z0 = Math.floor(cz * (GZ - 1) / NZ), z1 = Math.floor((cz + 1) * (GZ - 1) / NZ);
+    var x0 = X0 + Math.floor(cx * XN / NX), x1 = X0 + Math.floor((cx + 1) * XN / NX), z0 = Z0 + Math.floor(cz * ZN / NZ), z1 = Z0 + Math.floor((cz + 1) * ZN / NZ);
     var nx = x1 - x0 + 1, nz = z1 - z0 + 1, pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), idx = new Uint16Array((nx - 1) * (nz - 1) * 6), p = 0, q = 0, k = 0, i, j;
     for (j = 0; j < nz; j++) for (i = 0; i < nx; i++) {
       var gx = x0 + i, gz = z0 + j;
-      pos[p++] = gx * sx; pos[p++] = HMAP[gz * GX + gx]; pos[p++] = gz * sz;
+      pos[p++] = gx * sx; pos[p++] = (gx >= 0 && gx < GX && gz >= 0 && gz < GZ) ? HMAP[gz * GX + gx] : apronY(gx * sx, gz * sz); pos[p++] = gz * sz;
       uv[q++] = gx / (GX - 1); uv[q++] = gz / (GZ - 1);
     }
     for (j = 0; j < nz - 1; j++) for (i = 0; i < nx - 1; i++) { var a = j * nx + i, b = a + 1, c = a + nx, d = c + 1; idx[k++] = a; idx[k++] = c; idx[k++] = b; idx[k++] = b; idx[k++] = c; idx[k++] = d; }
@@ -247,14 +282,22 @@ function buildRoads() {
 }
 function hash2(a, b) { var n = (a * 374761393 + b * 668265263) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; }
 function buildTrees() {
-  var NB = 8, buckets = [], i, j, k;
+  var NB = 8, buckets = [], outer = [[], [], []], TW = 3.6, i, j, k;
   for (i = 0; i < NB * NB; i++) buckets.push([]);
   for (k = 0; k < NHEX; k++) {
     if (TCH[k] !== 102 || RDB[k] || PAT[k]) continue;
     var c = k % W, r = (k - c) / W, p = hexCenter(c, r);
     for (j = 0; j < 4; j++) {
       var a = hash2(k, j * 7 + 1) * 6.283, d = 0.18 + 0.56 * Math.sqrt(hash2(k, j * 7 + 2)), x = p[0] + Math.cos(a) * d, z = p[1] + Math.sin(a) * d;
-      buckets[Math.min(NB - 1, Math.floor(z / MAP3D.WZ * NB)) * NB + Math.min(NB - 1, Math.floor(x / MAP3D.WX * NB))].push([x, groundY(x, z), z, 0.75 + 0.6 * hash2(k, j * 7 + 3), hash2(k, j * 7 + 4)]);
+      var sc = 0.75 + 0.6 * hash2(k, j * 7 + 3), rt = hash2(k, j * 7 + 4);
+      buckets[Math.min(NB - 1, Math.floor(z / MAP3D.WZ * NB)) * NB + Math.min(NB - 1, Math.floor(x / MAP3D.WX * NB))].push([x, groundY(x, z), z, sc, rt]);
+      var xs = x < TW ? -x : MAP3D.WX - x < TW ? 2 * MAP3D.WX - x : null, zs = z < TW ? -z : MAP3D.WZ - z < TW ? 2 * MAP3D.WZ - z : null, mir = [];
+      if (xs !== null) mir.push([xs, z]); if (zs !== null) mir.push([x, zs]); if (xs !== null && zs !== null) mir.push([xs, zs]);
+      for (var mi = 0; mi < mir.length; mi++) {
+        var X = mir[mi][0], Z = mir[mi][1], tt = outDist(X, Z) / TW;
+        if (tt >= 1 || hash2(k, j * 7 + 5 + mi) < 0.25 + tt * 0.8) continue;
+        outer[Math.min(2, Math.floor(tt * 3))].push([X, apronY(X, Z), Z, sc * (1 - 0.45 * tt), rt]);
+      }
     }
   }
   var cone = new THREE.ConeGeometry(0.21, 0.66, 5, 1, true); cone.translate(0, 0.30, 0);
@@ -274,6 +317,20 @@ function buildTrees() {
     }
     g.boundingSphere = new THREE.Sphere(new THREE.Vector3((minx + maxx) / 2, 1, (minz + maxz) / 2), Math.sqrt((maxx - minx) * (maxx - minx) + (maxz - minz) * (maxz - minz)) / 2 + 3);
     mesh.instanceMatrix.needsUpdate = true; mesh.matrixAutoUpdate = false; R3.scene.add(mesh); R3.trees.push(mesh);
+  }
+  var paper = new THREE.Color(FOGC);
+  for (i = 0; i < 3; i++) {                               // 지도 밖의 나무: 멀수록 종이색에 가깝게(세 단계)
+    var O = outer[i]; if (!O.length) continue;
+    var f = 0.3 + 0.25 * i, og = cone.clone(), oc = new Float32Array(cols.length);
+    for (j = 0; j < cols.length; j += 3) { oc[j] = cols[j] * (1 - f) + paper.r * f; oc[j + 1] = cols[j + 1] * (1 - f) + paper.g * f; oc[j + 2] = cols[j + 2] * (1 - f) + paper.b * f; }
+    og.setAttribute('color', new THREE.BufferAttribute(oc, 3));
+    var om = new THREE.InstancedMesh(og, mat, O.length);
+    for (j = 0; j < O.length; j++) {
+      var oe = O[j]; q.setFromAxisAngle(up, oe[4] * 6.283); s.set(oe[3], oe[3] * (0.85 + 0.4 * oe[4]), oe[3]); v.set(oe[0], oe[1] - 0.03, oe[2]);
+      m4.compose(v, q, s); om.setMatrixAt(j, m4);
+      var og2 = 1 + (0.72 + 0.5 * oe[4] - 1) * (1 - f); col.setRGB(og2, og2, og2); om.setColorAt(j, col);
+    }
+    om.instanceMatrix.needsUpdate = true; om.matrixAutoUpdate = false; om.frustumCulled = false; R3.scene.add(om); R3.trees.push(om);
   }
 }
 function flameTexture() {
@@ -505,7 +562,7 @@ function rebuildOverlay() {
   if (UI.march && UI.march.path) for (i = 0; i < UI.march.path.length; i++) ovPut(UI.march.path[i], [47, 79, 111], 96);
   var su = selUnit();
   if (su && UI.rc && !UI.busy) {
-    for (var ks in UI.rc.stop) { k = +ks; if (BAT[k] !== undefined) ovPut(k, [176, 124, 34], 170); else ovPut(k, ZONE[k] !== ZONE[K(su.c, su.r)] ? [96, 118, 140] : [47, 79, 111], 122); }
+    for (var ks in UI.rc.stop) { k = +ks; if (BAT[k] !== undefined) ovPut(k, [176, 124, 34], 170); else ovPut(k, [47, 79, 111], 122); }
     var ats = UI.atk || [];
     for (i = 0; i < ats.length; i++) ovPut(K(ats[i].c, ats[i].r), [181, 51, 42], 172);
   }
@@ -635,6 +692,7 @@ function pickAt(sx, sy) {
   return best || gh;
 }
 function initInput() {
+  if (typeof ResizeObserver === 'function') { var ro = new ResizeObserver(settleSoon); ['sheet', 'bar', 'play', 'hud'].forEach(function (id) { if ($(id)) ro.observe($(id)); }); }
   cv.addEventListener('pointerdown', function (e) {
     audioInit(); bgmKick();
     try { cv.setPointerCapture(e.pointerId); } catch (er) { /* */ }

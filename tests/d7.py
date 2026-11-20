@@ -1,19 +1,14 @@
-# v0.4: 성역에 막 들어선 부대는 그 턴에 그 성을 칠 수 없다(노병의 2칸 사격 포함) — 화면 조작으로 확인
+# v0.8: 성역에서 멈추지 않는다 / 출진한 턴에는 거점을 칠 수 없다 — 화면 조작으로 확인
+#  (v0.4~v0.7 의 이 시험은 '성역에 막 들어선 부대는 그 턴에 그 성을 칠 수 없다'를 봤다. 그 규칙은 없어졌다)
 import sys, os, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import browser as B
 from browser import taphex, tapsel
 B.SHOTS = os.path.join(B.ROOT, 'shots4')
-def end_turn(pg):
-    pg.evaluate('() => { clearSel(); UI.pspeed = 3; }'); pg.locator('#btnEnd').tap(); pg.wait_for_timeout(250)
-    if not pg.evaluate('!!UI.play'): pg.locator('#btnEnd').tap()
-    t0 = time.time()
-    while pg.evaluate('!!UI.play') and time.time() - t0 < 150: pg.wait_for_timeout(100)
-    dt = time.time() - t0
-    for i in range(20):                      # 요약 창이 조금 늦게 뜰 수 있다 — 뜨면 닫는다
-        pg.wait_for_timeout(100)
-        if pg.evaluate('!!MODAL'): pg.evaluate('closeDialog()'); break
-    pg.wait_for_timeout(200); pg.evaluate('if (MODAL) closeDialog()'); return dt
+fails = []
+def ok(cond, msg):
+    print(('  ok   ' if cond else '  FAIL ') + msg)
+    if not cond: fails.append(msg)
 def steps(pg):
     B.start(pg, 0)
     info = pg.evaluate('''(() => {
@@ -22,51 +17,49 @@ def steps(pg):
       var os = idleOfficers(b).sort((x, y) => aiMilScore(y) - aiMilScore(x));
       var u = cmdDeploy(b, {type: "bow", ids: [os[0].id], troops: 4000, food: 3000}).unit;
       function free(c, r) { var t2 = terr(c, r); return t2 !== "m" && t2 !== "w" && t2 !== "s" && t2 !== "x" && !unitAt(c, r) && !facAt(c, r) && !baseAt(c, r); }
-      // 복양에서 3칸 떨어진(성역 바로 밖) 빈 칸 가운데, 2칸째 칸(성역 안)이 옆에 있는 곳
+      // 복양에서 4칸 떨어진(성역 밖) 빈 칸 가운데, 성역 안 2칸째 칸까지 평지로 이어진 곳
       var best = null;
-      for (var c = t.c - 4; c <= t.c + 4 && !best; c++) for (var r = t.r - 4; r <= t.r + 4 && !best; r++) {
-        if (!inMap(c, r) || hdist(c, r, t.c, t.r) !== 3 || !free(c, r) || zoneAt(c, r) >= 0) continue;
-        var inn = nbrs(c, r).filter(function (q) { return hdist(q[0], q[1], t.c, t.r) === 2 && free(q[0], q[1]) && zoneAt(q[0], q[1]) === t.id && !plotAt(q[0], q[1]); });
-        if (inn.length) best = { out: [c, r], inn: inn[0] };
+      for (var c = t.c - 5; c <= t.c + 5 && !best; c++) for (var r = t.r - 5; r <= t.r + 5 && !best; r++) {
+        if (!inMap(c, r) || hdist(c, r, t.c, t.r) !== 4 || !free(c, r) || zoneAt(c, r) >= 0) continue;
+        placeUnit(u, c, r); u.mp = uMaxMp(u);
+        var rc = unitReach(u), inn = null;
+        for (var k in rc.stop) { k = +k; var cc = k % W, rr = (k - cc) / W; if (hdist(cc, rr, t.c, t.r) === 2 && zoneAt(cc, rr) === t.id && !plotAt(cc, rr) && rc.cost[k] <= u.mp - 3) { inn = [cc, rr, rc.cost[k]]; break; } }
+        if (inn) best = { out: [c, r], inn: inn };
       }
-      placeUnit(u, best.out[0], best.out[1]); u.mp = uMaxMp(u); u.done = false; u.moved = false; u.zin = -1; u.ox = -1; u.morale = 90;
+      placeUnit(u, best.out[0], best.out[1]); u.mp = uMaxMp(u); u.done = false; u.moved = false; u.ox = -1; u.morale = 90;
       syncScene(); requestDraw(); refreshHud();
-      return { id: u.id, out: best.out, inn: best.inn, t: [t.c, t.r], tid: t.id, tn: t.n, owner: t.owner, range: uRange(u) };
+      return { id: u.id, out: best.out, inn: [best.inn[0], best.inn[1]], cost: best.inn[2], mp: u.mp, t: [t.c, t.r], tid: t.id, tn: t.n, range: uRange(u), born: u.born, turn: G.turn, troops: t.troops };
     })()''')
     print('staged', info)
     pg.evaluate('(id) => gotoUnit(UMAP[id])', info['id']); pg.wait_for_timeout(700)
-    print('before: stop has inner hex', pg.evaluate('([c, r]) => !!(UI.rc && UI.rc.stop[K(c, r)])', info['inn']), '| base in targets', pg.evaluate('(tid) => attackTargets(selUnit()).some(function (x) { return x.kind === "base" && x.b.id === tid; })', info['tid']))
+    ok(info['born'] == info['turn'], '막 출진한 부대(born = 이번 턴)')
+    ok(pg.evaluate('([c, r]) => !!(UI.rc && UI.rc.stop[K(c, r)])', info['inn']), '성역 밖 4칸에서 성역 안 2칸째 칸이 파랗게 보인다')
     taphex(pg, *info['inn']); pg.wait_for_timeout(1700)
-    st = pg.evaluate('(tid) => { var u = selUnit(); return { pos: [u.c, u.r], mp: u.mp, zin: u.zin, d: hdist(u.c, u.r, G.bases[tid].c, G.bases[tid].r), baseTarget: attackTargets(u).some(function (x) { return x.kind === "base"; }), atkOverlay: (UI.atk || []).some(function (x) { return x.kind === "base"; }), toast: $("toast").textContent }; }', info['tid'])
+    st = pg.evaluate('(tid) => { var u = selUnit(); return { pos: [u.c, u.r], mp: u.mp, d: hdist(u.c, u.r, G.bases[tid].c, G.bases[tid].r), zone: zoneAt(u.c, u.r), reach: Object.keys(UI.rc.stop).length, baseTarget: attackTargets(u).some(function (x) { return x.kind === "base"; }), toast: $("toast").textContent }; }', info['tid'])
     print('entered zone', st)
+    ok(st['zone'] == info['tid'] and st['d'] == 2, '성역 안으로 들어섰다(성에서 2칸)')
+    ok(st['mp'] == info['mp'] - info['cost'] and st['mp'] > 0, '성역의 경계를 넘어도 이동력이 남는다 (%s − %s = %s)' % (info['mp'], info['cost'], st['mp']))
+    ok(st['reach'] > 0, '그 턴에 더 움직일 수 있다(갈 수 있는 칸 %d)' % st['reach'])
+    ok('성역' not in st['toast'] and '여기까지' not in st['toast'], '멈췄다는 안내가 뜨지 않는다 [%s]' % st['toast'])
+    ok(not st['baseTarget'], '출진한 턴에는 성이 공격 대상에 없다')
     B.shot(pg, 'd7_1_entered', 200)
     taphex(pg, *info['t']); pg.wait_for_timeout(400)
-    print('tap city → target', pg.evaluate('UI.target && UI.target.kind'), '| toast:', pg.evaluate('$("toast").textContent'))
+    toast = pg.evaluate('$("toast").textContent')
+    ok(pg.evaluate('!(UI.target && UI.target.kind)') and '출진한 턴' in toast, '성을 누르면 안내만 뜬다 [%s]' % toast)
     r = pg.evaluate('(tid) => { var u = selUnit(), b = G.bases[tid], res = unitAttack(u, { kind: "base", b: b, c: b.c, r: b.r }); return [res.ok, res.msg, u.done]; }', info['tid'])
-    print('engine refuses', r)
-    # 이동 취소 → 표시가 풀리는가, 다시 들어가면 다시 걸리는가
-    tapsel(pg, '#sheet [data-a=undo]'); pg.wait_for_timeout(500)
-    print('after undo', pg.evaluate('() => { var u = selUnit(); return [u.c, u.r, u.mp, u.zin]; }'))
-    taphex(pg, *info['inn']); pg.wait_for_timeout(1700)
-    print('re-entered', pg.evaluate('() => { var u = selUnit(); return [u.c, u.r, u.mp, u.zin]; }'))
-    dt = end_turn(pg)
-    alive = pg.evaluate('(id) => !!UMAP[id]', info['id'])
-    print('next turn %.1fs' % dt, pg.evaluate('dateStr()'), 'unit alive', alive)
-    if alive:
-        moved = pg.evaluate("""([id, tid]) => { var u = UMAP[id], t = G.bases[tid]; if (hdist(u.c, u.r, t.c, t.r) <= uRange(u) && zoneAt(u.c, u.r) === tid) return false;
-          for (var c = t.c - 3; c <= t.c + 3; c++) for (var r = t.r - 3; r <= t.r + 3; r++) { if (!inMap(c, r)) continue; var d = hdist(c, r, t.c, t.r), tt = terr(c, r);
-            if (d < 1 || d > uRange(u) || zoneAt(c, r) !== tid || unitAt(c, r) || baseAt(c, r) || facAt(c, r) || tt === 'm' || tt === 'w' || tt === 's' || tt === 'x') continue;
-            placeUnit(u, c, r); syncScene(); requestDraw(); return [c, r]; }
-          return 'no free hex'; }""", [info['id'], info['tid']])
-        print('pushed out of range by the enemy turn → put on a free hex in range:', moved)
-        pg.evaluate('(id) => gotoUnit(UMAP[id])', info['id']); pg.wait_for_timeout(700)
-        print('next turn state', pg.evaluate('(tid) => { var u = selUnit(); return { pos: [u.c, u.r], zin: u.zin, mp: u.mp, baseTarget: attackTargets(u).some(function (x) { return x.kind === "base" && x.b.id === tid; }) }; }', info['tid']))
-        taphex(pg, *info['t']); pg.wait_for_timeout(400)
-        n = pg.locator('#sheet [data-a=act]').count()
-        print('acts', [pg.locator('#sheet [data-a=act]').nth(i).inner_text().replace('\n', ' / ') for i in range(n)])
-        B.shot(pg, 'd7_2_nextturn', 200)
-        if n:
-            tapsel(pg, '#sheet [data-a=act]', 0); pg.wait_for_timeout(3200)
-            print('attack toast:', pg.evaluate('$("toast").textContent'), '| busy', pg.evaluate('UI.busy'), 'fx', pg.evaluate('FX.live.length'))
-    print('ERRORS', [e for e in B.errors if 'ERR_FILE_NOT_FOUND' not in e and 'GPU stall' not in e][:6])
-B.run(steps, 390, 844, 2)
+    ok(r[0] is False and r[2] is False, '규칙 쪽에서도 거절하고 행동을 쓰지 않는다 [%s]' % r[1])
+    # 앞서 나온 부대라면(다음 턴부터) 바로 칠 수 있다
+    pg.evaluate('(id) => { UMAP[id].born = -1; UI.atk = allTargets(UMAP[id]); refreshSheet(); requestDraw(); }', info['id']); pg.wait_for_timeout(300)
+    taphex(pg, *info['t']); pg.wait_for_timeout(500)
+    acts = [pg.locator('#sheet [data-a=act]').nth(i).inner_text().replace('\n', ' / ') for i in range(pg.locator('#sheet [data-a=act]').count())]
+    print('acts', acts)
+    ok(len(acts) >= 1 and '공격' in acts[0] and '다음 턴' not in acts[0], '출진한 턴이 아니면 성역에 들어선 그 턴에 성을 칠 수 있다 %s' % acts[:1])
+    tapsel(pg, '#sheet [data-a=act]', 0); pg.wait_for_timeout(3200)
+    after = pg.evaluate('(tid) => [G.bases[tid].troops, G.bases[tid].dur, $("toast").textContent]', info['tid'])
+    ok(after[0] < info['troops'], '실제로 공격이 들어갔다 (복양 병력 %s → %s) [%s]' % (info['troops'], after[0], after[2]))
+    B.shot(pg, 'd7_2_attacked', 200)
+B.run(steps)
+errs = [e for e in B.errors if 'GPU stall' not in e and 'ERR_FILE_NOT_FOUND' not in e]
+ok(not errs, '콘솔 오류 없음 %s' % errs[:3])
+print('\n검사 %d개 가운데 실패 %d' % (len(fails) + sum(1 for _ in []) , len(fails)) if fails else '\n모두 합격')
+sys.exit(1 if fails else 0)

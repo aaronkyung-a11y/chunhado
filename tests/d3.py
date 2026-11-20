@@ -58,6 +58,7 @@ def steps(pg):
       var os = idleOfficers(b).sort((x, y) => aiMilScore(y) - aiMilScore(x));
       var u1 = cmdDeploy(b, {type: "spear", ids: [os[0].id], troops: 4000, food: 3000}).unit;
       var u2 = cmdDeploy(b, {type: "bow", ids: [os[1].id], troops: 4000, food: 2000}).unit;
+      u1.born = u2.born = -1;                                  // v0.8: 출진한 턴에는 거점을 칠 수 없다 → 앞서 나온 부대로 친다
       function free(n) { var t2 = terr(n[0], n[1]); return t2 !== "m" && t2 !== "w" && t2 !== "s" && t2 !== "x" && !unitAt(n[0], n[1]) && !facAt(n[0], n[1]) && !baseAt(n[0], n[1]); }
       var ns = nbrs(t.c, t.r).filter(free);
       placeUnit(u1, ns[0][0], ns[0][1]);

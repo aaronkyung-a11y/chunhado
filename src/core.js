@@ -114,6 +114,26 @@ function baseOfficers(b) {
   return out;
 }
 function idleOfficers(b) { return baseOfficers(b).filter(function (o) { return !o.acted; }); }
+/* ---------- 공사 담당 ----------
+   시설을 짓는 무장은 완공될 때까지 그 일에 묶인다: 다른 명령도 출진도 이동도 못 한다(o.acted 가 턴이 바뀌어도 풀리지 않는다).
+   o.job = { b: 거점, i: 부지 }, 시설 쪽에는 fac.by = [무장 id…], fac.t0 = 착공한 턴.
+   완공·공사 중단(철거)·파괴·함락으로 풀린다. 시설이 어떻게 없어졌든 jobOf 가 그 자리에서 알아채고 풀어 준다. */
+function jobOf(o) {
+  var j = o.job; if (!j) return null;
+  var b = G.bases[j.b], p = b && b.plots[j.i], f = p && p.fac;
+  if (!f || f.done || !f.by || f.by.indexOf(o.id) < 0 || o.st !== 'active' || o.unit !== null || o.loc !== j.b || o.f !== b.owner) { o.job = null; return null; }
+  return { b: b, i: j.i, fac: f, left: Math.max(1, Math.ceil((f.need - f.prog) / f.rate)) };
+}
+function builders(f) {                          // 지금 이 공사를 맡고 있는 무장들
+  var out = [];
+  if (f && !f.done && f.by) for (var i = 0; i < f.by.length; i++) { var o = off(f.by[i]), j = o && jobOf(o); if (j && j.fac === f) out.push(o); }
+  return out;
+}
+function freeBuilders(f, rest) {                // 담당 무장을 풀어 준다. rest = 이번 턴은 이미 일한 것으로 둔다(행동 완료 유지)
+  if (!f || !f.by) return;
+  for (var i = 0; i < f.by.length; i++) { var o = off(f.by[i]); if (o && o.job && G.bases[o.job.b] && G.bases[o.job.b].plots[o.job.i] && G.bases[o.job.b].plots[o.job.i].fac === f) { o.job = null; if (!rest) o.acted = false; } }
+  f.by = [];
+}
 function freeOfficers(b) { return G.officers.filter(function (o) { return o.st === 'free' && o.loc === b.id; }); }
 function hiddenOfficers(b) { return G.officers.filter(function (o) { return o.st === 'hidden' && o.loc === b.id && o.y <= G.year && !o.j; }); }
 function baseCaptives(b) { return b.captives.map(off); }
@@ -137,6 +157,19 @@ function cmdCap(o) {
 
 /* ---------- 부대 능력 ---------- */
 function uMembers(u) { return u.off.map(off); }
+/* 충성과 인연 */
+function bondWith(o, f) {                 // 무장 o 와 세력 f 의 군주 사이(없으면 null)
+  if (!o || f === undefined || f < 0 || !G.factions[f] || G.factions[f].lord === o.id) return null;
+  var L = off(G.factions[f].lord), m = L && BONDS[L.n];
+  return (m && m[o.n]) || null;
+}
+function bondOf(o) { return o ? bondWith(o, o.f) : null; }       // 지금 모시는 군주와의 사이
+function loyNat(o) {                      // 충성이 자리 잡는 값: 인연이 있으면 100, 아니면 사람됨(이름에서 뽑은 86~93)과 군주의 매력(-2~+6)에 따라 80~98
+  if (bondOf(o)) return 100;
+  var L = (o.f >= 0 && G.factions[o.f]) ? off(G.factions[o.f].lord) : null;
+  var h = (o.n.charCodeAt(0) * 7 + o.n.charCodeAt(o.n.length - 1) * 13) % 8;
+  return clamp(Math.round(86 + h + ((L ? L.cha : 70) - 70) / 5), 80, 98);
+}
 function uLeader(u) { return off(u.off[0]); }
 function uHas(u, sk) { for (var i = 0; i < u.off.length; i++) if (off(u.off[i]).sk === sk) return true; return false; }
 function uInt(u) { return bestOf(uMembers(u), 'int'); }
@@ -181,10 +214,13 @@ Heap.prototype.pop = function () {
   return top;
 };
 
+/* v0.8: 성역의 경계에서 멈추는 규칙을 없앴다(0.5~0.7: 경계를 넘으면 그 턴 이동 끝, 막 들어선 성역의 성은 그 턴에 못 침).
+   성역은 이름(○○ 성역)과 고리 표시로만 남는다. 급습을 막는 장치는 하나 — 출진한 그 턴에는 거점과 시설을 칠 수 없다(부대끼리는 싸울 수 있다). */
+function justOut(u) { return u.born !== undefined && u.born === G.turn; }
 /* 이번 턴 이동 가능 범위. 반환: { cost:{key:cost}, prev:{key:key}, stop:{key:true} } */
 function unitReach(u) {
   var cost = {}, prev = {}, stop = {}, start = K(u.c, u.r), h = new Heap();
-  var ignoreZoc = uHas(u, '비장'), z0 = ZONE[start];
+  var ignoreZoc = uHas(u, '비장');
   cost[start] = 0; h.push(0, start);
   while (h.a.length) {
     var top = h.pop(), d = top[0], k = top[1];
@@ -192,7 +228,6 @@ function unitReach(u) {
     var c = k % W, r = (k - c) / W;
     if (k !== start) {
       if (BAT[k] !== undefined) continue;                              // 거점에 들어가면 이동 끝
-      if (ZONE[k] !== z0) continue;                                    // 성역의 경계를 넘었으면 이동 끝
       if (!ignoreZoc && enemyAdjacent(u.f, c, r)) continue;            // ZOC: 멈춤
     }
     var ns = nbrs(c, r);
@@ -253,7 +288,6 @@ function longPath(u, goalFn, maxCost, hint) {
       var ou = UAT[nk];
       if (ou) mc += (ou.f === u.f ? 3 : 25);
       if (G.fires[nk]) mc += 6;
-      if (ZONE[nk] !== ZONE[k]) mc += ZONE_PEN;
       var nd = d + mc;
       if (LP_STAMP[nk] !== LP_GEN || nd < LP_COST[nk]) { LP_STAMP[nk] = LP_GEN; LP_COST[nk] = nd; LP_PREV[nk] = k; h.push(nd + heur(nk), nk); }
     }
@@ -326,10 +360,11 @@ function newGame(playerFaction, seed) {
       f: so.f, st: so.st || 'active', loc: baseByName(so.c), unit: null, loy: 100, merit: 0, acted: false, y: so.y || 0, j: so.j || null, capF: -1, dest: -1, eta: 0 };
     if (o.f >= 0) {
       if (SCENARIO.factions[o.f].n === o.n) { G.factions[o.f].lord = i; o.merit = 2000; }
-      else { o.loy = 78 + ((o.n.charCodeAt(0) + o.n.charCodeAt(o.n.length - 1)) % 20); o.merit = Math.max(0, (o.ldr + o.war - 120) * 20); }
+      else { o.merit = Math.max(0, (o.ldr + o.war - 120) * 20); }
     }
     G.officers.push(o);
   }
+  for (i = 0; i < G.officers.length; i++) { var lo = G.officers[i]; if (lo.f >= 0 && G.factions[lo.f].lord !== lo.id) lo.loy = loyNat(lo); }   // 군주가 정해진 뒤에 매긴다
   reindex();
   REPORT = []; EVQ = [];
   phaseStart(G.player);
@@ -375,7 +410,7 @@ function phaseStart(f) {
   for (i = 0; i < G.officers.length; i++) {
     var o = G.officers[i];
     if (o.f !== f) continue;
-    if (o.st === 'active') o.acted = false;
+    if (o.st === 'active') o.acted = !!jobOf(o);                  // 공사를 맡은 무장은 완공될 때까지 쉬지 못한다
     else if (o.st === 'travel') {
       o.eta--;
       if (o.eta <= 0) {
@@ -392,14 +427,21 @@ function phaseStart(f) {
     for (var j = 0; j < b.plots.length; j++) {
       var fc = b.plots[j].fac;
       if (fc && fc.done && fc.hp < FAC_HP && !G.fires[K(b.plots[j].c, b.plots[j].r)]) fc.hp = Math.min(FAC_HP, fc.hp + 100);
-      if (fc && !fc.done) { fc.prog += fc.rate; if (fc.prog >= fc.need) { fc.done = true; fc.hp = FAC_HP; if (f === G.player) logMsg(b.n + '에 ' + FAC[fc.t].name + ' 완공', b.plots[j].c, b.plots[j].r, f, 1); } }
+      if (fc && !fc.done) {
+        fc.prog += fc.rate;
+        if (fc.prog >= fc.need) {
+          var who = builders(fc).map(function (x) { return x.n; });
+          freeBuilders(fc, false); fc.done = true; fc.hp = FAC_HP;
+          if (f === G.player) logMsg(b.n + '에 ' + FAC[fc.t].name + ' 완공' + (who.length ? ' — ' + who.join('·') + ' 복귀' : ''), b.plots[j].c, b.plots[j].r, f, 1);
+        }
+      }
     }
   }
   var us = facUnits(f);
   for (i = 0; i < us.length; i++) {
     var u = us[i];
     if (!UMAP[u.id]) continue;
-    u.mp = uMaxMp(u); u.done = false; u.moved = false; u.ox = -1; u.zin = -1;
+    u.mp = uMaxMp(u); u.done = false; u.moved = false; u.ox = -1;
     // 군량
     var need = Math.ceil(u.troops / (uHas(u, '둔전') ? 40 : 20));
     if (u.food >= need) u.food -= need;
@@ -470,7 +512,10 @@ function roundEnd() {
     for (i = 0; i < G.officers.length; i++) {
       var o = G.officers[i];
       if (o.st !== 'active' || o.f < 0 || isLord(o)) continue;
-      if (o.loy > 60 && chance(30)) o.loy--;
+      var nat = loyNat(o);
+      if (nat >= 100) o.loy = 100;                                       // 인연: 내려가지 않는다
+      else if (o.loy > nat) { if (chance(30)) o.loy--; }                 // 포상으로 올린 몫은 천천히 빠진다
+      else if (o.loy < nat) o.loy = Math.min(nat, o.loy + 2);            // 새로 온 무장은 분기마다 2씩 자리를 잡는다
       if (o.loy < 50 && o.unit === null && chance(8)) {
         logMsg(josa(o.n, '이가') + ' ' + facName(o.f) + ' 진영을 떠났다', G.bases[o.loc].c, G.bases[o.loc].r, o.f, 1);
         o.f = -1; o.st = 'free'; o.loc = cityOf(o.loc);
@@ -485,7 +530,7 @@ function roundEnd() {
       for (var q = 0; q < G.factions.length; q++) if (G.factions[q].alive && G.factions[q].name === h.j) lf = q;
       if (lf >= 0) {
         var L = off(G.factions[lf].lord), lb = (L.unit === null) ? G.bases[L.loc] : nearestOwnBase(lf, UMAP[L.unit].c, UMAP[L.unit].r);
-        if (lb && lb.owner === lf) { h.st = 'active'; h.f = lf; h.loc = lb.id; h.loy = 95; h.j = null; logMsg(josa(h.n, '이가') + ' 장성하여 ' + facName(lf) + ' 진영에 가담', lb.c, lb.r, lf, 1); continue; }
+        if (lb && lb.owner === lf) { h.st = 'active'; h.f = lf; h.loc = lb.id; h.loy = 95; h.j = null; if (bondOf(h)) h.loy = 100; logMsg(josa(h.n, '이가') + ' 장성하여 ' + facName(lf) + ' 진영에 가담', lb.c, lb.r, lf, 1); continue; }
       }
       h.j = null;
     }
@@ -648,6 +693,7 @@ function enterBase(u, b) {
 }
 function captureBase(b, u) {
   var old = b.owner, i;
+  for (i = 0; i < b.plots.length; i++) { var uf = b.plots[i].fac; if (uf && !uf.done) { freeBuilders(uf, true); b.plots[i].fac = null; } }   // 짓다 만 시설은 버려진다
   if (old >= 0) {
     var os = baseOfficers(b), otherBases = facBases(old).length > 1;
     for (i = 0; i < os.length; i++) {
@@ -698,7 +744,8 @@ function cmdDevelop(b, pi, type, ids) {
   b.gold -= F.cost; useAP(b.owner, AP.develop);
   var rate = 60 + Math.round((bestOf(os, 'pol') + sumOthers(os, 'pol') * 0.5) * 0.6);
   if (anyHas(os, '축성')) rate *= 2;
-  p.fac = { t: type, lv: 1, done: false, prog: 0, need: F.build, rate: rate, hp: 300 };
+  p.fac = { t: type, lv: 1, done: false, prog: 0, need: F.build, rate: rate, hp: 300, by: os.map(function (o) { return o.id; }), t0: G.turn };
+  for (var i = 0; i < os.length; i++) os[i].job = { b: b.id, i: pi };
   markActed(os, 30);
   return { ok: true, turns: Math.ceil(F.build / rate) };
 }
@@ -712,7 +759,7 @@ function mergeCandidates(b, pi) {
 function cmdMerge(b, pi, pj, ids) {
   var cands = mergeCandidates(b, pi);
   if (cands.indexOf(pj) < 0) return ERR('흡수할 수 있는 같은 종류의 인접 시설이 없습니다');
-  var f = b.plots[pi].fac, cost = 150 * f.lv;
+  var f = b.plots[pi].fac, cost = COST.merge * f.lv;
   var os = getIdle(b, ids); if (!os || os.length !== 1) return ERR('담당 무장을 고르세요');
   if (b.gold < cost) return ERR('금이 부족합니다 (' + cost + ' 필요)');
   if (!needAP(b.owner, AP.merge)) return ERR('행동력이 부족합니다');
@@ -721,7 +768,13 @@ function cmdMerge(b, pi, pj, ids) {
   markActed(os, 30);
   return { ok: true, lv: f.lv };
 }
-function cmdDemolish(b, pi) { if (!b.plots[pi] || !b.plots[pi].fac) return ERR('시설이 없습니다'); b.plots[pi].fac = null; return { ok: true }; }
+function cmdDemolish(b, pi) {
+  if (!b.plots[pi] || !b.plots[pi].fac) return ERR('시설이 없습니다');
+  var f = b.plots[pi].fac, freed = builders(f).map(function (o) { return o.id; });
+  if (!f.done) freeBuilders(f, f.t0 === G.turn);
+  b.plots[pi].fac = null;
+  return { ok: true, freed: freed };
+}
 
 function draftAmount(b, os) {
   var lv = bestFacLv(b, 'barracks');
@@ -733,11 +786,11 @@ function cmdDraft(b, ids) {
   if (b.kind !== 'city') return ERR('도시에서만 가능합니다');
   if (!hasFac(b, 'barracks')) return ERR('병영이 필요합니다');
   var os = getIdle(b, ids); if (!os || !os.length || os.length > 3) return ERR('담당 무장을 고르세요');
-  if (b.gold < 300) return ERR('금이 부족합니다 (300 필요)');
+  if (b.gold < COST.draft) return ERR('금이 부족합니다 (' + COST.draft + ' 필요)');
   if (b.order < 20) return ERR('치안이 너무 낮습니다');
   if (!needAP(b.owner, AP.draft)) return ERR('행동력이 부족합니다');
   var n = draftAmount(b, os);
-  b.gold -= 300; useAP(b.owner, AP.draft);
+  b.gold -= COST.draft; useAP(b.owner, AP.draft);
   b.morale = Math.round((b.troops * b.morale + n * 35) / Math.max(1, b.troops + n));
   b.troops += n;
   b.order = Math.max(0, b.order - (anyHas(os, '인덕') ? 5 : 10));
@@ -747,12 +800,12 @@ function cmdDraft(b, ids) {
 function cmdPatrol(b, ids) {
   if (b.kind !== 'city') return ERR('도시에서만 가능합니다');
   var os = getIdle(b, ids); if (!os || !os.length || os.length > 3) return ERR('담당 무장을 고르세요');
-  if (b.gold < 100) return ERR('금이 부족합니다 (100 필요)');
+  if (b.gold < COST.patrol) return ERR('금이 부족합니다 (' + COST.patrol + ' 필요)');
   if (!needAP(b.owner, AP.patrol)) return ERR('행동력이 부족합니다');
   var best = Math.max(bestOf(os, 'war'), bestOf(os, 'ldr'));
   var v = Math.round(5 + best / 9 + (os.length - 1) * 2);
   if (anyHas(os, '위압')) v *= 2;
-  b.gold -= 100; useAP(b.owner, AP.patrol);
+  b.gold -= COST.patrol; useAP(b.owner, AP.patrol);
   var before = b.order; b.order = Math.min(100, b.order + v);
   markActed(os, 20);
   return { ok: true, n: b.order - before };
@@ -778,7 +831,7 @@ function cmdProduce(b, kind, ids) {
   var os = getIdle(b, ids); if (!os || !os.length || os.length > 3) return ERR('담당 무장을 고르세요');
   var need = kind === 'ram' ? 'workshop' : (kind === 'horse' ? 'stable' : 'smithy');
   if (!hasFac(b, need)) return ERR(josa(FAC[need].name, '이가') + ' 필요합니다');
-  var cost = kind === 'ram' ? (anyHas(os, '발명') ? 300 : 600) : 300;
+  var cost = kind === 'ram' ? (anyHas(os, '발명') ? COST.ramInv : COST.ram) : COST.produce;
   if (b.gold < cost) return ERR('금이 부족합니다 (' + cost + ' 필요)');
   if (!needAP(b.owner, AP.produce)) return ERR('행동력이 부족합니다');
   b.gold -= cost; useAP(b.owner, AP.produce);
@@ -817,8 +870,11 @@ function recruitChance(b, o, t) {
   var L = off(G.factions[b.owner].lord);
   p += (L.cha - 70) * 0.4;
   if (o.sk === '논객') p += 20;
+  if (bondWith(t, b.owner)) p += 30;                                    // 내 군주와 인연이 있는 사람
   if (t.st === 'captive') { p -= 15; if (t.f >= 0 && G.factions[t.f].alive) p -= (t.loy - 60) * 0.8; }
-  return clamp(Math.round(p), 3, 95);
+  p = clamp(Math.round(p), 3, 95);
+  if (t.st === 'captive' && t.f >= 0 && G.factions[t.f].alive && bondOf(t)) p = Math.min(p, 5);   // 주군과 인연이 있는 포로는 주군의 세력이 살아 있는 한 거의 응하지 않는다
+  return p;
 }
 function cmdRecruit(b, id, tid) {
   var os = getIdle(b, [id]); if (!os) return ERR('담당 무장을 고르세요');
@@ -829,7 +885,7 @@ function cmdRecruit(b, id, tid) {
   var o = os[0]; markActed(os, 15);
   if (chance(recruitChance(b, o, t))) {
     if (t.st === 'captive') { var i = b.captives.indexOf(t.id); if (i >= 0) b.captives.splice(i, 1); }
-    t.st = 'active'; t.f = b.owner; t.capF = -1; t.unit = null; t.acted = true; t.loy = 70 + ri(0, 15); t.merit = Math.round(t.merit * 0.5);
+    t.st = 'active'; t.f = b.owner; t.capF = -1; t.unit = null; t.acted = true; t.loy = 70 + ri(0, 15); t.merit = Math.round(t.merit * 0.5); if (bondOf(t)) t.loy = 100;
     o.merit += 60;
     return { ok: true, joined: true };
   }
@@ -838,10 +894,10 @@ function cmdRecruit(b, id, tid) {
 function cmdReward(b, tid) {
   var t = off(tid);
   if (!t || t.f !== b.owner || t.st !== 'active' || t.loc !== b.id) return ERR('대상이 없습니다');
-  if (b.gold < 100) return ERR('금이 부족합니다 (100 필요)');
+  if (b.gold < COST.reward) return ERR('금이 부족합니다 (' + COST.reward + ' 필요)');
   if (!needAP(b.owner, AP.reward)) return ERR('행동력이 부족합니다');
   if (t.loy >= 100) return ERR('이미 충성도가 최고입니다');
-  b.gold -= 100; useAP(b.owner, AP.reward);
+  b.gold -= COST.reward; useAP(b.owner, AP.reward);
   var before = t.loy; t.loy = Math.min(100, t.loy + ri(8, 12));
   return { ok: true, n: t.loy - before };
 }
@@ -902,7 +958,7 @@ function cmdDeploy(b, spec) {
   if (T.weapon === 'ram') b.w.ram -= 1; else if (T.weapon) b.w[T.weapon] -= troops;
   if (cargo) for (k in cargo) b.w[k] -= cargo[k];
   var u = { id: G.nextUnit++, f: b.owner, c: spot[0], r: spot[1], type: spec.type, off: os.map(function (o) { return o.id; }), troops: troops, max: troops,
-    morale: b.morale, food: food, gold: gold, cargo: cargo, status: null, stT: 0, done: false, moved: false, mp: 0, home: b.id, ox: -1, oy: -1, omp: 0, ozin: -1, zin: -1, ai: null, dest: -1 };
+    morale: b.morale, food: food, gold: gold, cargo: cargo, status: null, stT: 0, done: false, moved: false, mp: 0, home: b.id, ox: -1, oy: -1, omp: 0, born: G.turn, ai: null, dest: -1 };
   for (var i = 0; i < os.length; i++) { os[i].unit = u.id; os[i].acted = true; }
   u.mp = uMaxMp(u);
   if (spec.dest !== undefined && spec.dest >= 0) u.dest = spec.dest;
@@ -920,7 +976,7 @@ function unitMove(u, c, r, rc) {
   var path = pathFromReach(rc, u, c, r);
   if (!path) return ERR('경로가 없습니다');
   var from = [u.c, u.r];
-  u.ox = u.c; u.oy = u.r; u.omp = u.mp; u.ozin = (u.zin === undefined ? -1 : u.zin);
+  u.ox = u.c; u.oy = u.r; u.omp = u.mp;
   var b = baseAt(c, r);
   if (b) {
     u.mp = 0; u.moved = true;
@@ -931,7 +987,6 @@ function unitMove(u, c, r, rc) {
   }
   placeUnit(u, c, r);
   u.mp = Math.max(0, u.mp - rc.cost[k]);
-  if (ZONE[k] !== ZONE[K(from[0], from[1])]) { u.mp = 0; u.zin = ZONE[k]; }   // 성역의 경계를 넘었으면 이번 턴 이동은 여기까지. 막 들어선 성역의 성은 이번 턴에 칠 수 없다(zin)
   u.moved = true;
   var res = { ok: true, path: path, from: from };
   ev({ t: 'move', id: u.id, f: u.f, n: uName(u), from: from, path: path, c: c, r: r });
@@ -941,7 +996,7 @@ function unitMove(u, c, r, rc) {
 function unitUndoMove(u) {
   if (u.done || u.ox < 0 || !UMAP[u.id]) return false;
   if (UAT[K(u.ox, u.oy)]) return false;
-  placeUnit(u, u.ox, u.oy); u.mp = u.omp; u.zin = (u.ozin === undefined ? -1 : u.ozin); u.moved = false; u.ox = -1;
+  placeUnit(u, u.ox, u.oy); u.mp = u.omp; u.moved = false; u.ox = -1;
   return true;
 }
 function unitWait(u) { u.done = true; u.ox = -1; return { ok: true }; }
@@ -960,12 +1015,11 @@ function autoRetreat(u) {
 /* ---------- 행군(목적지 지정 이동) ---------- */
 function marchPath(u, gk) { var gc = gk % W; return longPath(u, function (k) { return k === gk; }, 3000, [gc, (gk - gc) / W, 0]); }
 function marchTurns(u, path) {
-  var full = uMaxMp(u), left = u.done ? 0 : u.mp, turns = 1, z = ZONE[K(u.c, u.r)], halt = false;
+  var full = uMaxMp(u), left = u.done ? 0 : u.mp, turns = 1;
   for (var i = 0; i < path.length; i++) {
     var c = path[i] % W, mc = moveCost(u, c, (path[i] - c) / W);
-    if (halt || mc > left) { turns++; left = full; halt = false; }
+    if (mc > left) { turns++; left = full; }
     left -= mc;
-    if (ZONE[path[i]] !== z) { z = ZONE[path[i]]; halt = true; }       // 성역의 경계를 넘으면 그 턴은 거기까지
   }
   return turns;
 }
@@ -1145,18 +1199,17 @@ function attackTargets(u) {
     var k = K(c, r), ou = UAT[k];
     if (ou && ou.f !== u.f) { out.push({ kind: 'unit', u: ou, c: c, r: r, d: d }); continue; }
     var bi = BAT[k];
-    if (bi !== undefined) { var b = G.bases[bi]; if (b.owner >= 0 && b.owner !== u.f && u.zin !== b.id) out.push({ kind: 'base', b: b, c: c, r: r, d: d }); continue; }
+    if (bi !== undefined) { var b = G.bases[bi]; if (b.owner >= 0 && b.owner !== u.f && !justOut(u)) out.push({ kind: 'base', b: b, c: c, r: r, d: d }); continue; }
     var pf = PAT[k];
-    if (pf) { var pb = G.bases[pf.b], fc = pb.plots[pf.i].fac; if (fc && pb.owner >= 0 && pb.owner !== u.f && d === 1) out.push({ kind: 'fac', b: pb, i: pf.i, c: c, r: r, d: d }); }
+    if (pf) { var pb = G.bases[pf.b], fc = pb.plots[pf.i].fac; if (fc && pb.owner >= 0 && pb.owner !== u.f && d === 1 && !justOut(u)) out.push({ kind: 'fac', b: pb, i: pf.i, c: c, r: r, d: d }); }
   }
   return out;
 }
 function critNormal(a, d) { return (uHas(a, '비장') || uHas(a, '용장') || uHas(a, '신장')) && uWar(a) > uWar(d); }
 
-function zoneFresh(u, b) { return !!b && u.zin !== undefined && u.zin >= 0 && u.zin === b.id; }   // 이번 턴에 이 성의 성역에 막 들어섰는가
 function unitAttack0(u, t) {
   if (u.done) return ERR('이미 행동을 마쳤습니다');
-  if (t.kind === 'base' && zoneFresh(u, t.b)) return ERR('성역에 막 들어선 부대는 이번 턴에 성을 칠 수 없습니다');
+  if ((t.kind === 'base' || t.kind === 'fac') && justOut(u)) return ERR('출진한 턴에는 거점과 시설을 칠 수 없습니다');
   var res = { ok: true, kind: t.kind, c: t.c, r: t.r, ac: u.c, ar: u.r };
   u.done = true; u.ox = -1;
   if (t.kind === 'unit') {
@@ -1230,18 +1283,36 @@ function tacticCrit(u, d) {
   if (u.type === 'cav') { if (uHas(u, '기신')) return 1.43; if (uHas(u, '기장')) return 1.3; }
   return 0;
 }
-/* 전법의 성공·대성공 확률(%). 대성공은 성공 안에 들어 있다(성공 80·대성공 15 → 실패 20, 보통 성공 65, 대성공 15).
-   - 성공: 병과 적성 + 무력
-   - 대성공: 병과 적성 + 무력 + (내 무력 − 상대 통솔). 특기(창장·기장·신장…)가 맞으면 반드시 대성공 */
+/* 전법의 성공·대성공 확률(%) — v0.8: 상대와 병력까지 본다. 대성공은 성공 안에 들어 있다.
+   성공 = 적성(TACTIC_RATE)
+        + 무장: (내 부대 최고 무력×0.6 + 내 주장 통솔×0.4 − 적 부대 최고 통솔) × 0.6      [−24 ~ +12]
+        + 병력: log2(내 병력 ÷ 적 병력) × 8                                              [−16 ~ +8]   (절반이면 −8, 두 배면 +8)
+        + 적의 병과 적성: C +3 · B 0 · A −3 · S −6
+        + 적이 선 곳: 숲·구릉 −5, 강 +5   + 적이 혼란 중 +10   + 맞는 특기(창장·기장·신장…) +5
+        → 10 ~ 95
+   대성공 = 적성 + 무력 + (내 무력 − 상대 통솔). 맞는 특기가 있으면 성공한 전법은 모두 대성공 */
 var TACTIC_CRIT = { C: 4, B: 8, A: 12, S: 18 };
 function uLdr(u) { return bestOf(uMembers(u), 'ldr'); }
-function tacticOdds(u, d) {
-  var forced = tacticCrit(u, d);
-  if (forced) return { ok: 100, crit: 100, mult: forced, sure: true };
-  var w = uWar(u), ok = Math.round(TACTIC_RATE[uApt(u)] + clamp((w - 70) / 3, -5, 8));
-  var cr = Math.round(clamp(TACTIC_CRIT[uApt(u)] + clamp((w - 70) * 0.5, -4, 15) + clamp((w - uLdr(d)) * 0.15, -6, 6), 2, 45));
-  return { ok: ok, crit: Math.min(cr, ok), mult: 1.3, sure: false };
+function tacticParts(u, d) {
+  var pow = uWar(u) * 0.6 + uLeader(u).ldr * 0.4, td = terr(d.c, d.r);
+  return { apt: TACTIC_RATE[uApt(u)],
+    stat: Math.round(clamp((pow - uLdr(d)) * 0.6, -24, 12)),
+    troops: Math.round(clamp(Math.log(Math.max(1, u.troops) / Math.max(1, d.troops)) / Math.LN2 * 8, -16, 8)),
+    dapt: -3 * (APT_RANK[uApt(d)] - 1),
+    terr: (td === 'f' || td === 'h') ? -5 : (td === 'w' ? 5 : 0),
+    conf: d.status === 'confuse' ? 10 : 0,
+    skill: tacticCrit(u, d) ? 5 : 0 };
 }
+function tacticOdds(u, d) {
+  var forced = tacticCrit(u, d), P = tacticParts(u, d);
+  var ok = Math.round(clamp(P.apt + P.stat + P.troops + P.dapt + P.terr + P.conf + P.skill, 10, 95));
+  if (forced) return { ok: ok, crit: ok, mult: forced, sure: true, parts: P };
+  var w = uWar(u);
+  var cr = Math.round(clamp(TACTIC_CRIT[uApt(u)] + clamp((w - 70) * 0.5, -4, 15) + clamp((w - uLdr(d)) * 0.15, -6, 6), 2, 45));
+  return { ok: ok, crit: Math.min(cr, ok), mult: 1.3, sure: false, parts: P };
+}
+/* 전법 피해에 얹는 병력 비: 큰 부대를 작은 부대가 전법 한 번으로 무너뜨리지 못한다(¼ 병력이면 ×0.75, 두 배 넘어도 ×1.1 까지) */
+function tacticSizeK(u, d) { return clamp(Math.pow(Math.max(1, u.troops) / Math.max(1, d.troops), 0.25), 0.75, 1.1); }
 /* 대성공이면 전법의 효과 자체가 세진다(TACTICS 의 great 가 덮어쓴다) */
 function tacticEff(tac, crit) {
   if (!crit || !tac.great) return tac;
@@ -1283,19 +1354,22 @@ function unitTactic0(u, tac, t) {
   var d = t.u, ranged = hdist(u.c, u.r, d.c, d.r) > 1;
   var res = { ok: true, kind: 'tactic', tac: tac.name, c: d.c, r: d.r, ac: u.c, ar: u.r, tname: uName(d), extra: [] };
   u.done = true; u.ox = -1; u.morale -= tac.cost;
-  var od = tacticOdds(u, d), roll = od.sure ? 0 : rnd() * 100;
+  var od = tacticOdds(u, d), roll = rnd() * 100;
   res.pOk = od.ok; res.pCrit = od.crit;
-  if (roll >= od.ok) {
+  if (roll >= od.ok) {                                         // 실패: 피해는 보통 공격의 절반, 반격은 보통 공격보다 크게 받는다(원거리는 노병에게만)
     res.fail = true;
-    var fdm = defMods(d, dmgUU(u, d, 0.6, ranged), 'normal');
+    var fdm = defMods(d, dmgUU(u, d, TACTIC_K.failDmg, ranged), 'normal');
     res.dmg = fdm; res.killed = hurtUnit(d, fdm, u.f, u);
-    if (!res.killed && !ranged && d.status !== 'confuse') { var fc = defMods(u, dmgUU(d, u, 0.4, false), 'normal'); res.counter = fc; if (hurtUnit(u, fc, d.f, d)) res.selfDead = true; }
+    if (!res.killed && d.status !== 'confuse' && d.status !== 'rumor' && (!ranged || d.type === 'bow')) {
+      var fc = defMods(u, dmgUU(d, u, ranged ? 0.4 : (d.type === 'bow' ? TACTIC_K.failCounter * 0.6 : TACTIC_K.failCounter), ranged), 'normal');
+      res.counter = fc; if (hurtUnit(u, fc, d.f, d)) res.selfDead = true;
+    }
     return res;
   }
   var crit = roll < od.crit ? od.mult : 0, e = tacticEff(tac, !!crit);      // e = 이번에 적용되는 효과(대성공이면 강화된 것)
   res.crit = !!crit;
   var cm = crit || 1;
-  var dmg = defMods(d, dmgUU(u, d, tac.mult * cm, ranged), 'tactic');
+  var dmg = defMods(d, dmgUU(u, d, tac.mult * cm * tacticSizeK(u, d), ranged), 'tactic');
   var oc = d.c, or_ = d.r, dx = cubeX(d.c, d.r) - cubeX(u.c, u.r), dz = d.r - u.r;
   // 부가 대상(먼저 목록을 잡아 둔다)
   var others = [], i, ns, q;
@@ -1332,7 +1406,7 @@ function unitTactic0(u, tac, t) {
   for (i = 0; i < others.length; i++) {
     var o2 = others[i][0];
     if (!alive(o2) || !alive(u)) continue;
-    var od = defMods(o2, dmgUU(u, o2, tac.mult * cm * others[i][1], hdist(u.c, u.r, o2.c, o2.r) > 1), 'tactic');
+    var od = defMods(o2, dmgUU(u, o2, tac.mult * cm * others[i][1] * tacticSizeK(u, o2), hdist(u.c, u.r, o2.c, o2.r) > 1), 'tactic');
     var ex = { c: o2.c, r: o2.r, dmg: od };
     res.extra.push(ex);
     var dead2 = hurtUnit(o2, od, u.f, u); afterHit(u, o2, od);
@@ -1340,7 +1414,7 @@ function unitTactic0(u, tac, t) {
   }
   res.uc = u.c; res.ur = u.r;
   if (!dead && !tac.noCounter && !ranged && alive(u) && d.status !== 'confuse' && d.status !== 'rumor' && hdist(u.c, u.r, d.c, d.r) === 1) {
-    var cd = defMods(u, dmgUU(d, u, 0.25, false), 'normal');
+    var cd = defMods(u, dmgUU(d, u, d.type === 'bow' ? TACTIC_K.okCounter * 0.6 : TACTIC_K.okCounter, false), 'normal');
     res.counter = cd;
     if (hurtUnit(u, cd, d.f, d)) res.selfDead = true;
   }
@@ -1452,6 +1526,13 @@ function deserialize(s) {
   for (var i = 0; i < g.officers.length; i++) { var so = SCENARIO.officers[i]; if (so && so.n === g.officers[i].n) g.officers[i].por = so.por; }
   // 세력 색도 지금 판의 색(석채 빛)을 따른다
   for (var j = 0; j < g.factions.length; j++) { var sf = SCENARIO.factions[j]; if (sf && sf.n === g.factions[j].name) g.factions[j].color = sf.color; }
+  // v0.8: 부지가 늘었다(6·8·10 → 10·13·16). 옛 저장에는 앞쪽 부지만 있으므로 뒤에 덧붙인다(앞쪽은 자리·순서가 그대로다)
+  for (var bi = 0; bi < g.bases.length; bi++) {
+    var gb = g.bases[bi], mb = MAPDATA.bases[bi], pl = (mb && mb.n === gb.n && MAPDATA.plots[gb.n]) || [];
+    if (!gb.plots) gb.plots = [];
+    for (var pj = gb.plots.length; pj < pl.length; pj++) gb.plots.push({ c: pl[pj][0], r: pl[pj][1], fac: null });
+  }
   G = g; reindex(); REPORT = []; EVQ = [];
+  for (var oi = 0; oi < G.officers.length; oi++) { var go = G.officers[oi]; if (go.f >= 0 && go.st !== 'hidden' && bondOf(go)) go.loy = 100; }   // v0.8: 인연이 있는 무장
   return true;
 }

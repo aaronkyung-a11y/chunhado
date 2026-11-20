@@ -1,5 +1,5 @@
 /* ===== 천하도 — 정적 데이터 ===== */
-var GAME_VERSION = 'v0.7';
+var GAME_VERSION = 'v0.8';
 var SAVE_KEY = 'chunhado_save_v2';
 
 var UNIT_TYPES = {
@@ -9,7 +9,7 @@ var UNIT_TYPES = {
   bow:     { name: '노병', g: '노', cls: 'foot',  mp: 12, atk: 0.95, def: 0.80, range: 2, weapon: 'bow',     siege: 0.5, vsBase: 0.9 },
   cav:     { name: '기병', g: '기', cls: 'horse', mp: 16, atk: 1.10, def: 0.90, range: 1, weapon: 'horse',   siege: 0.6, vsBase: 0.7 },
   ram:     { name: '충차', g: '차', cls: 'siege', mp: 9,  atk: 0.40, def: 0.70, range: 1, weapon: 'ram',     siege: 4.0, vsBase: 0.3 },
-  trans:   { name: '수송대', g: '수', cls: 'trans', mp: 14, atk: 0.30, def: 0.50, range: 1, weapon: null,    siege: 0.2, vsBase: 0.2 }
+  trans:   { name: '수송대', g: '수', cls: 'trans', mp: 18, atk: 0.30, def: 0.50, range: 1, weapon: null,    siege: 0.2, vsBase: 0.2 }
 };
 var COMBAT_TYPES = ['sword', 'spear', 'halberd', 'bow', 'cav', 'ram'];
 var APT_IDX = { spear: 0, halberd: 1, bow: 2, cav: 3, ram: 4 };
@@ -28,31 +28,35 @@ var VS_TYPE = { bow: 1.1, sword: 1.1, trans: 1.5, ram: 1.3 };   // 근접으로 
 /* 이동 비용 [foot, horse, siege] */
 var MOVE_COST = { p: [3, 3, 4], f: [5, 7, 8], h: [5, 6, 8], d: [4, 4, 5] };
 var ROAD_COST = [2, 2, 3];
-/* 성역: 성 둘레 이만큼의 칸. 경계를 넘으면 그 턴 이동 끝(행군 최소 30일의 근거). ZONE_PEN 은 길 찾기에서 경계를 넘는 걸음에 얹는 값 */
-var ZONE_R = 2, ZONE_PEN = 8;
+/* 성역: 성 둘레 이만큼의 칸. v0.8부터 이동을 막지 않는다 — 이름(○○ 성역)과 고리 표시, 긴장한 음악의 기준으로만 쓴다 */
+var ZONE_R = 2;
 var TERRAIN_NAME = { p: '평지', f: '숲', h: '구릉', d: '황무지', w: '강', m: '산', s: '바다', x: '변경' };
 var TERRAIN_DESC = {
   p: '이동이 쉽다.', f: '이동이 느리다. 방어 유리(피해 -15%). 기병 전법 불가.', h: '이동이 느리다. 방어 유리(피해 -15%).',
   d: '조금 느리다.', w: '건너는 데 이동력이 많이 든다. 물 위에서는 공격 -30%, 받는 피해 +20%.', m: '지나갈 수 없다.', s: '지나갈 수 없다.', x: '지나갈 수 없다.'
 };
 
+/* 수입과 비용 — v0.8: 수입은 약 2배, 비용은 약 2/3 로. 부지가 1.6배로 늘었으므로(6·8·10 → 10·13·16) 올린 몫은 주로 성의 기본 수입에 두었다(시장·농장 한 곳의 수입은 1.2배).
+   (v0.7: 성 기본 금 L300 M220 S150 · 시장 150/250/370 · 성 기본 병량 L1500 M1000 S700 · 농장 1500/2500/3600 ·
+          징병 300 · 순찰 100 · 생산 300 · 충차 600(발명 300) · 포상 100 · 합병 150×레벨 · 시설 200~400) */
+var MARKET_INC = [0, 180, 300, 440];
+var FARM_INC = [0, 1800, 3000, 4400];
+var LV_MUL = [0, 1.0, 1.3, 1.6];
+var BASE_GOLD = { L: 700, M: 520, S: 360 };
+var BASE_FOOD = { L: 4000, M: 2900, S: 2000 };
+var COST = { draft: 200, patrol: 60, produce: 200, ram: 400, ramInv: 200, reward: 60, merge: 100 };   // merge 는 레벨마다
 /* 시설 */
 var FAC = {
-  market:   { name: '시장',   g: '시', color: '#c9972b', cost: 200, build: 300, desc: '매월 금 수입 +150 (Lv2 250, Lv3 370)' },
-  farm:     { name: '농장',   g: '농', color: '#6a9a3b', cost: 200, build: 300, desc: '분기마다 병량 +1500 (Lv2 2500, Lv3 3600)' },
-  barracks: { name: '병영',   g: '병', color: '#a04a3a', cost: 300, build: 400, desc: '징병 가능. 레벨이 오르면 징병량 증가' },
-  smithy:   { name: '대장간', g: '야', color: '#5d6d7e', cost: 300, build: 400, desc: '창·극·노 생산. 레벨이 오르면 생산량 증가' },
-  stable:   { name: '마구간', g: '마', color: '#8e6b3e', cost: 300, build: 400, desc: '군마 생산' },
-  workshop: { name: '공방',   g: '공', color: '#6c5b7b', cost: 400, build: 500, desc: '충차 생산' },
-  mint:     { name: '조폐',   g: '폐', color: '#d4b04a', cost: 300, build: 400, desc: '인접한 시장의 수입 +50%' },
-  granary:  { name: '곡창',   g: '곡', color: '#9bb04a', cost: 300, build: 400, desc: '인접한 농장의 수입 +50%' }
+  market:   { name: '시장',   g: '시', color: '#c9972b', cost: 140, build: 300, desc: '매월 금 수입 +' + MARKET_INC[1] + ' (Lv2 ' + MARKET_INC[2] + ', Lv3 ' + MARKET_INC[3] + ')' },
+  farm:     { name: '농장',   g: '농', color: '#6a9a3b', cost: 140, build: 300, desc: '분기마다 병량 +' + FARM_INC[1] + ' (Lv2 ' + FARM_INC[2] + ', Lv3 ' + FARM_INC[3] + ')' },
+  barracks: { name: '병영',   g: '병', color: '#a04a3a', cost: 200, build: 400, desc: '징병 가능. 레벨이 오르면 징병량 증가' },
+  smithy:   { name: '대장간', g: '야', color: '#5d6d7e', cost: 200, build: 400, desc: '창·극·노 생산. 레벨이 오르면 생산량 증가' },
+  stable:   { name: '마구간', g: '마', color: '#8e6b3e', cost: 200, build: 400, desc: '군마 생산' },
+  workshop: { name: '공방',   g: '공', color: '#6c5b7b', cost: 270, build: 500, desc: '충차 생산' },
+  mint:     { name: '조폐',   g: '폐', color: '#d4b04a', cost: 200, build: 400, desc: '인접한 시장의 수입 +50%' },
+  granary:  { name: '곡창',   g: '곡', color: '#9bb04a', cost: 200, build: 400, desc: '인접한 농장의 수입 +50%' }
 };
 var FAC_ORDER = ['market', 'farm', 'barracks', 'smithy', 'stable', 'workshop', 'mint', 'granary'];
-var MARKET_INC = [0, 150, 250, 370];
-var FARM_INC = [0, 1500, 2500, 3600];
-var LV_MUL = [0, 1.0, 1.3, 1.6];
-var BASE_GOLD = { L: 300, M: 220, S: 150 };
-var BASE_FOOD = { L: 1500, M: 1000, S: 700 };
 var MAX_DUR = { L: 3000, M: 2400, S: 1800, G: 2200 };
 var FAC_HP = 800;
 
@@ -61,29 +65,31 @@ var AP = { develop: 20, merge: 20, draft: 20, patrol: 15, train: 15, produce: 20
 
 /* 전법 */
 var TACTICS = {
-  /* great = 대성공일 때 덮어쓰는 효과. fx·gfx = 창에 보여 주는 풀이(성공일 때 / 대성공일 때 더해지는 것) */
+  /* v0.8: 피해 배수를 약 13% 내렸다(v0.7: 돌출 1.35 나선첨 1.5 이단첨 1.8 / 갈퀴 1.35 횡치 1.25 선풍 1.15 / 화시 1.2 관시 1.45 난사 1.15 / 돌격 1.45 돌파 1.5 돌진 1.85).
+     great = 대성공일 때 덮어쓰는 효과. fx·gfx = 창에 보여 주는 풀이(성공일 때 / 대성공일 때 더해지는 것) */
   spear: [
-    { id: 'dolchul', name: '돌출', cost: 10, mult: 1.35, push: 1, need: 'C', great: { push: 2 }, fx: '적을 한 칸 밀어낸다. 뒤가 막혀 있으면 피해 +20%', gfx: '두 칸 밀어낸다', desc: '적을 한 칸 밀어낸다. 뒤가 막혀 있으면 추가 피해. 대성공이면 두 칸.' },
-    { id: 'naseon',  name: '나선첨', cost: 15, mult: 1.5, confuse: 0.35, need: 'B', great: { confuse: 1 }, fx: '적을 혼란에 빠뜨린다(1턴)', gfx: '반드시 혼란', desc: '적을 혼란에 빠뜨린다(기본 35%, 상대의 지력·통솔이 높으면 낮아진다). 대성공이면 반드시.' },
-    { id: 'idan',    name: '이단첨', cost: 20, mult: 1.8, moraleDmg: 15, need: 'A', great: { moraleDmg: 30 }, fx: '적 기력 -15', gfx: '적 기력 -30', desc: '큰 피해를 주고 적 기력을 15 깎는다. 대성공이면 30.' }
+    { id: 'dolchul', name: '돌출', cost: 10, mult: 1.25, push: 1, need: 'C', great: { push: 2 }, fx: '적을 한 칸 밀어낸다. 뒤가 막혀 있으면 피해 +20%', gfx: '두 칸 밀어낸다', desc: '적을 한 칸 밀어낸다. 뒤가 막혀 있으면 추가 피해. 대성공이면 두 칸.' },
+    { id: 'naseon',  name: '나선첨', cost: 15, mult: 1.35, confuse: 0.35, need: 'B', great: { confuse: 1 }, fx: '적을 혼란에 빠뜨린다(1턴)', gfx: '반드시 혼란', desc: '적을 혼란에 빠뜨린다(기본 35%, 상대의 지력·통솔이 높으면 낮아진다). 대성공이면 반드시.' },
+    { id: 'idan',    name: '이단첨', cost: 20, mult: 1.55, moraleDmg: 15, need: 'A', great: { moraleDmg: 30 }, fx: '적 기력 -15', gfx: '적 기력 -30', desc: '큰 피해를 주고 적 기력을 15 깎는다. 대성공이면 30.' }
   ],
   halberd: [
-    { id: 'galkwi',   name: '갈퀴', cost: 10, mult: 1.35, noCounter: true, need: 'C', great: { moraleDmg: 15 }, fx: '반격을 받지 않는다', gfx: '적 기력 -15', desc: '적을 걸어 넘어뜨린다. 반격을 받지 않는다. 대성공이면 적 기력 -15.' },
-    { id: 'hoengchi', name: '횡치', cost: 15, mult: 1.25, arc: true, need: 'B', great: { side: 1 }, fx: '양옆의 적에게도 피해 80%', gfx: '양옆의 적에게도 피해 100%', desc: '정면의 적과 그 양옆의 적까지 벤다(양옆 80%). 대성공이면 양옆도 100%.' },
-    { id: 'seonpung', name: '선풍', cost: 20, mult: 1.15, all: true, need: 'A', great: { moraleDmg: 10, moraleAll: 10 }, fx: '주위의 모든 적을 공격한다', gfx: '맞은 적 모두 기력 -10', desc: '주위의 모든 적을 공격한다. 대성공이면 맞은 적 모두 기력 -10.' }
+    { id: 'galkwi',   name: '갈퀴', cost: 10, mult: 1.25, noCounter: true, need: 'C', great: { moraleDmg: 15 }, fx: '반격을 받지 않는다', gfx: '적 기력 -15', desc: '적을 걸어 넘어뜨린다. 반격을 받지 않는다. 대성공이면 적 기력 -15.' },
+    { id: 'hoengchi', name: '횡치', cost: 15, mult: 1.15, arc: true, need: 'B', great: { side: 1 }, fx: '양옆의 적에게도 피해 80%', gfx: '양옆의 적에게도 피해 100%', desc: '정면의 적과 그 양옆의 적까지 벤다(양옆 80%). 대성공이면 양옆도 100%.' },
+    { id: 'seonpung', name: '선풍', cost: 20, mult: 1.05, all: true, need: 'A', great: { moraleDmg: 10, moraleAll: 10 }, fx: '주위의 모든 적을 공격한다', gfx: '맞은 적 모두 기력 -10', desc: '주위의 모든 적을 공격한다. 대성공이면 맞은 적 모두 기력 -10.' }
   ],
   bow: [
-    { id: 'hwasi',  name: '화시', cost: 10, mult: 1.2, fire: true, need: 'C', great: { fireT: 3, moraleDmg: 10 }, fx: '적이 선 칸에 불(2턴)', gfx: '불이 3턴 타고 적 기력 -10', desc: '불화살. 적이 선 칸에 불을 붙인다(2턴). 대성공이면 3턴 타고 적 기력 -10.' },
-    { id: 'gwansi', name: '관시', cost: 15, mult: 1.45, pierce: true, need: 'B', great: { side: 1 }, fx: '뒤의 적에게도 피해 80%', gfx: '뒤의 적에게도 피해 100%', desc: '대상과 그 뒤의 적까지 꿰뚫는다(뒤 80%). 대성공이면 뒤도 100%.' },
-    { id: 'nansa',  name: '난사', cost: 20, mult: 1.15, splash: true, need: 'A', great: { side: 0.8 }, fx: '주위의 적에게도 피해 60%', gfx: '주위의 적에게도 피해 80%', desc: '대상과 그 주위의 적을 함께 공격한다(주위 60%). 대성공이면 주위 80%.' }
+    { id: 'hwasi',  name: '화시', cost: 10, mult: 1.1, fire: true, need: 'C', great: { fireT: 3, moraleDmg: 10 }, fx: '적이 선 칸에 불(2턴)', gfx: '불이 3턴 타고 적 기력 -10', desc: '불화살. 적이 선 칸에 불을 붙인다(2턴). 대성공이면 3턴 타고 적 기력 -10.' },
+    { id: 'gwansi', name: '관시', cost: 15, mult: 1.3, pierce: true, need: 'B', great: { side: 1 }, fx: '뒤의 적에게도 피해 80%', gfx: '뒤의 적에게도 피해 100%', desc: '대상과 그 뒤의 적까지 꿰뚫는다(뒤 80%). 대성공이면 뒤도 100%.' },
+    { id: 'nansa',  name: '난사', cost: 20, mult: 1.05, splash: true, need: 'A', great: { side: 0.8 }, fx: '주위의 적에게도 피해 60%', gfx: '주위의 적에게도 피해 80%', desc: '대상과 그 주위의 적을 함께 공격한다(주위 60%). 대성공이면 주위 80%.' }
   ],
   cav: [
-    { id: 'dolgyeok', name: '돌격', cost: 10, mult: 1.45, push: 1, follow: true, need: 'C', noForest: true, great: { push: 2 }, fx: '적을 한 칸 밀어내고 그 자리로 전진', gfx: '두 칸 밀어내며 전진', desc: '적을 밀어내고 그 자리로 전진한다. 대성공이면 두 칸.' },
-    { id: 'dolpa',    name: '돌파', cost: 15, mult: 1.5, pass: true, noCounter: true, need: 'B', noForest: true, great: { moraleDmg: 15 }, fx: '적을 뚫고 반대편으로. 반격을 받지 않는다', gfx: '적 기력 -15', desc: '적을 뚫고 반대편으로 빠져나간다. 반격을 받지 않는다. 대성공이면 적 기력 -15.' },
-    { id: 'doljin',   name: '돌진', cost: 20, mult: 1.85, push: 2, follow: true, confuse: 0.2, need: 'A', noForest: true, great: { confuse: 0.5 }, fx: '두 칸 밀어내며 전진. 혼란(기본 20%)', gfx: '혼란 확률이 기본 50%로', desc: '적을 두 칸 밀어내며 큰 피해. 혼란(기본 20%, 상대의 지력·통솔이 높으면 낮아진다). 대성공이면 기본 50%.' }
+    { id: 'dolgyeok', name: '돌격', cost: 10, mult: 1.3, push: 1, follow: true, need: 'C', noForest: true, great: { push: 2 }, fx: '적을 한 칸 밀어내고 그 자리로 전진', gfx: '두 칸 밀어내며 전진', desc: '적을 밀어내고 그 자리로 전진한다. 대성공이면 두 칸.' },
+    { id: 'dolpa',    name: '돌파', cost: 15, mult: 1.35, pass: true, noCounter: true, need: 'B', noForest: true, great: { moraleDmg: 15 }, fx: '적을 뚫고 반대편으로. 반격을 받지 않는다', gfx: '적 기력 -15', desc: '적을 뚫고 반대편으로 빠져나간다. 반격을 받지 않는다. 대성공이면 적 기력 -15.' },
+    { id: 'doljin',   name: '돌진', cost: 20, mult: 1.6, push: 2, follow: true, confuse: 0.2, need: 'A', noForest: true, great: { confuse: 0.5 }, fx: '두 칸 밀어내며 전진. 혼란(기본 20%)', gfx: '혼란 확률이 기본 50%로', desc: '적을 두 칸 밀어내며 큰 피해. 혼란(기본 20%, 상대의 지력·통솔이 높으면 낮아진다). 대성공이면 기본 50%.' }
   ]
 };
-var TACTIC_RATE = { C: 65, B: 72, A: 80, S: 88 };
+var TACTIC_RATE = { C: 55, B: 63, A: 71, S: 80 };   // 전법 성공률의 바탕(병과 적성). v0.7: 65/72/80/88 — 그때는 상대를 보지 않았다
+var TACTIC_K = { okCounter: 0.4, failDmg: 0.5, failCounter: 0.7 };   // 성공했을 때 받는 반격 / 실패했을 때 주는 피해·받는 반격 (보통 공격의 반격은 0.55). v0.7: 0.25 / 0.6 / 0.4
 
 /* 계략 */
 var PLOYS = [
@@ -93,14 +99,32 @@ var PLOYS = [
   { id: 'douse',   name: '소화', cost: 10, desc: '자신과 주위 칸의 불을 끈다.' }
 ];
 
+/* 인연: 군주와 깊은 사이인 무장(군주 이름 → { 무장 이름: 사이 }). 그 군주를 모시는 동안 충성이 100 에서 내려가지 않는다.
+   사이: 의형제 · 혈연(부자·형제·친족, 양자 포함) · 부부 · 인척(처가) · 심복(끝까지 따른 사람) */
+var BONDS = {
+  '조조': { '하후돈': '혈연', '하후연': '혈연', '조인': '혈연', '조홍': '혈연', '조순': '혈연', '조비': '혈연', '조창': '혈연', '전위': '심복', '허저': '심복' },
+  '여포': { '초선': '부부', '여령기': '혈연', '고순': '심복', '진궁': '심복' },
+  '유비': { '관우': '의형제', '장비': '의형제', '간옹': '심복', '진도': '심복', '조운': '심복', '미축': '인척', '손건': '심복', '제갈량': '심복', '유봉': '혈연', '관평': '심복', '관흥': '심복', '장포': '심복' },
+  '원소': { '원담': '혈연', '원희': '혈연', '원상': '혈연', '고간': '혈연', '안량': '심복', '문추': '심복', '심배': '심복' },
+  '공손찬': { '공손속': '혈연' },
+  '공손도': { '공손강': '혈연', '공손공': '혈연' },
+  '원술': { '원윤': '혈연', '기령': '심복' },
+  '손책': { '손권': '혈연', '손정': '혈연', '손분': '혈연', '오경': '혈연', '주유': '의형제', '대교': '부부', '정보': '심복', '황개': '심복', '한당': '심복', '주치': '심복' },
+  '엄백호': { '엄여': '혈연' },
+  '유표': { '채모': '인척', '유반': '혈연', '황조': '심복' },
+  '마등': { '마초': '혈연', '마철': '혈연', '마휴': '혈연', '마대': '혈연', '방덕': '심복', '한수': '의형제' },
+  '장로': { '장위': '혈연' },
+  '유장': { '황권': '심복', '장임': '심복', '엄안': '심복', '왕루': '심복' }
+};
+
 /* 특기 */
 var SKILLS = {
   '비장': 'ZOC를 무시한다. 무력이 낮은 적에게 통상 공격이 크리티컬.',
-  '신장': '무력이 낮은 적에게 통상 공격은 크리티컬, 전법은 반드시 대성공.',
-  '투신': '창병·극병 전법이 반드시 대성공.',
+  '신장': '무력이 낮은 적에게 통상 공격은 크리티컬, 전법은 성공하면 반드시 대성공(성공률 +5).',
+  '투신': '창병·극병 전법이 성공하면 반드시 대성공(성공률 +5).',
   '용장': '무력이 낮은 적에게 통상 공격이 크리티컬.',
-  '창장': '창병 전법이 반드시 대성공.', '극장': '극병 전법이 반드시 대성공.', '궁장': '노병 전법이 반드시 대성공.', '기장': '기병 전법이 반드시 대성공.',
-  '기신': '기병 전법이 반드시 대성공이고 피해 +10%.', '궁신': '노병 전법이 반드시 대성공이고 피해 +10%.',
+  '창장': '창병 전법이 성공하면 반드시 대성공(성공률 +5).', '극장': '극병 전법이 성공하면 반드시 대성공(성공률 +5).', '궁장': '노병 전법이 성공하면 반드시 대성공(성공률 +5).', '기장': '기병 전법이 성공하면 반드시 대성공(성공률 +5).',
+  '기신': '기병 전법이 성공하면 반드시 대성공이고 피해 +10%(성공률 +5).', '궁신': '노병 전법이 성공하면 반드시 대성공이고 피해 +10%(성공률 +5).',
   '위풍': '공격할 때 적 기력을 10 더 깎는다.',
   '연전': '통상 공격 후 50% 확률로 한 번 더 공격한다.',
   '금강': '통상 공격으로 받는 피해 -35%.',

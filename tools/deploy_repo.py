@@ -30,7 +30,7 @@ add_glob('pwa/*'); add_glob('pwa/icons/*')
 add_glob('tools/*.py')
 add_glob('tests/*.js'); add_glob('tests/*.py')
 for f in ('build/terrain.jpg', 'build/patch_v04_ui3d.py', 'build/patch_v04_panels.py'): add(f)
-add_glob('build/v07/*.py')
+add_glob('build/v07/*.py'); add_glob('build/v071/*.py')
 add('vendor/package/build/three.min.js')
 def clean(rel):                                       # 그림 기록 가운데 내려받은 주소가 적힌 것(로컬 전용)은 빼고 올린다
     s = open(os.path.join(ROOT, rel), encoding='utf-8').read()
@@ -39,7 +39,7 @@ def clean(rel):                                       # 그림 기록 가운데 
     return ok
 skipped = []
 add_glob('art/*.tsv', clean); add_glob('art/*.txt', clean); add_glob('art/*.md', clean)
-add('audio7/jobs.tsv')
+add('audio7/jobs.tsv'); add('art/por8_out/crops.tsv')
 # 3) 글자 검사: 주소·열쇠 같은 것이 섞여 있으면 멈춘다
 bad = []
 for p, rel in files:

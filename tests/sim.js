@@ -30,6 +30,25 @@ function invariants() {
     if (!u.off.length) errs.push('unit without officers');
     for (j = 0; j < u.off.length; j++) { var o = G.officers[u.off[j]]; if (o.unit !== u.id || o.st !== 'active' || o.f !== u.f) errs.push('unit officer mismatch ' + o.n + ' st=' + o.st + ' unit=' + o.unit + ' f=' + o.f + '/' + u.f); }
   }
+  // 공사 담당(v0.7.1): 짓는 중인 시설의 담당 무장은 그 거점에 있고 묶여 있어야(행동 완료) 한다. 한 무장이 두 공사를 맡지 않는다
+  if (typeof jobOf === 'function') {
+    var jobs = {};
+    for (i = 0; i < G.bases.length; i++) {
+      var jb = G.bases[i];
+      for (j = 0; j < jb.plots.length; j++) {
+        var jf = jb.plots[j].fac;
+        if (!jf || jf.done || !jf.by) continue;
+        for (var q = 0; q < jf.by.length; q++) {
+          var bo = G.officers[jf.by[q]], jj = jobOf(bo);
+          if (!jj || jj.fac !== jf) continue;                      // 떠난 담당(잡혔거나 달아남)은 세지 않는다
+          if (jobs[bo.id]) errs.push('builder on two jobs ' + bo.n); jobs[bo.id] = 1;
+          if (!bo.acted) errs.push('builder not busy ' + bo.n + ' @' + jb.n);
+          if (bo.st !== 'active' || bo.loc !== jb.id || bo.unit !== null || bo.f !== jb.owner) errs.push('builder misplaced ' + bo.n + ' @' + jb.n);
+        }
+      }
+    }
+    for (i = 0; i < G.officers.length; i++) { var po = G.officers[i]; if (po.job && jobOf(po) && !jobs[po.id]) errs.push('job without facility ' + po.n); }
+  }
   for (i = 0; i < G.officers.length; i++) {
     var p = G.officers[i];
     if (p.st === 'active') {
