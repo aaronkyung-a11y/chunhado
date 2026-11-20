@@ -68,7 +68,8 @@ def steps(pg):
     # 저장 → 새로 열기 → 이어하기
     tapsel(pg, '#btnMenu'); shot(pg, 'c5_menu', 300)
     tapsel(pg, '#modal [data-a=spd]'); print('menu speed', pg.evaluate('UI.pspeed'), pg.evaluate('document.querySelector("#modal [data-a=spd] small").innerText'))
-    tapsel(pg, '#modal [data-a=save]'); tapsel(pg, '#modal [data-a=help]'); shot(pg, 'c5_help', 300); pg.evaluate('closeDialog()')
+    tapsel(pg, '#modal [data-a=save]'); tapsel(pg, '#modal [data-a=ssave]', 0); tapsel(pg, '#modal [data-a=close]')      # v0.10.1: 저장은 칸을 고른다
+    tapsel(pg, '#modal [data-a=help]'); shot(pg, 'c5_help', 300); pg.evaluate('closeDialog()')
     d1 = pg.evaluate('dateStr() + " u" + G.units.length + " o" + facOfficers(G.player).length + " opts " + localStorage.getItem("chunhado_opts")')
     pg.reload(); pg.wait_for_function('window.R3 && R3.ready', timeout=60000); pg.wait_for_timeout(500)
     tapsel(pg, '#tCont'); pg.wait_for_timeout(900)

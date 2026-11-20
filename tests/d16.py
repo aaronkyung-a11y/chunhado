@@ -79,6 +79,7 @@ def steps(pg):
     live = [r for r in rows if not r['dim']]
     ok(len(live) > 0 and '최고' in live[0]['t'] and rows.index(live[0]) == 0, '권할 수 있는 사람이 위에, 성공률이 높은 순 [%s]' % live[0]['t'][-22:])
     B.shot(pg, 'r1_list', 200)
+    pg.evaluate('(() => { facAdv(G.player).int = 100; })()')      # v0.10.1: 적중률 = 군사의 지력. 조언이 늘 맞는 것을 보려고 군사의 지력을 100으로 둔다(전에는 순욱(96)도 100% 였다)
     # 이번 턴에 응하는 사람·거절하는 사람을 규칙에서 미리 뽑아(시험이라 아는 것) 화면의 조언과 견준다
     plan = pg.evaluate('''((bid) => { var b = G.bases[bid], os = idleOfficers(b), best = function (t) { var m = 0; os.forEach(function (o) { m = Math.max(m, recruitChance(b, o, t)); }); return m; };
       var ts = poachTargets(b).filter(function (t) { return !bondOf(t); }), yes = null, no = null;

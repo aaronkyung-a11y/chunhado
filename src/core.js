@@ -128,8 +128,8 @@ function facAdv(f) { var F = G.factions[f]; if (!F || F.adv === undefined || F.a
 function advCandidates(f) { return G.officers.filter(function (o) { return advOk(o, f); }).sort(function (a, b) { return b.int - a.int || a.id - b.id; }); }
 function autoAdvisor(f) { var c = advCandidates(f); G.factions[f].adv = c.length ? c[0].id : -1; return c.length ? c[0] : null; }
 function setAdvisor(f, id) { var o = off(id); if (!advOk(o, f)) return ERR('군사로 삼을 수 없는 무장입니다'); G.factions[f].adv = o.id; return { ok: true }; }
-/* 조언이 맞을 확률(%) */
-function adviceAcc(A, tInt) { return clamp(Math.round(A.int + (A.int - tInt) * ADVISE.k), ADVISE.min, 100); }
+/* 조언이 맞을 확률(%): 군사의 지력 그대로. 상대가 더 똑똑하면 그 차이 × k 만큼 깎인다(상대의 지력이 없는 일은 tInt = 0) */
+function adviceAcc(A, tInt) { return clamp(Math.round(A.int - Math.max(0, (tInt || 0) - A.int) * ADVISE.k), ADVISE.min, 100); }
 /* 조언: { adv, acc, says } — says = "통한다"고 말하는가. 군사가 없으면 null.
    roll = 그 일의 주사위(recruitRoll·ployRoll), rollA = '조언이 맞는가'의 주사위(recruitRollA·ployRollA), p = 성공률, tInt = 상대의 지력.
    실제 결과(roll < p)를 acc% 의 확률로 바르게, 나머지는 거꾸로 말한다. '맞는가'도 대상에만 걸려 있어, 군사를 바꿔 물어도 새 정보가 생기지 않는다 */

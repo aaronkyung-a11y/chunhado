@@ -16,6 +16,8 @@ var ICO = {
 };
 function ico(k) { return '<i class="ico">' + ICO[k] + '</i>'; }
 function thumb(key, cls) { return '<img class="th' + (cls ? ' ' + cls : '') + '" alt="" src="' + SPRITES[key].u + '">'; }
+function facThumb(fc, cls) { var u = (!fc.done && typeof siteUrl === 'function') ? siteUrl(fc.t) : ''; return u ? '<img class="th' + (cls ? ' ' + cls : '') + '" alt="" src="' + u + '">' : thumb(fc.t, cls); }      // 짓는 중인 시설은 공사장 그림
+function lotChip(b, pi) { return '<i class="lno">' + lotNo(b, pi) + '</i>'; }                                   // 부지 번호 딱지(지도의 번호와 같다)
 function days(turns) { return fmt(turns * 10) + '일'; }
 function months(turns) { var m = turns / 3; return turns % 3 ? days(turns) : (m % 12 ? m + '개월' : (m / 12) + '년'); }   // 3턴 = 한 달. 달로 나누어떨어지지 않으면 일수로
 function shortDate(t) { var d = dateOfTurn(t), y = G.year + '년 '; return d.indexOf(y) === 0 ? d.slice(y.length) : d; }      // 올해면 해를 뺀다
@@ -104,7 +106,7 @@ var MSTACK = [], MPAINT = 0;
 function dlgScroll() { var b = $('modal').querySelector('.dlg-b'); return b ? b.scrollTop : 0; }
 function paintDialog(st) {
   var m = $('modal'); m.innerHTML = '<div class="dlg">' + MODAL.render() + '</div>'; m.classList.add('on');
-  m.classList.toggle('see', !!MODAL.see); $('app').classList.toggle('seeing', !!devOf());
+  m.classList.toggle('see', !!MODAL.see); $('app').classList.toggle('seeing', !!(devOf() || fselOf()));
   if (st) { var b = m.querySelector('.dlg-b'); if (b) b.scrollTop = st; }
   MPAINT = Date.now();
   paintRet();
@@ -275,8 +277,8 @@ function showAdvisor() {
   var f = G.player;
   showDialog({
     render: function () {
-      var A = facAdv(f), cs = advCandidates(f), i, h = dlgHead('군사 임명') + '<div class="dlg-b"><p class="cap">군사는 등용·계략이 통할지 미리 말해 줍니다. 지력이 높을수록 잘 맞습니다.</p>';
-      if (A) h += '<div class="card advc">' + porTag(A, 'md') + '<div><p><b class="hi">' + A.n + '</b> 지력 ' + A.int + '</p><p class="note">적중률 <b>' + adviceAcc(A, 60) + '%</b> · <b>' + adviceAcc(A, 75) + '%</b> · <b>' + adviceAcc(A, 90) + '%</b> <small>(상대 지력 60 · 75 · 90)</small></p></div></div>';
+      var A = facAdv(f), cs = advCandidates(f), i, h = dlgHead('군사 임명') + '<div class="dlg-b"><p class="cap">군사는 등용·계략이 통할지 미리 말해 줍니다. 지력이 곧 적중률입니다.</p>';
+      if (A) h += '<div class="card advc">' + porTag(A, 'md') + '<div><p><b class="hi">' + A.n + '</b> 지력 ' + A.int + '</p><p class="note">적중률 <b>' + adviceAcc(A, 0) + '%</b>' + (A.int < 95 ? ' <small>· 지력 95인 상대에게는 ' + adviceAcc(A, 95) + '%</small>' : '') + '</p></div></div>';
       else h += '<p class="note bad">군사가 없습니다 — 아래에서 임명하세요.</p>';
       h += '<div class="sec">후보 <em class="cnt">' + cs.length + '</em></div><div class="rows advl">';
       for (i = 0; i < cs.length; i++) {
@@ -362,27 +364,39 @@ function buildWhy(b) {                                         // 지금 이 거
   return '';
 }
 function devOf() { if (MODAL && MODAL.dev) return MODAL.dev; for (var i = MSTACK.length - 1; i >= 0; i--) if (MSTACK[i].d.dev) return MSTACK[i].d.dev; return null; }
+/* 시설 창(흡수합병 · 철거)이 떠 있으면 그 시설 { b, pi } — 지도에서 그 시설을 표시한다(v0.10.1) */
+function fselOf() { if (MODAL && MODAL.fsel) return MODAL.fsel; for (var i = MSTACK.length - 1; i >= 0; i--) if (MSTACK[i].d.fsel) return MSTACK[i].d.fsel; return null; }
 function buildView() {
   if (!G || G.over || UI.play || UI.busy) return null;
-  var d = devOf(), b = d ? G.bases[d.b] : (SHEET && SHEET.fac ? SHEET.fac() : null);
+  var d = devOf(), fs = d ? null : fselOf(), b = d ? G.bases[d.b] : (fs ? G.bases[fs.b] : (SHEET && SHEET.fac ? SHEET.fac() : null));
   if (!b || b.owner !== G.player || b.kind !== 'city') return null;
-  var why = buildWhy(b), pi = d ? d.pi : -1, sig = b.id + '/' + pi + '/' + why + '/', lots = [], facs = [];
+  var why = buildWhy(b), pi = d ? d.pi : -1, fi = (fs && b.plots[fs.pi] && b.plots[fs.pi].fac) ? fs.pi : -1, sig = b.id + '/' + pi + '/' + fi + '/' + why + '/', lots = [], facs = [];
   for (var i = 0; i < b.plots.length; i++) {
     var p = b.plots[i];
-    if (p.fac) { facs.push({ c: p.c, r: p.r, n: FAC[p.fac.t].name, done: p.fac.done }); sig += 'f' + i + p.fac.t + (p.fac.done ? '' : 'c') + ','; }
+    if (p.fac) { var left = p.fac.done ? '' : days(Math.max(1, Math.ceil((p.fac.need - p.fac.prog) / Math.max(1, p.fac.rate)))); facs.push({ i: i, no: lotNo(b, i), c: p.c, r: p.r, n: FAC[p.fac.t].name, done: p.fac.done, left: left }); sig += 'f' + i + p.fac.t + (p.fac.done ? '' : 'c' + left) + ','; }
     else { var ok = !why && !UAT[K(p.c, p.r)]; lots.push({ i: i, c: p.c, r: p.r, n: lotNo(b, i), ok: ok }); sig += i + (ok ? '' : 'x') + ','; }
   }
-  if (!lots.length) return null;                               // 빈 부지가 없으면 비출 것이 없다
+  if (!lots.length && fi < 0) return null;                     // 빈 부지도, 고른 시설도 없으면 비출 것이 없다
   lots.sort(function (x, y) { return x.n - y.n; });
-  return { b: b, pi: pi, why: why, lots: lots, facs: facs, sig: sig };
+  return { b: b, pi: pi, fi: fi, why: why, lots: lots, facs: facs, sig: sig };
 }
-/* '무엇을 지을까요' 창이 떠 있는 동안 지도를 눌렀다: 다른 빈 부지면 자리를 바꾸고, 그 밖이면 창을 닫는다 */
+/* '무엇을 지을까요' 창이 떠 있는 동안 지도를 눌렀다: 다른 빈 부지면 자리를 바꾸고, 이 거점의 시설이면 그 시설의 창으로, 그 밖이면 창을 닫는다 */
 function devTap(c, r) {
   var d = MODAL.dev, b = G.bases[d.b], pl = plotAt(c, r);
+  if (pl && pl.base === b && pl.plot.fac) { sfx('ui'); flowFacility(b, pl.i); return; }
   if (pl && pl.base === b && !pl.plot.fac) {
     if (UAT[K(c, r)]) { toast('부대가 서 있는 칸에는 지을 수 없습니다'); return; }
     if (pl.i !== d.pi) { d.pi = pl.i; sfx('ui'); refreshDialog(); }
     return;
+  }
+  backDialog();
+}
+/* 시설 창이 떠 있는 동안 지도를 눌렀다: 같은 거점의 다른 시설이면 그 시설로, 빈 부지면 '무엇을 지을까요'로, 그 밖이면 창을 닫는다(v0.10.1) */
+function fselTap(c, r) {
+  var f = MODAL.fsel, b = G.bases[f.b], pl = plotAt(c, r);
+  if (pl && pl.base === b) {
+    if (pl.plot.fac) { if (pl.i !== f.pi) { sfx('ui'); flowFacility(b, pl.i); } return; }
+    flowDevelop(b, pl.i); return;                              // 지을 수 없으면 까닭을 알리고 이 창은 그대로 둔다
   }
   backDialog();
 }
@@ -606,7 +620,7 @@ function allTargets(u) {
 function onTap(c, r) {
   if (UI.play) { playNudge(); return; }
   if (UI.busy || !G || G.over) return;
-  if (MODAL) { if (MODAL.dev) devTap(c, r); return; }
+  if (MODAL) { if (MODAL.dev) devTap(c, r); else if (MODAL.fsel) fselTap(c, r); return; }
   var k = K(c, r), u = UAT[k] || null, b = baseAt(c, r), pl = plotAt(c, r), su = selUnit();
   if (su && unitCorps(su)) su = null;                                  // 군단의 부대를 보고 있을 때: 다른 곳을 누르면 그것을 고를 뿐이다
   if (su) {
@@ -1018,10 +1032,12 @@ function baseSheet(b0, tab0) {
         var em = emptyLotsByNo(b);
         for (i = 0; i < em.length; i++) h += '<button class="lot' + (why || UAT[K(b.plots[em[i]].c, b.plots[em[i]].r)] ? ' no' : '') + '" type="button" data-a="plot" data-v="' + em[i] + '" aria-label="빈 부지 ' + lotNo(b, em[i]) + '">' + lotNo(b, em[i]) + '</button>';
         h += (nE ? '</div>' : '') + (nF ? '<div class="sec">지은 시설 <em class="cnt">' + nF + '</em></div>' : '') + '<div class="rows">';
-        for (i = 0; i < b.plots.length; i++) {
+        var built = []; for (i = 0; i < b.plots.length; i++) if (b.plots[i].fac) built.push(i);
+        built.sort(function (x, y) { return lotNo(b, x) - lotNo(b, y); });                                     // 번호 차례(지도의 딱지와 같다)
+        for (var bi = 0; bi < built.length; bi++) {
+          i = built[bi];
           var fc = b.plots[i].fac;
-          if (!fc) continue;
-          h += '<button class="row" type="button" data-a="plot" data-v="' + i + '">' + thumb(fc.t) + '<span class="mid"><span class="nm">' + FAC[fc.t].name + ' Lv' + fc.lv + '</span><span class="ds">' + (fc.done ? FAC[fc.t].desc : '건설 중 — ' + days(Math.max(1, Math.ceil((fc.need - fc.prog) / fc.rate))) + ' 남음') + '</span></span>' + (mergeCandidates(b, i).length ? '<span class="rt hi">합병 가능</span>' : '') + '</button>';
+          h += '<button class="row" type="button" data-a="plot" data-v="' + i + '">' + facThumb(fc) + '<span class="mid"><span class="nm">' + lotChip(b, i) + FAC[fc.t].name + ' Lv' + fc.lv + '</span><span class="ds">' + (fc.done ? FAC[fc.t].desc : '건설 중 — ' + days(Math.max(1, Math.ceil((fc.need - fc.prog) / fc.rate))) + ' 남음') + '</span></span>' + (mergeCandidates(b, i).length ? '<span class="rt hi">합병 가능</span>' : '') + '</button>';
         }
         h += '</div>';
       }
@@ -1219,9 +1235,10 @@ function flowFacility(b, pi) {
   var fc = b.plots[pi].fac; if (!fc || baseCorps(b)) return;
   var F = FAC[fc.t];
   showDialog({
+    fsel: { b: b.id, pi: pi }, see: true,                          // 지도에서 이 시설이 표시된다 — 다른 시설을 누르면 그 시설로 바뀐다(fselTap)
     render: function () {
       var cands = mergeCandidates(b, pi);
-      var h = dlgHead(b.n + ' ' + F.name + ' Lv' + fc.lv) + '<div class="dlg-b"><div class="card">' + thumb(fc.t, 'lg') + '<p>' + F.desc + '</p></div>' + (fc.done ? '' : '<p class="note">건설 중 — ' + days(Math.max(1, Math.ceil((fc.need - fc.prog) / fc.rate))) + ' 남음' + (builders(fc).length ? ' · 담당 <b>' + builders(fc).map(function (o) { return o.n; }).join('·') + '</b>' : '') + '</p>') +
+      var h = dlgHead(b.n + ' ' + lotMark(lotNo(b, pi)) + ' ' + F.name + ' Lv' + fc.lv) + '<div class="dlg-b"><div class="card">' + facThumb(fc, 'lg') + '<p>' + F.desc + '</p></div>' + (fc.done ? '' : '<p class="note">건설 중 — ' + days(Math.max(1, Math.ceil((fc.need - fc.prog) / fc.rate))) + ' 남음' + (builders(fc).length ? ' · 담당 <b>' + builders(fc).map(function (o) { return o.n; }).join('·') + '</b>' : '') + '</p>') +
         '<div class="cmds"><button class="cmd' + (cands.length ? ' pri' : ' off') + '" type="button" data-a="merge"><b>흡수합병</b><small>' + (fc.lv >= 3 ? '최고 레벨' : (cands.length ? '금 ' + COST.merge * fc.lv + ' · 행 ' + AP.merge : '인접한 같은 시설 필요')) + '</small></button>' +
         '<button class="cmd" type="button" data-a="demo"><b>' + (fc.done ? '철거' : '공사 중단') + '</b><small>' + (!fc.done && builders(fc).length ? '담당 무장이 풀려납니다' : '부지를 비웁니다') + '</small></button></div>' +
         '<p class="note">흡수합병 = 옆의 같은 시설을 합쳐 레벨 +1 (최대 3)</p></div>';
@@ -1451,7 +1468,7 @@ var HELP_HTML = '<div class="help">' +
   '<h3>턴 종료와 지난 열흘</h3><p>턴 종료를 누르면 열흘이 흐릅니다. 먼저 행군을 맡겨 둔 내 부대가 움직이고, 이어서 다른 세력의 움직임 가운데 <b>나와 관련된 일, 내 땅 가까이에서 일어난 일, 성의 주인이 바뀐 일</b>을 차례로 보여 줍니다. 화면을 누르면 다음 장면으로 넘어가고, 건너뛰기를 누르면 바로 내 차례가 됩니다. 속도는 재생 중 아래 버튼이나 메뉴에서 바꿉니다. 끝나면 지난 열흘의 일을 한데 모아 보여 줍니다.</p>' +
   '<h3>턴과 행동력</h3><p>한 턴은 10일입니다. 내정·출진 명령은 행동력을 씁니다. 행동력은 매 턴 돌아오고, 도시가 많고 군주의 매력이 높을수록 많이 돌아옵니다. 무장 한 사람은 한 턴에 한 가지 일만 합니다.</p>' +
   '<h3>자동</h3><p>무장을 고르는 창의 <b>자동</b> 버튼은 그 일을 가장 잘하는 무장을 골라 줍니다. 한 번 더 누르면 한 명만 쓰는 편성으로 바뀝니다. 열 제목(통·무·지·정·매)을 누르면 그 능력으로 정렬합니다.</p>' +
-  '<h3>도시와 시설</h3><p>도시를 누르면 명령 창이 열립니다. <b>건설</b> 탭을 열면 지도가 어두워지고 <b>지을 수 있는 빈 부지만 밝게</b> 번호와 함께 보입니다 — 밝은 칸이나 같은 번호의 줄을 누르고 시설을 고르면 됩니다(고른 자리는 붉은 테두리). 칸이 점선으로만 보이면 지금은 지을 수 없다는 뜻이고, 까닭(쉬는 무장·금·행동력)이 창에 적힙니다. 같은 시설이 붙어 있으면 흡수합병으로 레벨을 올립니다(최대 3). 조폐는 옆의 시장, 곡창은 옆의 농장 수입을 50% 늘립니다. 금은 매월 초, 병량은 1·4·7·10월 초에 들어옵니다.</p>' +
+  '<h3>도시와 시설</h3><p>도시를 누르면 명령 창이 열립니다. <b>건설</b> 탭을 열면 지도가 어두워지고 <b>지을 수 있는 빈 부지만 밝게</b> 번호와 함께 보입니다 — 밝은 칸이나 같은 번호의 줄을 누르고 시설을 고르면 됩니다(고른 자리는 붉은 테두리). 칸이 점선으로만 보이면 지금은 지을 수 없다는 뜻이고, 까닭(쉬는 무장·금·행동력)이 창에 적힙니다. <b>지은 시설</b>에도 같은 번호가 붙어 있고, 줄이나 지도에서 누르면 그 시설만 환해지고 <b>붉은 테두리와 붉은 이름표</b>가 붙습니다. 짓는 중인 시설은 비계를 두른 공사장으로 보입니다. 같은 시설이 붙어 있으면 흡수합병으로 레벨을 올립니다(최대 3). 조폐는 옆의 시장, 곡창은 옆의 농장 수입을 50% 늘립니다. 금은 매월 초, 병량은 1·4·7·10월 초에 들어옵니다.</p>' +
   '<h3>STATUS 창</h3><p>화면 아래에 늘 떠 있는 창입니다. 아무것도 고르지 않았을 때는 <b>지금 할 일</b>이 보이고, 줄을 누르면 그 거점이나 부대로 바로 갑니다. 거점이나 부대를 고르면 같은 자리에 그 정보와 명령이 나옵니다. 이름 아래의 +숫자는 금(매월)·병량(분기) 수입입니다. 오른쪽 ▾로 접을 수 있고, 맨 위 날짜 줄을 누르면 다시 펼쳐집니다.</p><p>아래 <b>목록</b> 단추는 거점·부대·무장·세력의 목록을 엽니다 — 부대 목록에는 내 부대의 위치와 상태, 그리고 가까이 있는 다른 세력의 부대가 나옵니다.</p>' +
   '<h3>출진과 이동</h3><p>거점의 출진 탭에서 병과, 무장(주장과 부장 둘), 병력, 군량을 정하면 부대가 성 앞에 나옵니다. 창병·극병·노병·기병은 무기 재고가 병력만큼 필요합니다. 부대를 누르면 이번 턴에 갈 수 있는 칸이 <b>파랗게</b> 보이고, 그 칸을 누르면 움직입니다. 적이나 적의 성을 누르면 공격합니다. 적 부대 옆 칸에 들어서면 그 턴에는 더 나아가지 못합니다. 자기 거점으로 들어가면 입성하고, 주인 없는 거점은 들어가면 차지합니다.</p>' +
   '<h3>성역과 행군</h3><p>성 둘레 ' + ZONE_R + '칸(붓으로 두른 고리 안)은 그 성의 <b>성역</b>입니다. 성역을 드나들 때 멈추지 않습니다 — 이동력이 남아 있으면 그대로 나아가고, 닿으면 바로 칠 수 있습니다. 다만 <b>출진한 그 턴에는 거점과 시설을 칠 수 없습니다</b>(부대끼리는 싸울 수 있습니다). 성에서 나와 다른 성을 치기까지 가까운 성끼리는 20일, 대개는 30일 넘게 걸립니다.</p>' +
@@ -1471,7 +1488,7 @@ var HELP_HTML = '<div class="help">' +
   '<p>군단은 내가 <b>턴 종료</b>를 누른 직후, 다른 세력보다 먼저 움직입니다. 한 일은 <b>지난 열흘의 일</b>에 군단마다 한 줄로 나옵니다. 군단은 <b>제 행동력</b>을 따로 씁니다(턴마다 ' + CORPS_AP.base + ' + 도시 × ' + CORPS_AP.city + ' + 군단장 매력 ÷ 5) — 맡긴 도시는 내 행동력에서 빠집니다.</p>' +
   '<p><b>공격</b>은 군단장이 이길 만하다고 볼 때만 나섭니다: 낼 수 있는 병력이 <b>(수비 + 가는 동안 늘어날 몫) × ' + CORPS_ATK.mul + ' + ' + fmt(CORPS_ATK.add) + '</b>을 넘고 행동력이 60 모였을 때(지키는 장수의 무력·통솔이 75를 넘으면 그만큼 더 — 100이면 1.5배). 수비에는 그 세력이 12칸 안에 내놓은 부대도 셉니다. 한번 나서면 남은 도시들도 뒤따라 보탭니다. 군단 창에 지금의 병력과 필요한 병력이 적혀 있습니다. 군단이 차지한 거점은 그 군단에 들고, 목표를 손에 넣으면 방침은 군비로 돌아갑니다. 먼저 치면 그 세력과의 초반 보호가 풀리는 것은 내가 칠 때와 같습니다.</p>' +
   '<p>맡긴 거점과 군단의 부대에는 직접 명령할 수 없습니다. 거점 창 · 부대 창 · 군단 창의 <b>직할로</b>를 누르면 언제든 되돌아옵니다. 포로는 군단장이 풀어 주지 않습니다(등용만 권합니다).</p>' +
-  '<h3>군사(軍師)</h3><p>세력마다 군사를 한 사람 둡니다. <b>STATUS 창 맨 위</b>에 군사의 초상과 한마디가 있고, 그 옆의 <b>임명(바꾸기)</b> 단추로 고릅니다(무장 창의 <b>군사로 삼기</b>도 같습니다). 군사는 지금 가장 급한 일을 말해 주고 — 누르면 그 일로 갑니다 — 내 차례가 시작될 때도 대화창으로 알립니다. 처음에는 지력이 가장 높은 무장이 맡고, 군주는 될 수 없습니다. 군사는 <b>등용과 계략을 하기 전에</b> 통할지 미리 말해 줍니다 — 무장을 고르는 표 아래와 부대 창에 초상과 함께 "통할 것입니다 / 어렵겠습니다", 단추에는 <i class="adv y">○</i>(통한다)·<i class="adv n">×</i>(어렵다). 맞힐 확률은 <b>군사의 지력 + (군사의 지력 − 상대의 지력) × ' + ADVISE.k + '</b>, ' + ADVISE.min + '~100%입니다(지력 90인 군사가 지력 70인 상대를 보면 100%, 지력 70인 군사가 지력 90인 상대를 보면 60%).</p>' +
+  '<h3>군사(軍師)</h3><p>세력마다 군사를 한 사람 둡니다. <b>STATUS 창 맨 위</b>에 군사의 초상과 한마디가 있고, 그 옆의 <b>임명(바꾸기)</b> 단추로 고릅니다(무장 창의 <b>군사로 삼기</b>도 같습니다). 군사는 지금 가장 급한 일을 말해 주고 — 누르면 그 일로 갑니다 — 내 차례가 시작될 때도 대화창으로 알립니다. 처음에는 지력이 가장 높은 무장이 맡고, 군주는 될 수 없습니다. 군사는 <b>등용과 계략을 하기 전에</b> 통할지 미리 말해 줍니다 — 무장을 고르는 표 아래와 부대 창에 초상과 함께 "통할 것입니다 / 어렵겠습니다", 단추에는 <i class="adv y">○</i>(통한다)·<i class="adv n">×</i>(어렵다). 맞힐 확률은 <b>군사의 지력 그대로</b>입니다(지력 84면 84%). 상대가 군사보다 똑똑하면 그 차이의 절반만큼 더 틀립니다(지력 70인 군사가 지력 90인 상대를 보면 60%). ' + ADVISE.min + '% 아래로는 내려가지 않고, 지력 100이라야 늘 맞습니다.</p>' +
   '<p>등용과 계략의 성패는 <b>대상마다 미리 정해져 있습니다</b>(계략과 재야·포로 등용은 턴마다, 다른 세력 무장의 등용은 달마다). 그래서 그동안에는 누구에게 다시 물어도 답이 같고, 가장 잘하는 무장이 안 되면 누구도 안 됩니다. 군사를 바꿔 물어도 새로 알 수 있는 것은 없습니다 — 지력이 더 높은 군사의 말이 더 자주 맞을 뿐입니다.</p>' +
   '<h3>충성과 인연</h3><p>군주와 <b>인연</b>(의형제·혈연·부부·인척·심복)이 있는 무장은 충성이 100이고 내려가지 않습니다 — 무장 창의 충성 옆에 그 사이가 적혀 있습니다. 포로가 되어도 주군의 세력이 남아 있는 한 등용에 거의 응하지 않습니다. 그 밖의 무장은 군주의 매력에 따라 80~98 사이에 자리를 잡습니다. 새로 등용한 무장은 70~85에서 시작해 분기마다 2씩 오르고, 포상으로 올린 충성은 천천히 제자리로 돌아옵니다.</p>' +
   '<h3>닫기(×)와 뒤로 가기</h3><p><b>×는 한 단계만 뒤로</b> 갑니다. 무장 정보를 닫으면 보던 목록으로, 무장 고르는 표를 닫으면 그 앞 창으로 돌아갑니다. 부대에서 대상이나 행군을 고르던 중이면 그것만 물립니다. 막 출진한 부대의 창을 닫으면 나온 성의 출진 탭으로 돌아갑니다.</p>' +
@@ -1480,6 +1497,7 @@ var HELP_HTML = '<div class="help">' +
   '<h3>지도</h3><p>실제 지형(고도·강·해안)과 거점의 실제 위치를 바탕으로 만들었습니다. 한 칸은 약 ' + MAPDATA.km + 'km입니다. 황하 하류는 후한 때의 물길을 따릅니다.</p>' +
   '<h3>일기토</h3><p>무력 75 이상의 주장끼리 붙어 싸우면 낮은 확률로 일기토가 벌어집니다. 지금은 자동으로 판정되며, 진 쪽은 병력과 기력을 잃습니다.</p>' +
   '<h3>소리</h3><p>효과음과 음악은 메뉴에서 따로 끌 수 있습니다. 음악은 형편에 따라 바뀝니다 — 평시에는 두 곡이 번갈아 나오고, 다른 세력의 부대가 가까이 오면 긴장된 곡으로, 싸움이 벌어지면 전투 곡으로 넘어갑니다.</p>' +
+  '<h3>저장</h3><p>턴이 끝날 때와 화면을 떠날 때 저절로 저장됩니다(<b>자동</b>) — 제목 화면의 <b>이어하기</b>가 이것을 엽니다. 메뉴의 <b>저장</b>에서 번호 칸 ' + SAVE_SLOTS + '개에 따로 남길 수 있고(찬 칸은 한 번 더 눌러 덮어씁니다), <b>불러오기</b>에서 골라 엽니다. 새 게임을 시작하거나 다른 칸을 불러오면 하던 판은 <b>직전</b> 칸에 한 번 남습니다. 저장은 이 기기의 이 주소에만 남습니다.</p>' +
   '<h3>앱으로 설치</h3><p>휴대폰 브라우저에서 <b>aaronkyung-a11y.github.io/chunhado</b> 를 열면 제목 화면에 <b>앱으로 설치</b> 단추가 나옵니다(안 나오면 브라우저 메뉴의 <b>홈 화면에 추가</b>). 설치하면 앱처럼 전체 화면으로 열리고, 한 번 연 뒤에는 인터넷이 없어도 됩니다. 저장은 여는 곳마다 따로라서, 다른 주소에서 하던 판은 넘어오지 않습니다.</p>' +
   '<h3>무장이 묶이는 일</h3><p>대부분의 명령은 그 턴에 끝나서, 맡은 무장은 다음 턴에 다시 쓸 수 있습니다. <b>시설 건설</b>만은 여러 턴이 걸리고, 맡은 무장은 <b>완공될 때까지</b> 다른 명령도 출진도 이동도 못 합니다(무장 목록에 "○○ 건설 중"). 급하면 그 시설을 눌러 <b>공사 중단</b>을 하면 풀려납니다 — 들인 금은 돌아오지 않습니다. 성이 함락되면 짓다 만 시설은 버려집니다.</p>' +
   '<h3>이번 판에 아직 없는 것</h3><p>직접 조작하는 일기토·설전, 외교, 기교·능력 연구, 진·요새 같은 야전 시설, 항구와 수군은 다음 판에서 넣습니다.</p></div>';
@@ -1495,11 +1513,11 @@ function showMenu() {
     render: function () {
       return dlgHead('메뉴 — ' + GAME_VERSION) + '<div class="dlg-b"><div class="cmds"><button class="cmd" type="button" data-a="save"><b>저장</b></button><button class="cmd" type="button" data-a="load"><b>불러오기</b></button>' +
         '<button class="cmd" type="button" data-a="talk"><b>대화창 ' + (UI.talk === false ? '꺼짐' : '켜짐') + '</b></button><button class="cmd" type="button" data-a="snd"><b>효과음 ' + (UI.sound ? '켜짐' : '꺼짐') + '</b></button><button class="cmd" type="button" data-a="mus"><b>음악 ' + (UI.music ? '켜짐' : '꺼짐') + '</b>' + (UI.music && BGM.mode === 'file' ? '<small>연주곡</small>' : (UI.music && BGM.mode === 'syn' ? '<small>만든 음악</small>' : '')) + '</button><button class="cmd" type="button" data-a="spd"><b>열흘 재생</b><small>' + SPEEDS[UI.pspeed][0] + '</small></button><button class="cmd" type="button" data-a="help"><b>도움말</b></button>' +
-        '<button class="cmd" type="button" data-a="title"><b>처음으로</b></button></div><p class="note">턴마다 자동 저장 · 이 기기에만 남습니다</p></div>';
+        '<button class="cmd" type="button" data-a="title"><b>처음으로</b></button></div><p class="note">턴마다 자동 저장 · 저장 칸 ' + SAVE_SLOTS + '개 · 이 기기에만 남습니다</p></div>';
     },
     on: {
-      save: function () { toast(saveGame() ? '저장했습니다' : '이 환경에서는 저장할 수 없습니다'); },
-      load: function () { if (loadGame()) { closeDialog(); clearSel(); startGame(); toast('불러왔습니다'); } else toast('저장된 게임이 없습니다'); },
+      save: function () { showSaves('save'); },
+      load: function () { showSaves('load'); },
       talk: function () { UI.talk = UI.talk === false; if (UI.talk === false) talkHide(); saveOpts(); toast(UI.talk ? '대화창 켬 — 맡은 무장이 한마디 합니다' : '대화창 끔 — 결과만 알림 줄로', 2000); refreshDialog(); },
       snd: function () { UI.sound = !UI.sound; if (UI.sound) audioInit(); saveOpts(); refreshDialog(); },
       mus: function () { UI.music = !UI.music; saveOpts(); if (UI.music) playBgm(bgmForState()); else stopBgm(); refreshDialog(); },
@@ -1536,10 +1554,108 @@ function bgmForState() {
   }
   return tense ? 'tense' : 'field';
 }
-function saveGame() { if (!G || G.over || UI.play) return false; try { localStorage.setItem(SAVE_KEY, serialize()); return true; } catch (e) { return false; } }
-function hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; } }
-function loadGame() { try { var s = localStorage.getItem(SAVE_KEY); return s ? deserialize(s) : false; } catch (e) { return false; } }
-function dropSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* */ } }
+/* 저장 칸(v0.10.1): 'auto' = 자동 저장(턴마다 · 화면을 떠날 때. 전부터 쓰던 SAVE_KEY 그대로) · 'prev' = 직전 판(새 게임이나 불러오기로 밀려난 판) · 's1'~ = 직접 저장.
+   칸마다 요약(세력 · 날짜 · 거점 · 병력 · 저장한 때)을 SAVE_KEY + '_meta' 에 따로 적어 둔다 — 없거나 저장본과 길이가 다르면 저장본을 읽어 다시 만든다. */
+function slotKey(id) { return id === 'auto' ? SAVE_KEY : SAVE_KEY + '_' + id; }
+function slotIds() { var a = ['auto', 'prev']; for (var i = 1; i <= SAVE_SLOTS; i++) a.push('s' + i); return a; }
+function slotName(id) { return id === 'auto' ? '자동' : (id === 'prev' ? '직전' : id.slice(1)); }
+function slotLabel(id) { return id === 'auto' ? '자동 저장' : (id === 'prev' ? '직전 판' : id.slice(1) + '번 칸'); }
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { /* */ } }
+function canStore() { if (!lsSet(SAVE_KEY + '_probe', '1')) return false; lsDel(SAVE_KEY + '_probe'); return true; }      // 저장 자체가 되는 환경인가(안 되면 공간이 모자란 것과 구별한다)
+function saveMetaOf(g, len) {
+  var tr = 0, nb = 0, i;
+  for (i = 0; i < g.bases.length; i++) if (g.bases[i].owner === g.player) { nb++; tr += g.bases[i].troops; }
+  for (i = 0; i < g.units.length; i++) if (g.units[i].f === g.player) tr += g.units[i].troops;
+  return { f: g.factions[g.player].name, c: g.factions[g.player].color, d: g.year + '년 ' + g.month + '월 ' + ['상순', '중순', '하순'][g.xun], turn: g.turn, n: nb, tr: tr, t: Date.now(), len: len };
+}
+function metaAll() { try { return JSON.parse(lsGet(SAVE_KEY + '_meta') || '{}') || {}; } catch (e) { return {}; } }
+function metaPut(id, m) { var a = metaAll(); if (m) a[id] = m; else delete a[id]; lsSet(SAVE_KEY + '_meta', JSON.stringify(a)); }
+/* 칸의 요약. 비었으면 null, 열 수 없는 저장이면 { bad: true } */
+function slotInfo(id) {
+  var s = lsGet(slotKey(id)); if (!s) return null;
+  var m = metaAll()[id];
+  if (m && m.len === s.length) return m;
+  try { var g = JSON.parse(s); if (!g || g.ver !== 2) return { bad: true }; m = saveMetaOf(g, s.length); m.t = 0; metaPut(id, m); return m; } catch (e) { return { bad: true }; }
+}
+function slotWrite(id, s, m) { if (!lsSet(slotKey(id), s)) return false; metaPut(id, m); return true; }
+function slotDrop(id) { lsDel(slotKey(id)); metaPut(id, null); }
+function inGame() { return !!G && !G.over && $('title').classList.contains('off'); }
+function saveGame() { if (!G || G.over || UI.play) return false; var s = serialize(); return slotWrite('auto', s, saveMetaOf(G, s.length)); }
+/* 직접 저장: 그 칸에 적고, 자동 저장도 같은 모습으로 맞춘다([이어하기]가 늘 가장 나중의 모습이 되게) */
+function saveTo(id) { if (!G || G.over || UI.play) return false; var s = serialize(), m = saveMetaOf(G, s.length); if (!slotWrite(id, s, m)) return false; slotWrite('auto', s, m); return true; }
+function hasSave() { return !!lsGet(SAVE_KEY); }
+function anySave() { var ids = slotIds(); for (var i = 0; i < ids.length; i++) if (lsGet(slotKey(ids[i]))) return true; return false; }
+/* 자동 저장이 다른 판으로 바뀌기 전에 '직전' 칸에 남긴다(새 게임 · 불러오기). keep = 남길 저장본(없으면 지금의 자동 저장) */
+function keepPrev(keep) {
+  var s = keep || lsGet(SAVE_KEY); if (!s) return;
+  var m = null; try { m = saveMetaOf(JSON.parse(s), s.length); } catch (e) { return; }
+  var old = metaAll().auto; if (!keep && old && old.len === s.length) m.t = old.t;       // 자동 저장을 그대로 옮길 때는 저장한 때도 그대로
+  slotWrite('prev', s, m);
+}
+/* 칸을 불러온다. 하던 판의 지금 모습(제목 화면에서는 자동 저장)은 '직전' 칸에 남고, 불러온 판이 자동 저장이 된다 */
+function loadFrom(id) {
+  var s = lsGet(slotKey(id)); if (!s) return false;
+  var keep = (inGame() && !UI.play) ? serialize() : lsGet(SAVE_KEY), ok = false;
+  try { ok = deserialize(s); } catch (e) { ok = false; }
+  if (!ok) return false;
+  if (keep && keep !== s) keepPrev(keep);
+  if (id !== 'auto') { var m = metaAll()[id], m2 = saveMetaOf(G, s.length); if (m && m.len === s.length) { m2.n = m.n; m2.tr = m.tr; } slotWrite('auto', s, m2); }
+  return true;
+}
+function loadGame() { return loadFrom('auto'); }
+function dropSave() { slotDrop('auto'); }
+function saveWhen(t) {
+  if (!t) return '';
+  var d = new Date(t), n = new Date(), p2 = function (v) { return (v < 10 ? '0' : '') + v; }, hm = p2(d.getHours()) + ':' + p2(d.getMinutes());
+  return (d.toDateString() === n.toDateString() ? '오늘 ' : (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ') + hm;
+}
+/* 저장 · 불러오기 창. mode 'save' | 'load'. 제목 화면에서는 불러오기만 */
+function showSaves(mode) {
+  var game = inGame(), st = { mode: game ? mode : 'load', arm: '' };
+  showDialog({
+    render: function () {
+      var ids = slotIds(), h = dlgHead(game ? '저장 · 불러오기' : '불러오기') + '<div class="dlg-b">';
+      if (game) h += '<div class="seg"><button type="button" data-a="smode" data-v="save"' + (st.mode === 'save' ? ' class="on"' : '') + '>저장</button><button type="button" data-a="smode" data-v="load"' + (st.mode === 'load' ? ' class="on"' : '') + '>불러오기</button></div>';
+      h += '<div class="rows svl">';
+      for (var i = 0; i < ids.length; i++) {
+        var id = ids[i], m = slotInfo(id), manual = id.charAt(0) === 's', act = '', del = '';
+        if (!manual && (!m || st.mode === 'save')) continue;       // 자동 · 직전: 있을 때만, 불러올 때만 보인다(저장은 번호 칸에만)
+        if (st.mode === 'load' && !m) continue;                    // 불러올 때는 찬 칸만
+        if (st.mode === 'save') act = '<button class="btn' + (st.arm === 'w' + id ? ' pri' : '') + '" type="button" data-a="ssave" data-v="' + id + '">' + (st.arm === 'w' + id ? '덮어쓰기' : '저장') + '</button>';
+        else if (m && !m.bad) act = '<button class="btn" type="button" data-a="sload" data-v="' + id + '">불러오기</button>';
+        if (m && id !== 'auto') del = '<button class="btn del' + (st.arm === 'd' + id ? ' pri' : '') + '" type="button" data-a="sdel" data-v="' + id + '" aria-label="' + slotLabel(id) + ' 지우기">' + (st.arm === 'd' + id ? '지움' : '×') + '</button>';
+        h += '<div class="row' + (m ? '' : ' emp') + '" data-slot="' + id + '"><i class="svn' + (manual ? '' : ' au') + '">' + slotName(id) + '</i><span class="mid">' +
+          (!m ? '<span class="ds">빈 칸</span>' : (m.bad ? '<span class="nm">열 수 없는 저장</span>' : '<span class="nm"><span class="chip" style="background:' + m.c + '">' + m.f + '</span> ' + m.d + '</span><span class="ds">' + m.n + '성 · ' + fmt(m.tr) + '명' + (m.t ? ' · ' + saveWhen(m.t) : '') + '</span>')) +
+          '</span>' + act + del + '</div>';
+      }
+      if (st.mode === 'load' && !anySave()) h += '<p class="note">저장된 판이 없습니다.</p>';
+      return h + '</div><p class="note">' + (st.mode === 'save' ? '자동 저장은 턴마다 따로 됩니다.' : '<b>자동</b> = 턴마다 저절로 · <b>직전</b> = 새 게임 · 불러오기 바로 앞의 판') + '</p></div>';
+    },
+    on: {
+      smode: function (el) { st.mode = el.getAttribute('data-v'); st.arm = ''; refreshDialog(); },
+      ssave: function (el) {
+        var id = el.getAttribute('data-v');
+        if (slotInfo(id) && st.arm !== 'w' + id) { st.arm = 'w' + id; refreshDialog(); return; }      // 찬 칸: 한 번 더 눌러야 덮어쓴다
+        var ok = saveTo(id); st.arm = '';
+        toast(ok ? slotLabel(id) + '에 저장했습니다' : (canStore() ? '저장하지 못했습니다 — 저장 공간이 모자랍니다(안 쓰는 칸을 지워 주세요)' : '이 환경에서는 저장할 수 없습니다'), ok ? 1800 : 3200);
+        refreshDialog();
+      },
+      sload: function (el) {
+        var id = el.getAttribute('data-v');
+        if (!loadFrom(id)) { toast('불러오지 못했습니다'); return; }
+        closeDialog(); if (game) clearSel(); startGame(); toast(dateStr() + ' — ' + slotLabel(id) + '을 불러왔습니다', 2200);
+      },
+      sdel: function (el) {
+        var id = el.getAttribute('data-v');
+        if (st.arm !== 'd' + id) { st.arm = 'd' + id; refreshDialog(); return; }
+        slotDrop(id); st.arm = ''; refreshDialog(); titleBtns();
+      }
+    }
+  }, true);
+}
+function titleBtns() { $('tCont').disabled = !hasSave(); $('tLoad').disabled = !anySave(); }
 
 /* ---------- 턴 종료: 지난 열흘을 차례로 보여 주기 ----------
    1) 행군 중인 내 부대가 한 구간 나아간다  2) 다른 세력이 차례로 움직인다(나와 관련된 일·가까운 일·성의 주인이 바뀐 일만 보여 줌)
@@ -1832,7 +1948,7 @@ function jumpBack(c0) {
 function advBrief(wait) {
   var turn = G.turn;
   setTimeout(function () {
-    if (!G || G.over || UI.play || G.turn !== turn || UI.briefT === turn) return;      // 한 턴에 한 번
+    if (!G || G.over || UI.play || G.turn !== turn || UI.briefT === turn || !inGame()) return;      // 한 턴에 한 번(제목 화면으로 나갔으면 말하지 않는다)
     if (MODAL) { advBrief(700); return; }
     var A = facAdv(G.player), top = A ? advTop(todoList()) : null;
     UI.briefT = turn;
@@ -1895,7 +2011,7 @@ function showGameOver() {
 /* ---------- 시작 ---------- */
 function showTitle() {
   $('title').classList.remove('off');
-  $('tCont').disabled = !hasSave();
+  titleBtns(); talkHide();                                    // 제목 화면에는 대화창을 남기지 않는다
   $('tVer').textContent = GAME_VERSION + ' · 194년 군웅할거';
 }
 function startGame() {
@@ -1927,7 +2043,7 @@ function showFactionSelect() {
     },
     on: {
       f: function (el) { st.f = +el.getAttribute('data-v'); refreshDialog(); },
-      go: function () { if (st.f < 0) return; closeDialog(); newGame(st.f); startGame(); sfx('gong'); showIntro(); }
+      go: function () { if (st.f < 0) return; closeDialog(); keepPrev(); newGame(st.f); saveGame(); startGame(); sfx('gong'); showIntro(); }
     }
   });
 }
@@ -1967,6 +2083,7 @@ function boot(data) {
   });
   $('tNew').addEventListener('click', function () { audioInit(); playBgm('title'); sfx('ui'); showFactionSelect(); });
   $('tCont').addEventListener('click', function () { audioInit(); if (loadGame()) { startGame(); toast(dateStr() + ' — 이어서 합니다'); } else toast('저장된 게임이 없습니다'); });
+  $('tLoad').addEventListener('click', function () { audioInit(); playBgm('title'); sfx('ui'); showSaves('load'); });
   $('tHelp').addEventListener('click', function () { audioInit(); playBgm('title'); showHelp(); });
   document.addEventListener('visibilitychange', function () { if (document.hidden) saveGame(); });
   if (data && data.save && deserialize(data.save)) startGame(); else { showTitle(); BGM.want = 'title'; }

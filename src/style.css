@@ -545,3 +545,22 @@ details.more .rules { margin: 6px 0 0; padding-left: 18px; font-size: 12px; line
 .note.cpn { line-height: 1.5; }
 .row.rep .por { flex: none; margin-right: 2px; }
 .rows.cptl .row .ds { white-space: normal; }
+
+/* ---------- v0.10.1: 부지 번호 딱지(시설 탭의 줄 앞) ---------- */
+.lno { display: inline-flex; align-items: center; justify-content: center; min-width: 19px; height: 19px; margin-right: 6px; padding: 0 0 1px; border: 1.2px solid var(--ink); border-radius: 10px; background: var(--paper); font: 900 11.5px var(--font-display); font-style: normal; vertical-align: 1px; font-variant-numeric: tabular-nums; }
+
+/* ---------- v0.10.1: 저장 칸 ---------- */
+.t-row { display: flex; gap: 10px; }
+.t-row button { flex: 1; min-width: 0; letter-spacing: .12em; }
+.seg { display: flex; border: 1px solid var(--ink); border-radius: 2px; margin: 2px 0 6px; overflow: hidden; }
+.seg button { flex: 1; height: 38px; font: 900 15px var(--font-display); color: var(--dim); letter-spacing: .08em; }
+.seg button.on { background: var(--ink); color: var(--paper); }
+.rows.svl .row { min-height: 60px; gap: 9px; cursor: default; }
+.rows.svl .row:active { background: none; }
+.rows.svl .row .nm .chip { margin-left: 0; margin-right: 3px; font-size: 11.5px; }
+.svn { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 1.4px solid var(--ink); display: flex; align-items: center; justify-content: center; font: 900 16px var(--font-display); font-style: normal; background: var(--paper); }
+.svn.au { border-radius: 3px; font: 800 11.5px var(--font-body); background: var(--paper-2); }
+.rows.svl .row.emp .svn { border-style: dashed; border-color: var(--dim); color: var(--dim); }
+.rows.svl .btn { flex: none; height: 40px; padding: 0 12px; min-width: 62px; }
+.rows.svl .btn.del { min-width: 38px; padding: 0 8px; color: var(--dim); border-color: var(--line-2); font-size: 16px; }
+.rows.svl .btn.del.pri { color: var(--seal-ink); border-color: var(--seal-2); min-width: 52px; font-size: 14px; }

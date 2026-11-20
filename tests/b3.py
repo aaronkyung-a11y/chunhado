@@ -43,7 +43,7 @@ def steps(pg):
     pg.wait_for_timeout(1800); print('tap2', pg.evaluate('[dateStr(), UI.busy, !!MODAL, document.getElementById("toast").textContent]')); shot(pg, '38_report')
     if pg.locator('#modal.on').count(): tapsel(pg, '#modal [data-a=close]')
     shot(pg, '39_after')
-    tapsel(pg, '#btnMenu'); shot(pg, '40_menu'); tapsel(pg, '#modal [data-a=save]'); tapsel(pg, '#modal [data-a=close]')
+    tapsel(pg, '#btnMenu'); shot(pg, '40_menu'); tapsel(pg, '#modal [data-a=save]'); tapsel(pg, '#modal [data-a=ssave]', 0); pg.evaluate('closeDialog()')      # v0.10.1: 저장은 칸을 고른다
     d1 = pg.evaluate('dateStr() + " " + G.units.length')
     pg.reload(); pg.wait_for_function('window.R3 && R3.ready', timeout=60000); pg.wait_for_timeout(500)
     tapsel(pg, '#tCont'); pg.wait_for_timeout(800)

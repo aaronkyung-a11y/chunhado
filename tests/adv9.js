@@ -36,7 +36,7 @@ console.log('2. 군사');
   ok(X.setAdvisor(0, G1.factions[0].lord).ok === undefined || X.setAdvisor(0, G1.factions[0].lord).ok === false, '군주를 군사로 삼을 수 없다');
   const other = X.advCandidates(1)[0]; ok(!X.setAdvisor(0, other.id).ok, '다른 세력의 무장도 안 된다');
   const c0 = X.advCandidates(0), low = c0[c0.length - 1]; ok(X.setAdvisor(0, low.id).ok && X.facAdv(0) === low, '바꿀 수 있다', low.n + ' 지력 ' + low.int);
-  ok(X.adviceAcc({ int: 90 }, 70) === 100 && X.adviceAcc({ int: 70 }, 90) === 60 && X.adviceAcc({ int: 80 }, 80) === 80 && X.adviceAcc({ int: 40 }, 99) === 50 && X.adviceAcc({ int: 100 }, 100) === 100, '적중률 = 지력 + (지력 − 상대 지력) × 0.5, 50~100', '90↔70 100 · 70↔90 60 · 80↔80 80 · 40↔99 50');
+  ok(X.adviceAcc({ int: 90 }, 70) === 90 && X.adviceAcc({ int: 70 }, 90) === 60 && X.adviceAcc({ int: 80 }, 80) === 80 && X.adviceAcc({ int: 40 }, 99) === 50 && X.adviceAcc({ int: 100 }, 100) === 100 && X.adviceAcc({ int: 84 }, 0) === 84 && X.adviceAcc({ int: 100 }, 30) === 100 && X.adviceAcc({ int: 96 }, 30) === 96, '적중률 = 지력 − (상대가 더 똑똑한 만큼) × 0.5, 50~100 (v0.10.1)', '90↔70 90 · 70↔90 60 · 80↔80 80 · 40↔99 50 · 84↔없음 84 · 96↔30 96');
   // 실제로 그만큼 맞는가: 군사 지력 70, 상대 지력 80 → 65%
   const A = { int: 70 }, save = G1.factions[0].adv; let n = 0, right = 0, p = 37;
   low.int0 = low.int; low.int = 70;
@@ -44,7 +44,7 @@ console.log('2. 군사');
   ok(Math.abs(right / n - 0.65) < 0.01, '적중률 65%인 군사는 3만 번 가운데 65%쯤 맞힌다', (100 * right / n).toFixed(2) + '%');
   // 지력이 높은 군사가 맞히는 때는 낮은 군사가 맞히는 때를 모두 포함한다(군사를 바꿔 물어도 새 정보가 없다)
   let viol = 0, hiRight = 0;
-  for (let t = 1; t <= 100; t++) { G1.turn = t; for (let k = 0; k < 100; k++) { const key = 'pconfuseu' + k, real = X.omenRoll(key) < 44; low.int = 60; const a1 = X.advise(0, X.omenRoll(key), X.omenRoll('a|' + key), 44, 75); low.int = 95; const a2 = X.advise(0, X.omenRoll(key), X.omenRoll('a|' + key), 44, 75); if (a1.says === real && a2.says !== real) viol++; if (a2.says === real) hiRight++; } }
+  for (let t = 1; t <= 100; t++) { G1.turn = t; for (let k = 0; k < 100; k++) { const key = 'pconfuseu' + k, real = X.omenRoll(key) < 44; low.int = 60; const a1 = X.advise(0, X.omenRoll(key), X.omenRoll('a|' + key), 44, 75); low.int = 100; const a2 = X.advise(0, X.omenRoll(key), X.omenRoll('a|' + key), 44, 75); if (a1.says === real && a2.says !== real) viol++; if (a2.says === real) hiRight++; } }
   ok(viol === 0 && hiRight === 10000, '낮은 군사가 맞힌 것을 높은 군사가 틀리는 일은 없다 · 적중률 100%면 늘 맞는다', 'viol ' + viol + ', 100% 군사 ' + hiRight + '/10000');
   low.int = low.int0; G1.turn = 1; G1.factions[0].adv = save;
   // 자리가 비면 채운다

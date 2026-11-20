@@ -1,6 +1,7 @@
 /* ===== 천하도 — 정적 데이터 ===== */
-var GAME_VERSION = 'v0.10';
+var GAME_VERSION = 'v0.10.1';
 var SAVE_KEY = 'chunhado_save_v2';
+var SAVE_SLOTS = 6;                      // 직접 저장하는 칸 수(v0.10.1). 자동 저장은 SAVE_KEY 그대로, 직전 판은 SAVE_KEY + '_prev', 칸은 SAVE_KEY + '_s1' …
 
 var UNIT_TYPES = {
   sword:   { name: '검병', g: '검', cls: 'foot',  mp: 12, atk: 0.80, def: 0.85, range: 1, weapon: null,      siege: 0.9, vsBase: 0.9 },
@@ -44,7 +45,8 @@ var POACH = { base: 15, cha: 0.5, pol: 0.2, lord: 0.25, loy0: 70, loyK: 2.5, tal
 /* AI 가 다른 세력의 무장에게 권하는 빈도: 턴마다 tryPct% 의 확률로 한 번, 성공률이 min% 이상인 대상에게만.
    spare = 무장이 이 수 이하(군주 포함)인 세력의 무장에게는 권하지 않는다(작은 세력이 등용만으로 말라 죽지 않게) */
 var POACH_AI = { tryPct: 25, min: 12, spare: 4 };
-/* 군사의 조언이 맞을 확률(%) = 군사 지력 + (군사 지력 − 상대 지력) × k, min~100 */
+/* 군사의 조언이 맞을 확률(%) = 군사 지력 − (상대가 더 똑똑한 만큼) × k, min~100.
+   v0.10.1: 전에는 '군사 지력 + (군사 지력 − 상대 지력) × k' 라 상대보다 똑똑한 만큼이 더해져 웬만한 군사는 90~100% 였다. 이제 지력이 곧 적중률이다 */
 var ADVISE = { k: 0.5, min: 50 };
 /* 군단(v0.10): 방침 넷, 군단 수의 한도, 군단의 행동력(턴마다 base + 도시 × city + 군단장 매력 ÷ 5, max 까지) */
 var CORPS_MAX = 6;

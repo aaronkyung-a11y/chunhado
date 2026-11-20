@@ -19,7 +19,7 @@ try:
         br = p.chromium.launch(executable_path='/usr/bin/google-chrome', headless=True, args=['--no-sandbox', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
         cxt = br.new_context(viewport={'width': 412, 'height': 915}, is_mobile=True, has_touch=True, locale='ko-KR')
         pg = cxt.new_page()
-        pg.on('console', lambda m: errors.append(m.type + ': ' + m.text) if m.type == 'error' else None)
+        pg.on('console', lambda m: errors.append(m.type + ': ' + m.text + ' @ ' + str((m.location or {}).get('url', ''))[:120]) if m.type == 'error' else None)      # v0.10.1: 어느 자원인지도 적는다
         pg.on('pageerror', lambda e: errors.append('pageerror: ' + str(e)))
         t0 = time.time(); pg.goto(URL); pg.wait_for_function('window.R3 && R3.ready', timeout=90000); t1 = time.time()
         print('  처음 열기(서버에서) %.1f초' % (t1 - t0))
@@ -121,7 +121,11 @@ try:
 finally:
     open(idx, 'wb').write(orig)
     srv.terminate()
-errs = [e for e in errors if 'GPU stall' not in e and 'GL Driver Message' not in e and 'status of 416' not in e]   # 416 은 범위 밖 구간을 일부러 물은 것
+# v0.10.1: 인터넷 없이 새 판을 시작했을 때, 그때 처음 필요해진 글꼴 조각(예: '등용할 만한 무장'의 招 — 판에 따라 나오기도 안 나오기도 한다)은 받을 수 없다.
+#   그 글자는 기기의 글꼴로 대신 그려질 뿐이라 오류로 치지 않고 적어만 둔다(전부터 있던 일 — 0.10.1 에서 군사의 권유가 잦아져 더 자주 걸렸다).
+font_miss = [e for e in errors if 'fonts.gstatic.com' in e and 'ERR_FAILED' in e]
+if font_miss: print('  (참고) 인터넷 없이 처음 필요해진 글꼴 조각 %d건 — 그 글자는 기기의 글꼴로 그려진다: %s' % (len(font_miss), [e.split('.')[-2] for e in font_miss]))
+errs = [e for e in errors if 'GPU stall' not in e and 'GL Driver Message' not in e and 'status of 416' not in e and e not in font_miss]   # 416 은 범위 밖 구간을 일부러 물은 것
 print('console errors:', len(errs)); [print('   ', e[:300]) for e in errs[:10]]
 bad = [n for n, ok in RES if not ok]
 print('검사 %d개 가운데 통과 %d, 실패 %d' % (len(RES), len(RES) - len(bad), len(bad)))

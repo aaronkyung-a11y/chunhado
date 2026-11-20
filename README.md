@@ -57,6 +57,14 @@
 - **충성과 인연**: `data.js`의 `BONDS`(군주 이름 → { 무장: 사이 }), `core.js`의 `bondWith`·`bondOf`·`loyNat`. 분기마다 `roundEnd`에서 자리 잡는 값 쪽으로 움직인다.
 - **지도 끝**: `ui3d.js`의 `APRON`(지도 밖 띠의 폭)·`apronY`(띠의 높이)·`TERRAIN_FS`의 `edge`(거울 비춤 + 번짐 + 종이로 풀림)·`camLimits`(지도 끝이 화면에 들어오는 한도)·`settleCam`(아래 창 높이가 바뀌면 제자리로).
 
+## v0.10.1에서 바뀐 것의 자리
+바뀐 기록은 `build/v0101/p1_adv`(군사의 적중률) · `p2_fsel_site`(고른 시설의 표시 · 부지 번호 · 공사장 그림) · `p3_saves`(세이브 칸). `bash build/v0101/apply.sh`가 0.10의 소스에 차례로 입힌다. 규칙이 바뀐 곳은 `adviceAcc` 하나다.
+- **군사의 적중률**(`core.js`의 `adviceAcc`, 상수 `ADVISE`): 군사의 지력 그대로, 상대가 더 똑똑하면 그 차이 × `ADVISE.k`(0.5)만큼 깎고 `ADVISE.min`(50)~100. 재 보는 것은 `node tests/adv101.js`(세력마다 대상별 평균).
+- **고른 시설**: 시설 창(`flowFacility`)은 `fsel: { b, pi }` · `see: true`를 달고 뜬다 — `fselOf()`가 그것을 찾고, `buildView()`가 `fi`(고른 시설의 부지)와 시설마다 `{ i, no, left }`를 넘기면 `ui3d.js`의 `spotDraw`가 그 칸을 환하게 뚫고(둥글게 번지는 구멍) 붉은 테두리를 두르고 이름표를 붉은 딱지로 그린다. 지도를 누르면 `fselTap` — 같은 거점의 다른 시설이면 그 시설로, 빈 부지면 `flowDevelop`으로, 그 밖이면 닫는다(`devTap`도 시설을 누르면 `flowFacility`로 간다). 건설 자리를 보는 동안(`SPOT.on`) `pickAt`은 그 거점의 부지를 성의 그림보다 먼저 집는다.
+- **부지 번호**: `lotNo(b, pi)`(v0.9.3)가 지은 시설에도 붙는다 — 지도의 이름 앞 딱지(`spotDraw`의 `facLabels`), 시설 탭의 줄 앞(`lotChip`, CSS `.lno`), 시설 창의 제목(`lotMark`). 시설 탭의 줄은 번호 차례.
+- **공사장 그림**(`ui3d.js`): `siteCanvas(시설, 단계)`가 그 시설의 그림(`SITE_IMG`)을 먹빛만 옅게 남기고(`SITE_INK` · `SITE_A`) 비계 · 통나무 · 깃발을 덧그린다. `siteTexKey(시설, 단계)`가 `TEX['market@1']` 꼴로 만들어 두고 `syncScene`이 짓는 중인 시설에 쓴다(단계 = `siteStage(fc)`, 공사의 3분의 1마다). 작은 그림은 `siteUrl(시설)` → `facThumb(fc)`.
+- **세이브 칸**(`ui_panels.js`): 칸 id는 `auto`(자동 — 전부터 쓰던 `SAVE_KEY`) · `prev`(직전 판) · `s1`~`s6`(`SAVE_SLOTS`), 열쇠는 `slotKey(id)`. 요약은 `SAVE_KEY + '_meta'`에 `{ id: { f, c, d, turn, n, tr, t, len } }` — `slotInfo(id)`가 읽고, 없거나 길이가 어긋나면 저장본에서 다시 만든다. `saveGame()`(자동) · `saveTo(id)`(그 칸 + 자동) · `loadFrom(id)`(하던 판은 `keepPrev`로 직전 칸에, 불러온 판은 자동 저장에) · `slotDrop(id)`. 창은 `showSaves('save' | 'load')`, 제목 화면의 단추는 `#tLoad`(`titleBtns()`가 켜고 끈다). 새 게임은 `keepPrev()` → `newGame` → `saveGame()`.
+
 ## 군단(v0.10)
 바뀐 기록은 `build/v010/p1_core`(규칙) · `p2_ai`(군단장의 판단) · `p3_ui`(화면). `bash build/v010/apply.sh`가 0.9.3의 소스에 차례로 입힌다. AI 세력의 규칙은 건드리지 않았다(AI 대전 216턴의 출력이 0.9.3과 같다).
 - **자료**: `G.corps = [{ id, n(제n군단), lead(군단장 무장 id, 비면 -1), dir, target, ap, t0, note, wait }]`, 거점 `b.corps` · 부대 `u.corps` = 군단 id(직할이면 0 · 없음). 방침 `dir`: `dev` 내정 · `arm` 군비 · `atk` 공격(`target` = 칠 거점) · `sup` 지원(`target` = 보낼 내 거점). 상수는 `data.js`의 `CORPS_MAX`·`CORPS_DIR`·`CORPS_AP`·`CORPS_ATK`.
