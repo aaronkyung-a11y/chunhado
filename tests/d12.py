@@ -162,7 +162,7 @@ def steps(pg):
     check('이단첨 대성공: 기력 -30 글씨', any('기력 -30' in x for x in r['fl']) and '기력 -30' in r['toast'], r)
     r = tactic(pg, 0, 0, 'TACTICS.spear[1]', 0.001, 'd12_09_naseon', 1300)
     print('  나선첨 대성공:', r['fl'], '|', r['toast'])
-    check('나선첨 대성공: 반드시 혼란(v0.8.1: 턴 수까지 — 혼란 1턴)', any(x == '혼란 1턴' for x in r['fl']) and '혼란 1턴' in r['toast'], r)
+    check('나선첨 대성공: 반드시 혼란(v0.9.1: 날수까지 — 혼란 10일)', any(x == '혼란 10일' for x in r['fl']) and '혼란 10일' in r['toast'], r)
     # ---------- 6. 이동·통상 공격·활·기병 전법의 소리 ----------
     pg.evaluate('() => { var u = UMAP[S.mine[1]]; u.done = false; u.mp = uMaxMp(u); selectUnit(u, true); }'); pg.wait_for_timeout(400); spied(pg)
     dest = pg.evaluate('() => { var u = UMAP[S.mine[1]], rc = UI.rc, best = null; for (var k in rc.cost) { k = +k; var c = k % W, r = (k - c) / W, d = hdist(u.c, u.r, c, r); if (d >= 2 && d <= 3 && !UAT[k] && c < u.c) { best = [c, r]; break; } } return best; }')

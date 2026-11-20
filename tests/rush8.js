@@ -1,6 +1,7 @@
 // 초반 압박 재기: 한 세력을 '플레이어 자리'에 두고(조작은 AI) 그 세력의 거점·시설이 처음 공격받는 턴, 처음 성을 잃는 턴, 망하는 턴을 센다.
 //   node tests/rush8.js [턴=72] [씨앗 수=5]      SRC=<폴더> 로 다른 판과 견줌.   FACS=2,6,7 로 세력을 고름(기본: 시작 병력이 1만 미만인 일곱 세력)
 //   PASSIVE=1 이면 그 세력은 아무것도 하지 않는다(처음 하는 사람이 손을 놓고 있는 경우에 가깝다)
+//   PEACE=24,15,9 [RAMP=24] 로 보호 기간(1만 미만, 2만 미만, 그 밖)과 완충 기간을 바꿔 가며 잴 수 있다
 //   v0.8.1부터: 초반 보호(G.peace)가 지켜지는지도 센다 — '보호 중인데, 내가 먼저 치지 않은 세력이 내 거점·시설을 친 횟수'(어김)가 0 이어야 한다. 어김이 있으면 종료 코드 1
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const root = process.env.SRC || path.join(__dirname, '..', 'src');
@@ -9,6 +10,8 @@ function run(fac, seed) {
   const ctx = { console, Math, JSON, Date, Object, Array, String, Number, isNaN, parseInt, parseFloat, Int32Array, Uint8Array, Float32Array, Uint32Array, Int16Array };
   vm.createContext(ctx);
   for (const f of ['mapdata.js', 'roster.js', 'data.js', 'core.js', 'ai.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
+  if (process.env.PEACE) { const pp = process.env.PEACE.split(',').map(Number); ctx.PEACE_PLAYER = [[10000, pp[0]], [20000, pp[1]]]; ctx.PEACE_ALL = pp[2]; }     // 보호 기간을 바꿔 가며 재 볼 때: PEACE=24,15,9 (1만 미만, 2만 미만, 그 밖 = AI끼리)
+  if (process.env.RAMP) ctx.PEACE_RAMP = +process.env.RAMP;
   ctx.ME = fac; ctx.PASSIVE = PASSIVE;
   vm.runInContext(`
     var R = { firstMarch: 0, firstHit: 0, firstLoss: 0, dead: 0, by: '', hitTroops: 0, myTroops0: 0, viol: 0, until: 0, atEnd: 0, hits: 0 }, ROUND = 0;

@@ -115,18 +115,19 @@ function aiUnitAct(u) {
       if (pt && ployChance(u, pl, tg) >= 55) { aiReport(u, unitPloy(u, pl, pt), tg); return; }
     }
     // 전법
-    var tl = tacticList(u), bt = null, bm = 0;
+    var tl = tacticList(u), bt = null, bm = -9;
     for (i = 0; i < tl.length; i++) {
       if (u.morale < tl[i].cost) continue;
       var tt = tacticTargets(u, tl[i]), okT = false;
       for (var q = 0; q < tt.length; q++) if (tt[q].u === tg) okT = true;
       if (!okT) continue;
-      // 기대 피해(보통 공격 = 1): 성공률 × 배수 × 병력 비 × 대성공 몫 + 실패했을 때의 피해. 여럿을 치는 전법은 조금 더 쳐 준다
-      var od0 = tacticOdds(u, tg), p0 = od0.ok / 100;
-      var m = p0 * tl[i].mult * tacticSizeK(u, tg) * (1 + (od0.mult - 1) * od0.crit / Math.max(1, od0.ok)) + (1 - p0) * TACTIC_K.failDmg + (tl[i].all || tl[i].splash || tl[i].arc ? 0.2 * p0 : 0);
+      // v0.9.1: 보통 공격과 견준 이득 = (기대 피해의 차이 − 받는 반격의 차이 × 0.6) ÷ 보통 공격의 피해. 반격의 무게 0.6 은 칠 상대를 고를 때와 같다.
+      //         함께 맞는 적의 피해는 실제로 센다(v0.8~0.9: 주는 피해만 보고, 여럿을 치는 전법에는 어림으로 +0.2)
+      var ex = tacticExpect(u, tg, tl[i]);
+      var m = ((ex.dealt - ex.nDealt) - 0.6 * (ex.recv - ex.nRecv)) / Math.max(1, ex.nDealt);
       if (m > bm) { bm = m; bt = tl[i]; }
     }
-    if (bt && bm >= 1.1 && chance(85)) { aiReport(u, unitTactic(u, bt, tgt), tg); return; }      // 보통 공격보다 나을 때만 쓴다(v0.7: 가장 센 전법을 75% 확률로 무조건)
+    if (bt && bm >= 0.1 && chance(85)) { aiReport(u, unitTactic(u, bt, tgt), tg); return; }      // 보통 공격보다 나을 때만 쓴다(v0.7: 가장 센 전법을 75% 확률로 무조건)
     aiReport(u, unitAttack(u, tgt), tg);
     return;
   }
@@ -164,8 +165,8 @@ function aiReport(u, res, tg) {
   if (!res || !res.ok || G.aiOnly) return;
   if (tg && tg.f === G.player) {
     var txt = facName(u.f) + ' ' + uLeader(u).n + '대';
-    if (res.kind === 'ploy') txt += '의 ' + res.ploy + (res.success ? ' 성공' : ' 실패') + ' → ' + (uLeaderSafe(tg)) + (res.dmg ? ' (-' + nf(res.dmg) + ')' : '') + (res.success && res.st ? ' — ' + statusName(res.st) + ' ' + res.stN + '턴' : '');
-    else if (res.kind === 'tactic') txt += '의 ' + res.tac + (res.fail ? ' 실패' : (res.crit ? ' 대성공' : '')) + ' → ' + uLeaderSafe(tg) + ' (-' + nf(res.dmg) + ')' + (res.confused ? ' — 혼란 ' + res.stN + '턴' : '');
+    if (res.kind === 'ploy') txt += '의 ' + res.ploy + (res.success ? ' 성공' : ' 실패') + ' → ' + (uLeaderSafe(tg)) + (res.dmg ? ' (-' + nf(res.dmg) + ')' : '') + (res.success && res.st ? ' — ' + statusName(res.st) + ' ' + res.stN * 10 + '일' : '');
+    else if (res.kind === 'tactic') txt += '의 ' + res.tac + (res.fail ? ' 실패' : (res.crit ? ' 대성공' : '')) + ' → ' + uLeaderSafe(tg) + ' (-' + nf(res.dmg) + ')' + (res.confused ? ' — 혼란 ' + res.stN * 10 + '일' : '');
     else txt += '의 공격 → ' + uLeaderSafe(tg) + ' (-' + nf(res.dmg) + ')';
     if (res.duel) txt += ' · 일기토 ' + (res.duel.win ? res.duel.a : res.duel.d) + ' 승';
     if (res.killed) txt += ' 궤멸';

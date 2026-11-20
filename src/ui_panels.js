@@ -17,6 +17,8 @@ var ICO = {
 function ico(k) { return '<i class="ico">' + ICO[k] + '</i>'; }
 function thumb(key, cls) { return '<img class="th' + (cls ? ' ' + cls : '') + '" alt="" src="' + SPRITES[key].u + '">'; }
 function days(turns) { return fmt(turns * 10) + '일'; }
+function months(turns) { var m = turns / 3; return turns % 3 ? days(turns) : (m % 12 ? m + '개월' : (m / 12) + '년'); }   // 3턴 = 한 달. 달로 나누어떨어지지 않으면 일수로
+function shortDate(t) { var d = dateOfTurn(t), y = G.year + '년 '; return d.indexOf(y) === 0 ? d.slice(y.length) : d; }      // 올해면 해를 뺀다
 function unitFoodTurns(x) { return x.troops > 0 ? Math.floor(x.food / Math.ceil(x.troops / (uHas(x, '둔전') ? 40 : 20))) : 0; }
 
 function toast(msg, ms) {
@@ -221,15 +223,15 @@ function showAdvisor() {
 /* ---------- 상태 이상(혼란·위보·불길)을 글로 ---------- */
 function stChips(u) {
   var h = '', n = statusLeft(u);
-  if (u.status) h += '<b class="stc st-' + u.status + '">' + statusName(u.status) + (n > 0 ? ' ' + n + '턴' : ' · 곧 풀림') + '</b>';
+  if (u.status) h += '<b class="stc st-' + u.status + '">' + statusName(u.status) + (n > 0 ? ' ' + days(n) : ' · 곧 풀림') + '</b>';
   if (unitOnFire(u)) h += '<b class="stc st-fire">불길</b>';
   return h;
 }
 function statusLeftText(u) {
   var n = statusLeft(u);
   if (n <= 0) return '다음 차례에 풀립니다';
-  if (u.f === G.player && u.stSkip === G.turn) return n === 1 ? '이번 턴만 — 다음 턴에 풀립니다' : '이번 턴 포함 ' + n + '턴';
-  return '앞으로 ' + n + '턴';
+  if (u.f === G.player && u.stSkip === G.turn) return n === 1 ? '이번 턴만 — 다음 턴에 풀립니다' : '이번 턴 포함 ' + days(n);
+  return '앞으로 ' + days(n);
 }
 function statusBanner(u) {
   var h = '', mine = u.f === G.player;
@@ -237,7 +239,7 @@ function statusBanner(u) {
   else if (u.status === 'rumor') h += '<div class="stb st-rumor"><b>위보</b><i>' + statusLeftText(u) + '</i><span>거짓 소식에 속아 명령을 듣지 않고 가까운 자기 거점 쪽으로 물러납니다 · 반격하지 못합니다</span></div>';
   if (unitOnFire(u)) {
     var ft = G.fires[K(u.c, u.r)];
-    h += '<div class="stb st-fire"><b>불길 속</b><i>' + (ft <= 1 ? '이번 턴이 지나면 꺼집니다' : '불은 ' + ft + '턴 더 탑니다') + '</i><span>' + (uHas(u, '화신') ? '화신 특기라 불에 다치지 않습니다' : '불 위에 머무는 동안 턴마다 병력 250~400명과 기력 5를 잃습니다' + (mine ? ' — 불 밖으로 옮기거나 소화하세요' : '')) + '</span></div>';
+    h += '<div class="stb st-fire"><b>불길 속</b><i>' + (ft <= 1 ? '이번 턴이 지나면 꺼집니다' : '불은 ' + days(ft) + ' 더 탑니다') + '</i><span>' + (uHas(u, '화신') ? '화신 특기라 불에 다치지 않습니다' : '불 위에 머무는 동안 턴마다 병력 250~400명과 기력 5를 잃습니다' + (mine ? ' — 불 밖으로 옮기거나 소화하세요' : '')) + '</span></div>';
   }
   return h;
 }
@@ -287,21 +289,21 @@ function baseAdvice(b) {
 function peaceNote() {                       // 초반 보호 풀이(창과 도움말에서 함께 쓴다)
   var P = G.peace, left = peaceLeft(), br = peaceBroken().map(function (k) { return facName(k) + '군'; });
   var h = '<div class="help">';
-  if (left > 0) h += '<p><b>' + dateOfTurn(P.until - 1) + '까지(' + left + '턴 남음)</b> 다른 세력은 우리 <b>거점과 시설</b>을 먼저 치지 않습니다. ' + dateOfTurn(P.until) + '부터는 칠 수 있습니다.</p>';
+  if (left > 0) h += '<p><b>' + dateOfTurn(P.until - 1) + '까지(' + days(left) + ' 남음)</b> 다른 세력은 우리 <b>거점과 시설</b>을 먼저 치지 않습니다. ' + dateOfTurn(P.until) + '부터는 칠 수 있습니다.</p>';
   else h += '<p>초반 보호는 <b>' + dateOfTurn(P.until - 1) + '</b>에 끝났습니다.' + (G.turn < P.until + PEACE_RAMP ? ' <b>' + dateOfTurn(P.until + PEACE_RAMP - 1) + '</b>까지는 완충 기간입니다.' : '') + '</p>';
   if (br.length) h += '<p class="bad"><b>우리가 먼저 친 세력: ' + br.join(' · ') + '</b> — 이 세력은 지금도 우리 거점을 칠 수 있습니다.</p>';
-  return h + '<ul><li>보호 기간은 <b>시작할 때의 병력</b>으로 정해집니다 — 1만 미만 ' + PEACE_PLAYER[0][1] + '턴(1년), 2만 미만 ' + PEACE_PLAYER[1][1] + '턴(8개월), 그 밖은 ' + PEACE_ALL + '턴(4개월).</li>' +
+  return h + '<ul><li>보호 기간은 <b>시작할 때의 병력</b>으로 정해집니다 — 1만 미만 ' + months(PEACE_PLAYER[0][1]) + ', 2만 미만 ' + months(PEACE_PLAYER[1][1]) + ', 그 밖은 ' + months(PEACE_ALL) + '.</li>' +
     '<li>지켜지는 것은 <b>거점과 시설</b>입니다. 들판의 부대끼리는 싸울 수 있고, 주인 없는 성은 누구나 차지합니다.</li>' +
     '<li><b>우리가 어떤 세력의 거점이나 시설을 먼저 치면</b>(시설에 놓는 화계 포함) 그 세력에 대해서는 보호가 풀립니다. 다른 세력과의 보호는 그대로입니다.</li>' +
-    '<li>처음 ' + PEACE_ALL + '턴은 다른 세력끼리도 서로의 거점을 치지 않습니다.</li>' +
-    '<li>보호가 끝난 뒤 ' + PEACE_RAMP + '턴(8개월)은 <b>완충 기간</b>입니다 — 한 번에 한 세력만 우리를 치러 오고, 출진에 필요한 병력 우위가 평소의 1.25배 대신 <b>2배에서 시작해 차츰 내려옵니다</b>.</li></ul></div>';
+    '<li>처음 ' + months(PEACE_ALL) + '은 다른 세력끼리도 서로의 거점을 치지 않습니다.</li>' +
+    '<li>보호가 끝난 뒤 ' + months(PEACE_RAMP) + '은 <b>완충 기간</b>입니다 — 한 번에 한 세력만 우리를 치러 오고, 출진에 필요한 병력 우위가 평소의 1.25배 대신 <b>2배에서 시작해 차츰 내려옵니다</b>.</li></ul></div>';
 }
 function showPeaceInfo() { showDialog({ render: function () { return dlgHead('초반 보호') + '<div class="dlg-b">' + peaceNote() + '</div>'; }, on: {} }); }
 function todoList() {
   var f = G.player, F = G.factions[f], out = [], bs = facBases(f), us = facUnits(f), seen = {};
   if (peaceLeft() > 0) {
     var pl = peaceLeft(), pb = peaceBroken();
-    out.push({ cls: pl <= 3 ? 'warn' : 'cool peace', ic: '守', t: '초반 보호 — ' + dateOfTurn(G.peace.until - 1) + '까지 (' + pl + '턴 남음)', s: '다른 세력이 우리 거점·시설을 먼저 치지 않습니다' + (pb.length ? ' · 먼저 친 ' + pb.map(function (k) { return facName(k); }).join('·') + '군은 예외' : ' · 그동안 병력과 내정을 키우세요'), go: ['peace'], lb: '풀이', info: 1 });
+    out.push({ cls: pl <= 3 ? 'warn' : 'cool peace', ic: '守', t: '초반 보호 — ' + dateOfTurn(G.peace.until - 1) + '까지 (' + days(pl) + ' 남음)', s: '다른 세력이 우리 거점·시설을 먼저 치지 않습니다' + (pb.length ? ' · 먼저 친 ' + pb.map(function (k) { return facName(k); }).join('·') + '군은 예외' : ' · 그동안 병력과 내정을 키우세요'), go: ['peace'], lb: '풀이', info: 1 });
   }
   bs.forEach(function (b) {
     var es = enemyUnitsNear(f, b.c, b.r, 4); if (!es.length) return;
@@ -379,7 +381,7 @@ function homeSheet() {
       var need = st.todo.need;
       var h = '<div class="sh-head hm-head"><button class="porb" type="button" data-a="lord" aria-label="군주 정보">' + porTag(L, HOME.open ? 'xl' : 'md') + '</button><div class="hm-id">' +
         '<div class="sh-title">' + F.name + '군 <span class="chip" style="background:' + F.color + '">군주 ' + L.n + '</span></div>' +
-        '<div class="sh-sub">' + dateStr() + ' · ' + (need ? '<b class="hi">할 일 ' + need + '건</b>' : '<b class="ok">할 일 없음</b>') + (peaceLeft() > 0 ? ' <span class="pz' + (peaceLeft() <= 3 ? ' end' : '') + '">보호 ' + peaceLeft() + '턴</span>' : '') + '</div>' +
+        '<div class="sh-sub">' + dateStr() + ' · ' + (need ? '<b class="hi">할 일 ' + need + '건</b>' : '<b class="ok">할 일 없음</b>') + (peaceLeft() > 0 ? ' <span class="pz' + (peaceLeft() <= 3 ? ' end' : '') + '">' + (peaceLeft() <= 3 ? '보호 ' + days(peaceLeft()) + ' 남음' : shortDate(G.peace.until - 1) + '까지 보호') + '</span>' : '') + '</div>' +
         (HOME.open ? '<div class="hm-ap">행동력 <span class="gauge"><u style="width:' + Math.round(F.ap / 255 * 100) + '%"></u></span><b>' + F.ap + '</b></div>' +
           '<button class="hm-adv" type="button" data-a="adv">군사<i>軍師</i> ' + (facAdv(f) ? '<b>' + facAdv(f).n + '</b> <small>지력 ' + facAdv(f).int + '</small>' : '<b class="bad">없음</b>') + ' <span>▸</span></button>' : '') + '</div>' +
         '<button class="x fold" data-a="fold" type="button" aria-label="' + (HOME.open ? 'STATUS 창 접기' : 'STATUS 창 펼치기') + '">' + (HOME.open ? '▾' : '▴') + '</button></div>';
@@ -532,7 +534,7 @@ function estBase(u, b) {
 function targetActions(u, t) {
   var out = [], d = hdist(u.c, u.r, t.c, t.r), rg = uRange(u), i;
   if (t.kind === 'unit') {
-    out.push({ kind: 'attack', label: '공격', sub: d <= rg ? '예상 -' + fmt(estUU(u, t.u, 1, d > 1)) : '사거리 밖', ok: d <= rg, pri: true });
+    out.push({ kind: 'attack', label: '공격', sub: d <= rg ? '예상 -' + fmt(Math.round(attackExpect(u, t.u).dealt)) : '사거리 밖', ok: d <= rg, pri: true });
     var all = TACTICS[u.type] || [], can = tacticList(u);
     for (i = 0; i < all.length; i++) {
       var tac = all[i], have = can.indexOf(tac) >= 0, inT = have && tacticTargets(u, tac).some(function (x) { return x.u === t.u; });
@@ -558,20 +560,27 @@ function targetActions(u, t) {
 function showTacticInfo(u, d) {
   showDialog({
     render: function () {
-      var all = TACTICS[u.type] || [], can = tacticList(u), od = tacticOdds(u, d), P = od.parts, i;
+      var all = TACTICS[u.type] || [], can = tacticList(u), od = tacticOdds(u, d), P = od.parts, i, N = attackExpect(u, d);
+      function vs(a, b, moreIsGood) { if (b < 1) return ''; var q = Math.round((a / b - 1) * 100); return q ? ' <em class="' + ((q > 0) === moreIsGood ? 'good' : 'bad') + '">' + (q > 0 ? '+' : '−') + Math.abs(q) + '%</em>' : ''; }      // 보통 공격과 견준 %: 피해는 많을수록, 반격은 적을수록 좋다
       function sg(v) { return (v > 0 ? '+' : '') + v; }
       var h = dlgHead('전법 풀이') + '<div class="dlg-b"><div class="tacs">' +
         '<p class="who"><b>' + uName(u) + '</b> <span>' + UNIT_TYPES[u.type].name + ' 적성 ' + uApt(u) + ' · 무력 ' + uWar(u) + ' · 통솔 ' + uLeader(u).ldr + ' · ' + fmt(u.troops) + '명</span><br>→ <b>' + uName(d) + '</b> <span>' + UNIT_TYPES[d.type].name + ' 적성 ' + uApt(d) + ' · 통솔 ' + uLdr(d) + ' · 지력 ' + uInt(d) + ' · ' + fmt(d.troops) + '명</span></p>' +
         '<div class="odds"><span class="g"><i>대성공</i><b>' + od.crit + '%</b></span><span><i>성공</i><b>' + (od.ok - od.crit) + '%</b></span><span class="f"><i>실패</i><b>' + (100 - od.ok) + '%</b></span></div>' +
-        '<p class="sum">성공률 ' + od.ok + '% = 적성 ' + P.apt + ' · 무장 ' + sg(P.stat) + ' · 병력 ' + sg(P.troops) + ' · 상대 적성 ' + sg(P.dapt) + (P.terr ? ' · 지형 ' + sg(P.terr) : '') + (P.conf ? ' · 혼란 ' + sg(P.conf) : '') + (P.skill ? ' · 특기 ' + sg(P.skill) : '') + '</p>';
+        '<p class="sum">성공률 ' + od.ok + '% = 적성 ' + P.apt + ' · 무장 ' + sg(P.stat) + ' · 병력 ' + sg(P.troops) + ' · 상대 적성 ' + sg(P.dapt) + (P.terr ? ' · 지형 ' + sg(P.terr) : '') + (P.conf ? ' · 혼란 ' + sg(P.conf) : '') + (P.skill ? ' · 특기 ' + sg(P.skill) : '') + '</p>' +
+        '<p class="sum nrm">보통 공격이면 <b>피해 ' + fmt(Math.round(N.dealt)) + '</b> · <b>받는 반격 ' + fmt(Math.round(N.recv)) + '</b>쯤. 아래 <b>기대</b>는 성공·대성공·실패를 확률대로 섞은 값이고, 옆의 %는 보통 공격과 견준 것입니다.</p>';
       for (i = 0; i < all.length; i++) {
         var tac = all[i], have = can.indexOf(tac) >= 0, c0 = confuseOdds(tac, d), c1 = confuseOdds(tacticEff(tac, true), d);
         h += '<div class="tac' + (have ? '' : ' off') + '"><div class="tn"><b>' + tac.name + '</b><span>기력 ' + tac.cost + ' · 피해 ×' + tac.mult + (have ? '' : ' · 적성 ' + tac.need + ' 필요') + '</span></div>' +
           '<div class="tl"><i>성공</i><span>' + tac.fx + (c0 ? ' — 이 상대에게는 <b>' + c0 + '%</b>' : '') + '</span></div>' +
-          '<div class="tl g"><i>대성공</i><span>피해 ' + od.mult + '배, ' + tac.gfx + (c1 && c1 < 100 ? ' — 이 상대에게는 <b>' + c1 + '%</b>' : '') + '</span></div></div>';
+          '<div class="tl g"><i>대성공</i><span>피해 ' + od.mult + '배, ' + tac.gfx + (c1 && c1 < 100 ? ' — 이 상대에게는 <b>' + c1 + '%</b>' : '') + '</span></div>';
+        if (have && u.morale >= tac.cost && tacticTargets(u, tac).some(function (x) { return x.u === d; })) {
+          var X = tacticExpect(u, d, tac);
+          h += '<div class="tl exv"><i>기대</i><span>피해 <b>' + fmt(Math.round(X.dealt)) + '</b>' + vs(X.dealt, N.dealt, true) + (X.others ? ' <small>(함께 맞는 ' + X.others + '부대 포함)</small>' : '') + ' · 받는 반격 <b>' + fmt(Math.round(X.recv)) + '</b>' + vs(X.recv, N.recv, false) + '</span></div>';
+        }
+        h += '</div>';
       }
-      h += '<p class="note"><b>성공</b>해도 반격은 받습니다(통상 공격 때의 ' + Math.round(TACTIC_K.okCounter / 0.55 * 100) + '%). <b>실패</b>하면 피해가 통상 공격의 ' + Math.round(TACTIC_K.failDmg * 100) + '%로 줄고 효과가 없으며, 반격을 통상 공격보다 크게(' + Math.round(TACTIC_K.failCounter / 0.55 * 100) + '%) 받습니다. 기력은 그대로 씁니다.</p>' +
-        '<p class="note"><b>무장</b> = (내 부대 최고 무력×0.6 + 주장 통솔×0.4) − 상대 부대 최고 통솔. <b>병력</b> = 내 병력이 상대의 절반이면 −8, 두 배면 +8. 피해에도 병력 차가 들어갑니다(지금 ×' + tacticSizeK(u, d).toFixed(2) + '). 대성공률은 적성·무력·(내 무력 − 상대 통솔)로 정해지고, 혼란은 상대의 지력·통솔이 높을수록 덜 걸립니다. 창장·극장·궁장·기장 같은 특기가 맞으면 성공한 전법은 모두 대성공입니다.</p>';
+      h += '<p class="note"><b>성공</b>해도 반격은 통상 공격만큼 받습니다(갈퀴·돌파, 멀리서 쏜 전법, 밀려나 떨어진 적은 반격하지 못합니다). <b>실패</b>하면 피해가 통상 공격의 ' + Math.round(TACTIC_K.failDmg * 100) + '%로 줄고 효과가 없으며, 반격을 통상 공격의 ' + (TACTIC_K.failCounter / 0.55).toFixed(2).replace(/0$/, '') + '배로 받습니다. 기력은 그대로 씁니다.</p>' +
+        '<p class="note"><b>무장</b> = (내 부대 최고 무력×0.6 + 주장 통솔×0.4 − 상대 부대 최고 통솔) × ' + TACTIC_K.stat + ' (' + TACTIC_K.statLo + ' ~ +' + TACTIC_K.statHi + '). <b>병력</b> = 내 병력이 상대의 절반이면 −8, 두 배면 +8. 피해에도 병력 차가 들어갑니다(지금 ×' + tacticSizeK(u, d).toFixed(2) + '). 대성공률은 적성·무력·(내 무력 − 상대 통솔)로 정해지고, 혼란은 상대의 지력·통솔이 높을수록 덜 걸립니다. 창장·극장·궁장·기장 같은 특기가 맞으면 성공한 전법은 모두 대성공입니다.</p>';
       return h + '</div></div>';
     }, on: {}
   });
@@ -580,8 +589,8 @@ function showTacticInfo(u, d) {
 function resultMsg(name, res) {
   var msg = name + ' ';
   if (res.kind === 'ploy') {
-    if (res.success) msg += res.ploy + ' 성공' + (res.dmg ? ' (-' + fmt(res.dmg) + ')' : '') + (res.st ? ' — ' + statusName(res.st) + ' ' + res.stN + '턴' : '') + (res.chain ? ' · 연환!' : '');
-    else msg += res.ploy + ' 실패 (성공률 ' + res.p + '%)' + (res.reflected ? ' — 반계에 당했습니다!' + (res.selfSt ? ' 우리 부대가 ' + statusName(res.selfSt) + ' ' + res.selfStN + '턴' : '') : '');
+    if (res.success) msg += res.ploy + ' 성공' + (res.dmg ? ' (-' + fmt(res.dmg) + ')' : '') + (res.st ? ' — ' + statusName(res.st) + ' ' + days(res.stN) : '') + (res.chain ? ' · 연환!' : '');
+    else msg += res.ploy + ' 실패 (성공률 ' + res.p + '%)' + (res.reflected ? ' — 반계에 당했습니다!' + (res.selfSt ? ' 우리 부대가 ' + statusName(res.selfSt) + ' ' + days(res.selfStN) : '') : '');
   } else {
     if (res.kind === 'tactic') msg += res.tac + (res.fail ? ' 실패' : (res.crit ? ' 대성공' : ' 성공')); else msg += '공격';
     msg += ' → ' + res.tname + ' -' + fmt(res.dmg);
@@ -591,7 +600,7 @@ function resultMsg(name, res) {
     if (res.pushed >= 2) msg += ' · 두 칸 밀어냄';
     if (res.slam) msg += ' · 뒤가 막혀 추가 피해';
     if (res.mor) msg += ' · 기력 -' + res.mor;
-    if (res.confused) msg += ' · 혼란 ' + (res.stN || 1) + '턴';
+    if (res.confused) msg += ' · 혼란 ' + days(res.stN || 1);
   }
   if (res.counter) msg += ' (반격 -' + fmt(res.counter) + ')';
   if (res.duel) msg += ' · 일기토! ' + res.duel.a + ' 대 ' + res.duel.d + ' — ' + (res.duel.win ? res.duel.a : res.duel.d) + ' 승';
@@ -610,11 +619,11 @@ function resultFx(res) {
     if (res.success) {
       floatText(res.c, res.r, res.ploy + '!', res.ploy === '화계' ? '#c8551f' : C_PLOY, 0, true, -34);
       if (res.dmg) floatText(res.c, res.r, '-' + fmt(res.dmg), C_DMG, 260);
-      if (res.st) floatText(res.c, res.r, statusName(res.st) + ' ' + res.stN + '턴', C_PLOY, 420, false, 26);      // 걸린 상태와 턴 수
+      if (res.st) floatText(res.c, res.r, statusName(res.st) + ' ' + days(res.stN), C_PLOY, 420, false, 26);      // 걸린 상태와 턴 수
       sfx(res.ploy === '화계' ? 'fire' : (res.ploy === '소화' ? 'douse' : 'wind'));
     } else {
       floatText(res.c, res.r, '실패', C_DIM); sfx('miss');
-      if (res.reflected) { floatText(res.ac, res.ar, '반계!', C_PLOY, 300, true); if (res.selfSt) floatText(res.ac, res.ar, statusName(res.selfSt) + ' ' + res.selfStN + '턴', C_PLOY, 640, false, 26); }
+      if (res.reflected) { floatText(res.ac, res.ar, '반계!', C_PLOY, 300, true); if (res.selfSt) floatText(res.ac, res.ar, statusName(res.selfSt) + ' ' + days(res.selfStN), C_PLOY, 640, false, 26); }
     }
   } else {
     // 글씨가 한자리에 겹치지 않게: 전법 이름은 위, 피해는 가운데, 덧붙는 것은 아래로 차례차례
@@ -629,7 +638,7 @@ function resultFx(res) {
     if (res.pushed >= 2) fxs.push('두 칸 밀어냄');
     if (res.slam) fxs.push('뒤가 막혀 충돌!');
     if (res.mor) fxs.push('기력 -' + res.mor);
-    if (res.confused) fxs.push('혼란 ' + (res.stN || 1) + '턴');
+    if (res.confused) fxs.push('혼란 ' + days(res.stN || 1));
     fxs.forEach(function (tx, i) { floatText(tc, tr, tx, C_PLOY, 480 + i * 240, false, 26 + i * 22); });
     if (res.fire) sfx('fire');
     var far = res.ac0 !== undefined && hdist(res.ac0, res.ar0, res.c, res.r) > 1;
@@ -742,7 +751,7 @@ function unitSheet(u) {
           if (adv1) h += '<p class="note advn">군사 <b>' + adv1.adv.n + '</b>의 조언 — 계략 단추의 <i class="adv y">○</i> 통한다 · <i class="adv n">×</i> 어렵다 <small>적중률 ' + adv1.acc + '%</small></p>';
           h += '<div class="acts">';
           for (i = 0; i < st.acts.length; i++) { var a = st.acts[i]; h += '<button class="act' + (a.pri && a.ok ? ' pri' : '') + (a.ok ? '' : ' off') + '" type="button" data-a="act" data-v="' + i + '"><b>' + a.label + '</b><small>' + a.sub + '</small></button>'; }
-          if (t.kind === 'unit' && (TACTICS[x.type] || []).length) h += '<button class="act" type="button" data-a="tacinfo"><b>전법 풀이</b><small>효과·확률</small></button>';
+          if (t.kind === 'unit' && (TACTICS[x.type] || []).length) h += '<button class="act" type="button" data-a="tacinfo"><b>전법 풀이</b><small>확률·효과·기대값</small></button>';
           h += '<button class="act" type="button" data-a="untarget"><b>대상 취소</b><small>&nbsp;</small></button></div>';
         } else {
           var canDouse = ployTargets(x, PLOYS[3]).length > 0;
@@ -1244,15 +1253,15 @@ var HELP_HTML = '<div class="help">' +
   '<h3>도시와 시설</h3><p>도시를 누르면 명령 패널이 열립니다. 도시 둘레의 밝은 칸이 부지이고, 누르면 시설을 짓습니다. 같은 시설이 붙어 있으면 흡수합병으로 레벨을 올립니다(최대 3). 조폐는 옆의 시장, 곡창은 옆의 농장 수입을 50% 늘립니다. 금은 매월 초, 병량은 1·4·7·10월 초에 들어옵니다.</p>' +
   '<h3>STATUS 창</h3><p>화면 아래에 늘 떠 있는 창입니다. 아무것도 고르지 않았을 때는 세력 현황과 <b>지금 할 일</b>이 보이고, 줄을 누르면 그 거점이나 부대로 바로 갑니다. 거점이나 부대를 고르면 같은 자리에 그 정보와 명령이 나옵니다. <b>거점·부대·무장·천하</b> 단추는 그 목록을 엽니다 — 부대 목록에는 내 부대의 위치와 상태, 그리고 가까이 있는 다른 세력의 부대가 나옵니다. 오른쪽 위 ▾로 접을 수 있고, 맨 위 날짜 줄을 누르면 다시 펼쳐집니다.</p>' +
   '<h3>출진과 이동</h3><p>군사 → 출진에서 병과, 무장(주장과 부장 둘), 병력, 군량을 정하면 부대가 성 앞에 나옵니다. 창병·극병·노병·기병은 무기 재고가 병력만큼 필요합니다. 부대를 누르면 이번 턴에 갈 수 있는 칸이 <b>파랗게</b> 보이고, 그 칸을 누르면 움직입니다. 적이나 적의 성을 누르면 공격합니다. 적 부대 옆 칸에 들어서면 그 턴에는 더 나아가지 못합니다. 자기 거점으로 들어가면 입성하고, 주인 없는 거점은 들어가면 차지합니다.</p>' +
-  '<h3>성역과 행군</h3><p>성 둘레 ' + ZONE_R + '칸(붓으로 두른 고리 안)은 그 성의 <b>성역</b>입니다. 성역을 드나들 때 멈추지 않습니다 — 이동력이 남아 있으면 그대로 나아가고, 닿으면 바로 칠 수 있습니다. 다만 <b>출진한 그 턴에는 거점과 시설을 칠 수 없습니다</b>(부대끼리는 싸울 수 있습니다). 성에서 나와 다른 성을 치기까지 가까운 성끼리는 20일(2턴), 대개는 30일 넘게 걸립니다.</p>' +
-  '<h3>초반 보호</h3><p>판을 시작하면 한동안 다른 세력이 우리 <b>거점과 시설</b>을 먼저 치지 않습니다. 기간은 <b>시작할 때의 병력</b>으로 정해집니다 — 1만 미만이면 ' + PEACE_PLAYER[0][1] + '턴(1년), 2만 미만이면 ' + PEACE_PLAYER[1][1] + '턴(8개월), 그 밖은 ' + PEACE_ALL + '턴(4개월). 남은 턴은 STATUS 창의 날짜 옆과 <b>지금 할 일</b> 맨 위에 보입니다.</p>' +
-  '<ul><li>들판의 부대끼리는 싸울 수 있고, 주인 없는 성은 누구나 차지합니다.</li><li><b>우리가 어떤 세력의 거점이나 시설을 먼저 치면</b> 그 세력에 대해서는 보호가 풀립니다(치기 전에 알려 줍니다). 다른 세력과의 보호는 그대로입니다.</li><li>처음 ' + PEACE_ALL + '턴은 다른 세력끼리도 서로의 거점을 치지 않습니다.</li><li>보호가 끝난 뒤 ' + PEACE_RAMP + '턴은 완충 기간입니다 — 한 번에 한 세력만 우리를 치러 오고, 출진에 필요한 병력 우위가 평소의 1.25배 대신 2배에서 시작해 차츰 내려옵니다.</li><li>0.8에서 하던 판을 이어 해도, 아직 그 기간 안이면 보호받습니다.</li></ul>' +
+  '<h3>성역과 행군</h3><p>성 둘레 ' + ZONE_R + '칸(붓으로 두른 고리 안)은 그 성의 <b>성역</b>입니다. 성역을 드나들 때 멈추지 않습니다 — 이동력이 남아 있으면 그대로 나아가고, 닿으면 바로 칠 수 있습니다. 다만 <b>출진한 그 턴에는 거점과 시설을 칠 수 없습니다</b>(부대끼리는 싸울 수 있습니다). 성에서 나와 다른 성을 치기까지 가까운 성끼리는 20일, 대개는 30일 넘게 걸립니다.</p>' +
+  '<h3>초반 보호</h3><p>판을 시작하면 한동안 다른 세력이 우리 <b>거점과 시설</b>을 먼저 치지 않습니다. 기간은 <b>시작할 때의 병력</b>으로 정해집니다 — 1만 미만이면 ' + months(PEACE_PLAYER[0][1]) + ', 2만 미만이면 ' + months(PEACE_PLAYER[1][1]) + ', 그 밖은 ' + months(PEACE_ALL) + '. 언제까지인지는 STATUS 창의 날짜 옆과 <b>지금 할 일</b> 맨 위에 보입니다.</p>' +
+  '<ul><li>들판의 부대끼리는 싸울 수 있고, 주인 없는 성은 누구나 차지합니다.</li><li><b>우리가 어떤 세력의 거점이나 시설을 먼저 치면</b> 그 세력에 대해서는 보호가 풀립니다(치기 전에 알려 줍니다). 다른 세력과의 보호는 그대로입니다.</li><li>처음 ' + months(PEACE_ALL) + '은 다른 세력끼리도 서로의 거점을 치지 않습니다.</li><li>보호가 끝난 뒤 ' + months(PEACE_RAMP) + '은 완충 기간입니다 — 한 번에 한 세력만 우리를 치러 오고, 출진에 필요한 병력 우위가 평소의 1.25배 대신 2배에서 시작해 차츰 내려옵니다.</li><li>0.8에서 하던 판을 이어 해도, 아직 그 기간 안이면 보호받습니다.</li></ul>' +
   '<h3>행군(선택)</h3><p>먼 곳까지 매 턴 직접 움직이기 번거로우면 부대 창의 <b>행군</b>을 누르고 목적지를 누르세요. 걸리는 날수를 보여 주고, 턴을 마칠 때마다 한 구간씩 알아서 갑니다. 도중에 직접 움직이거나 공격해도 됩니다.</p>' +
   '<h3>전투</h3><p>부대를 고르고 적을 누르면 공격·전법·계략 가운데 고를 수 있습니다. 전법은 기력을 쓰고, 병과 적성(C→S)이 높을수록 쓸 수 있는 전법이 늘고 잘 통합니다.</p>' +
-  '<p><b>전법의 결과는 세 가지</b>입니다. <b>실패</b>하면 피해가 통상 공격의 절반으로 줄고 효과가 없으며 반격을 통상 공격보다 크게 받습니다. <b>성공</b>하면 전법의 피해와 효과가 들어가고 반격은 통상 공격보다 작게 받습니다. <b>대성공</b>이면 피해가 1.3배가 되고 <b>효과 자체가 세집니다</b> — 돌출·돌격은 두 칸 밀어내고, 나선첨은 반드시 혼란시키고, 이단첨은 기력을 30 깎는 식입니다. <b>성공률은 양쪽을 다 봅니다</b>: 내 병과 적성, 내 무력·통솔과 상대 통솔의 차이, 양쪽 병력, 상대의 병과 적성, 상대가 선 지형. 병력이 훨씬 많은 부대나 통솔이 높은 장수에게는 잘 통하지 않고, 병력 차만큼 피해도 줄어듭니다. 대성공률은 적성·무력·(내 무력 − 상대 통솔)로 정해지며, 혼란은 상대의 지력·통솔이 높을수록 덜 걸립니다. 적을 고른 뒤 <b>전법 풀이</b>를 누르면 그 상대에 대한 확률과 효과를 볼 수 있습니다.</p>' +
+  '<p><b>전법의 결과는 세 가지</b>입니다. <b>실패</b>하면 피해가 통상 공격의 ' + Math.round(TACTIC_K.failDmg * 100) + '%로 줄고 효과가 없으며 반격을 통상 공격의 ' + (TACTIC_K.failCounter / 0.55).toFixed(2).replace(/0$/, '') + '배로 받습니다. <b>성공</b>하면 전법의 피해와 효과가 들어가고 반격은 통상 공격만큼 받습니다(갈퀴·돌파, 멀리서 쏜 전법, 밀려나 떨어진 적은 반격하지 못합니다). <b>대성공</b>이면 피해가 ' + TACTIC_K.crit + '배가 되고 <b>효과 자체가 세집니다</b> — 돌출·돌격은 두 칸 밀어내고, 나선첨은 반드시 혼란시키고, 이단첨은 기력을 30 깎는 식입니다. <b>성공률은 양쪽을 다 봅니다</b>: 내 병과 적성, 내 무력·통솔과 상대 통솔의 차이, 양쪽 병력, 상대의 병과 적성, 상대가 선 지형. 병력이 훨씬 많은 부대나 통솔이 높은 장수에게는 잘 통하지 않고, 병력 차만큼 피해도 줄어듭니다. <b>전법이 늘 이득은 아닙니다</b> — 무장이 상대보다 강할수록 이득이 크고, 약한 쪽이 쓰면 보통 공격보다 손해입니다. 대성공률은 적성·무력·(내 무력 − 상대 통솔)로 정해지며, 혼란은 상대의 지력·통솔이 높을수록 덜 걸립니다. 적을 고른 뒤 <b>전법 풀이</b>를 누르면 그 상대에 대한 확률과 효과, 그리고 전법마다 <b>기대 피해 · 받는 반격</b>을 보통 공격과 나란히 볼 수 있습니다.</p>' +
   '<ul><li>창병은 기병에, 기병은 극병에, 극병은 창병에 강합니다.</li><li>노병은 두 칸 밖에서 반격 없이 쏩니다.</li><li>충차는 성의 내구를 크게 깎습니다.</li><li>거점은 병력이나 내구가 0이 되면 함락됩니다.</li><li>숲·구릉의 부대는 피해를 덜 받고, 강 위의 부대는 약해집니다.</li></ul>' +
-  '<h3>계략과 상태 이상</h3><p>부대는 기력을 써서 <b>화계·교란·위보</b>를 겁니다(성공률은 양쪽 지력의 차이로 정해집니다). 걸린 부대는 지도에서 바로 알아볼 수 있습니다 — <b>머리 위에 색 딱지</b>가 뜨고(혼란은 쪽빛, 위보는 황토빛, 불길은 붉은빛) 딱지의 숫자는 <b>남은 턴</b>입니다. 혼란·위보에 걸린 부대는 머리 위에 소용돌이가 돌고 빛이 바래며, 혼란이면 비틀거립니다.</p>' +
-  '<ul><li><b>혼란</b>: 움직이지도 싸우지도 못합니다. 받는 피해가 25% 늘고 반격하지 못하며, 전법이 더 잘 통합니다. 교란으로 걸면 2턴, 전법(나선첨 등)으로 걸면 1턴입니다.</li><li><b>위보</b>: 2턴 동안 명령을 듣지 않고 가까운 자기 거점 쪽으로 물러납니다. 반격하지 못합니다.</li><li><b>불길</b>: 불 위에 머무는 부대는 턴마다 병력 250~400명과 기력 5를 잃습니다. 불 밖으로 옮기거나 <b>소화</b>로 끕니다.</li><li>이미 혼란·위보에 걸린 부대에는 교란·위보를 다시 걸 수 없습니다.</li><li>부대를 누르면 창 맨 위에 걸린 상태·남은 턴·효과가 적혀 있습니다. 내 부대가 걸리면 <b>지금 할 일</b>과 <b>지난 열흘의 일</b>에도 나옵니다.</li></ul>' +
+  '<h3>계략과 상태 이상</h3><p>부대는 기력을 써서 <b>화계·교란·위보</b>를 겁니다(성공률은 양쪽 지력의 차이로 정해집니다). 걸린 부대는 지도에서 바로 알아볼 수 있습니다 — <b>머리 위에 색 딱지</b>가 뜨고(혼란은 쪽빛, 위보는 황토빛, 불길은 붉은빛) 딱지에 <b>남은 날수</b>가 적힙니다. 혼란·위보에 걸린 부대는 머리 위에 소용돌이가 돌고 빛이 바래며, 혼란이면 비틀거립니다.</p>' +
+  '<ul><li><b>혼란</b>: 움직이지도 싸우지도 못합니다. 받는 피해가 25% 늘고 반격하지 못하며, 전법이 더 잘 통합니다. 교란으로 걸면 20일, 전법(나선첨 등)으로 걸면 10일입니다.</li><li><b>위보</b>: 20일 동안 명령을 듣지 않고 가까운 자기 거점 쪽으로 물러납니다. 반격하지 못합니다.</li><li><b>불길</b>: 불 위에 머무는 부대는 턴마다 병력 250~400명과 기력 5를 잃습니다. 불 밖으로 옮기거나 <b>소화</b>로 끕니다.</li><li>이미 혼란·위보에 걸린 부대에는 교란·위보를 다시 걸 수 없습니다.</li><li>부대를 누르면 창 맨 위에 걸린 상태·남은 날수·효과가 적혀 있습니다. 내 부대가 걸리면 <b>지금 할 일</b>과 <b>지난 열흘의 일</b>에도 나옵니다.</li></ul>' +
   '<h3>인재</h3><p>탐색으로 재야의 인재를 찾아 등용합니다. 사로잡은 적장도 등용할 수 있습니다. 해가 바뀌면 새 인물이 세상에 나옵니다.</p>' +
   '<p><b>다른 세력의 무장</b>도 등용할 수 있습니다 — 내 거점과 길로 바로 이어진 <b>이웃 거점에 머무는 무장</b>이 대상입니다(인재 → 등용). 응하면 그 자리에서 내 거점으로 넘어옵니다. 성공률은 보내는 무장의 매력·정치, 두 군주의 매력 차이, 그리고 <b>대상의 충성</b>으로 정해집니다. 제 주군과 인연이 있거나 충성이 ' + POACH.wall + ' 이상이면 응하지 않고, 군주와 출진 중인 무장에게는 권할 수 없습니다. 성공률은 <b>그 달에 응할 확률</b>입니다 — 다른 세력 무장의 마음은 달마다 한 번 정해지고, 한 무장에게는 한 달에 한 번 권할 수 있습니다. 거절한 무장은 충성이 ' + POACH.up + ' 오르고, 한 사람이 넘어가면 그 세력에 남은 무장들의 충성이 ' + POACH.tighten + '씩 오릅니다.</p>' +
   '<p>다른 세력도 같은 규칙으로 <b>내 무장을 데려갑니다</b>(초반 보호 기간에는 권하지 않고, 무장이 ' + POACH_AI.spare + '명 이하인 세력의 무장에게도 권하지 않습니다). 위험한 무장이 있으면 지금 할 일에 "다른 세력이 데려갈 수 있는 무장"이 뜹니다 — <b>포상</b>으로 충성을 ' + POACH.wall + '까지 올리면 응하지 않습니다.</p>' +
@@ -1674,9 +1683,9 @@ function showFactionSelect() {
       var h = dlgHead('194년 군웅할거 — 군주를 고르세요') + '<div class="dlg-b"><div class="rows">';
       for (var i = 0; i < info.length; i++) {
         var x = info[i];
-        h += '<button class="row' + (st.f === x.i ? ' sel' : '') + '" type="button" data-a="f" data-v="' + x.i + '">' + porTag(x.lord) + '<span class="mid"><span class="nm">' + x.n + ' <span class="chip" style="background:' + x.color + '">' + x.cities.join('·') + '</span></span><span class="ds" style="white-space:normal">' + FACTION_DESC[x.n] + '</span><span class="ds fs-st">병력 <b>' + fmt(x.troops) + '</b> · 초반 보호 <b' + (x.peace > PEACE_ALL ? ' class="ok"' : '') + '>' + x.peace + '턴</b></span></span><span class="rt">무장<br><b>' + x.cnt + '</b></span></button>';
+        h += '<button class="row' + (st.f === x.i ? ' sel' : '') + '" type="button" data-a="f" data-v="' + x.i + '">' + porTag(x.lord) + '<span class="mid"><span class="nm">' + x.n + ' <span class="chip" style="background:' + x.color + '">' + x.cities.join('·') + '</span></span><span class="ds" style="white-space:normal">' + FACTION_DESC[x.n] + '</span><span class="ds fs-st">병력 <b>' + fmt(x.troops) + '</b> · 초반 보호 <b' + (x.peace > PEACE_ALL ? ' class="ok"' : '') + '>' + months(x.peace) + '</b></span></span><span class="rt">무장<br><b>' + x.cnt + '</b></span></button>';
       }
-      return h + '</div></div><div class="dlg-f"><div class="pv">' + (st.f >= 0 ? '<b>' + info[st.f].n + '</b> · 도시 ' + info[st.f].cities.length + ' · 무장 ' + info[st.f].cnt + '명<br>병력 ' + fmt(info[st.f].troops) + ' · 초반 보호 ' + info[st.f].peace + '턴(' + days(info[st.f].peace) + ')' : '세력을 누르면 선택됩니다<br><small>병력이 적은 세력일수록 초반 보호가 깁니다</small>') + '</div><button class="btn pri" type="button" data-a="go"' + (st.f < 0 ? ' disabled' : '') + '>시작</button></div>';
+      return h + '</div></div><div class="dlg-f"><div class="pv">' + (st.f >= 0 ? '<b>' + info[st.f].n + '</b> · 도시 ' + info[st.f].cities.length + ' · 무장 ' + info[st.f].cnt + '명<br>병력 ' + fmt(info[st.f].troops) + ' · 초반 보호 ' + months(info[st.f].peace) + '(' + dateOfTurn(info[st.f].peace) + '까지)' : '세력을 누르면 선택됩니다<br><small>병력이 적은 세력일수록 초반 보호가 깁니다</small>') + '</div><button class="btn pri" type="button" data-a="go"' + (st.f < 0 ? ' disabled' : '') + '>시작</button></div>';
     },
     on: {
       f: function (el) { st.f = +el.getAttribute('data-v'); refreshDialog(); },
@@ -1694,7 +1703,7 @@ function showIntro() {
         '<li>화면 아래 <b>STATUS 창</b>의 <b>지금 할 일</b>을 위에서부터 누르면 됩니다.</li>' +
         '<li><b>군사 → 출진</b>으로 부대를 성 앞에 내보낸 뒤, <b>파란 칸</b>을 눌러 움직이고 <b>적</b>을 눌러 공격합니다. 이웃 거점까지는 가까우면 20일, 보통 30~50일이 걸립니다.</li>' +
         '<li>명령은 <b>행동력</b>을 씁니다. 할 일을 마치면 <b>턴 종료</b> — 열흘 동안 일어난 일을 차례로 보여 줍니다.</li>' +
-        (peaceLeft() > 0 ? '<li><b>초반 보호</b>: <b>' + dateOfTurn(G.peace.until - 1) + '까지(' + peaceLeft() + '턴)</b> 다른 세력은 우리 거점과 시설을 먼저 치지 않습니다. 그동안 병력과 내정을 키우세요. 우리가 먼저 친 세력에게는 보호가 풀립니다.</li>' : '') +
+        (peaceLeft() > 0 ? '<li><b>초반 보호</b>: <b>' + dateOfTurn(G.peace.until - 1) + '까지(' + months(peaceLeft()) + ')</b> 다른 세력은 우리 거점과 시설을 먼저 치지 않습니다. 그동안 병력과 내정을 키우세요. 우리가 먼저 친 세력에게는 보호가 풀립니다.</li>' : '') +
         '<li><b>군사</b>(STATUS 창의 군사 단추)는 등용과 계략이 통할지 미리 말해 줍니다. <b>인재 → 등용</b>에서 이웃 거점에 있는 다른 세력의 무장도 부를 수 있습니다.</li>' +
         '<li>자세한 규칙은 메뉴 → 도움말에 있습니다.</li></ul></div></div><div class="dlg-f"><div class="pv">도시 42곳을 모두 차지하면 천하통일</div><button class="btn pri" type="button" data-a="close">시작</button></div>';
     }, on: {}

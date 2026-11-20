@@ -431,7 +431,7 @@ function drawChips(L, segs) {
 /* 부대의 상태 딱지에 적을 것 */
 function statusSegs(u) {
   var segs = [], n = statusLeft(u);
-  if (u.status) segs.push({ t: statusName(u.status) + (n > 0 ? ' ' + n : ''), bg: ST_COL[u.status] || ST_COL.confuse });
+  if (u.status) segs.push({ t: statusName(u.status) + (n > 0 ? ' ' + n * 10 + '일' : ''), bg: ST_COL[u.status] || ST_COL.confuse });      // 남은 날수(1턴 = 10일)
   if (unitOnFire(u)) segs.push({ t: '불길', bg: ST_COL.fire });
   return segs;
 }

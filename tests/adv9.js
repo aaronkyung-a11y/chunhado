@@ -135,7 +135,7 @@ console.log('5. 계략 — 결과가 미리 정해 둔 것과 같은가');
 }
 console.log('6. AI — 초반 보호 중에는 플레이어의 무장에게 권하지 않는다 / 그 뒤에는 권한다');
 {
-  X.newGame(1, 5); const G5 = X.G;                                         // 여포(매력 40, 보호 24턴)
+  X.newGame(1, 5); const G5 = X.G;                                         // 여포(매력 40, 병력 14,000 — 보호 4개월)
   vm.runInContext(`var PQ = { early: 0, late: 0, gone: 0, total: 0, firstLate: 0 }; var _cr9 = cmdRecruit; cmdRecruit = function (b, id, tid) { var t = off(tid), mine = t && t.f === G.player && t.st === 'active' && b.owner !== G.player, tn = G.turn, un = G.peace.until; var r = _cr9(b, id, tid); if (r && r.ok && r.far) PQ.total++; if (r && r.ok && mine) { if (tn < un) PQ.early++; else { PQ.late++; if (!PQ.firstLate) PQ.firstLate = tn; } if (r.joined) PQ.gone++; } return r; };`, X);
   const until = G5.peace.until, n0 = X.facOfficers(1).length;
   for (let t = 0; t < 60 && !G5.over; t++) X.endTurn();

@@ -443,7 +443,7 @@ function newGame(playerFaction, seed) {
     G.officers.push(o);
   }
   for (i = 0; i < G.officers.length; i++) { var lo = G.officers[i]; if (lo.f >= 0 && G.factions[lo.f].lord !== lo.id) lo.loy = loyNat(lo); }   // 군주가 정해진 뒤에 매긴다
-  G.peace = { until: 1 + peaceTurns(G.player), broken: {} };      // 초반 보호: until 턴부터 AI 가 플레이어의 거점을 칠 수 있다
+  G.peace = { until: 1 + peaceTurns(G.player), broken: {}, v: 2 };      // 초반 보호: until 턴부터 AI 가 플레이어의 거점을 칠 수 있다. v = 기간 표의 판(2 = v0.9.1 의 18/12/9턴)
   for (i = 0; i < G.factions.length; i++) autoAdvisor(i);          // 군사: 처음에는 지력이 가장 높은 무장(군주 제외)
   reindex();
   REPORT = []; EVQ = [];
@@ -486,7 +486,7 @@ function apRegen(f) {
 function phaseStart(f) {
   if (f === G.player && G.peace && !G.aiOnly) {                    // 보호가 끝나 가는 것을 미리 알린다
     var pl = G.peace.until - G.turn, cap = facCities(f)[0] || facBases(f)[0];
-    if (pl === 3 && cap) { logMsg('초반 보호가 3턴 남았습니다 — ' + dateOfTurn(G.peace.until) + '부터는 다른 세력이 우리 거점을 칠 수 있습니다', cap.c, cap.r, f, 2); ev({ t: 'news', f: f, c: cap.c, r: cap.r, warn: 1, text: '<b>초반 보호가 3턴 남았습니다</b> — ' + dateOfTurn(G.peace.until) + '부터는 다른 세력이 우리 거점을 칠 수 있습니다' }); }
+    if (pl === 3 && cap) { logMsg('초반 보호가 30일 남았습니다 — ' + dateOfTurn(G.peace.until) + '부터는 다른 세력이 우리 거점을 칠 수 있습니다', cap.c, cap.r, f, 2); ev({ t: 'news', f: f, c: cap.c, r: cap.r, warn: 1, text: '<b>초반 보호가 30일 남았습니다</b> — ' + dateOfTurn(G.peace.until) + '부터는 다른 세력이 우리 거점을 칠 수 있습니다' }); }
     if (pl === 0 && cap) { logMsg('초반 보호가 끝났습니다 — 이제 다른 세력이 우리 거점을 칠 수 있습니다', cap.c, cap.r, f, 2); ev({ t: 'news', f: f, c: cap.c, r: cap.r, warn: 1, text: '<b>초반 보호가 끝났습니다</b> — 이제 다른 세력이 우리 거점을 칠 수 있습니다' }); }
   }
   var F = G.factions[f], i;
@@ -556,7 +556,7 @@ function phaseStart(f) {
         if (u.status === 'rumor') autoRetreat(u);
         if (UMAP[u.id]) {
           u.done = true; u.stSkip = G.turn;                         // 이 턴을 건너뛴다(화면이 '이번 턴 포함 N턴'을 셀 수 있게 적어 둔다)
-          if (f === G.player && !G.aiOnly) logMsg(uName(u) + ' ' + statusName(u.status) + (u.status === 'rumor' ? ' — 명령을 듣지 않고 물러남' : ' — 움직이지 못함') + (u.stT > 0 ? ' (이번 턴 포함 ' + (u.stT + 1) + '턴)' : ' (다음 턴에 풀림)'), u.c, u.r, f, 1);
+          if (f === G.player && !G.aiOnly) logMsg(uName(u) + ' ' + statusName(u.status) + (u.status === 'rumor' ? ' — 명령을 듣지 않고 물러남' : ' — 움직이지 못함') + (u.stT > 0 ? ' (이번 턴 포함 ' + (u.stT + 1) * 10 + '일)' : ' (다음 턴에 풀림)'), u.c, u.r, f, 1);
         }
       }
     }
@@ -1263,7 +1263,8 @@ function autoTeam(b, type, want) {
 }
 
 /* ---------- 전투 ---------- */
-function dmgUU(a, d, mult, ranged) {
+/* 주사위를 뺀 피해(v0.9.1) — dmgUU 가 여기에 0.92~1.08 을 곱한다. 창의 '예상'과 전법의 기대값(tacticExpect)이 이 값을 쓴다 */
+function dmgBase(a, d, mult, ranged) {
   var x = 620 * Math.pow(uAtk(a) / Math.max(10, uDef(d)), 0.9) * troopFactor(a.troops) * mult;
   var c = (COMPAT[a.type] && COMPAT[a.type][d.type]) || 1;
   if (VS_TYPE[d.type] && (!ranged || d.type === 'trans' || d.type === 'ram')) c *= VS_TYPE[d.type];
@@ -1272,6 +1273,10 @@ function dmgUU(a, d, mult, ranged) {
   if (td === 'f' || td === 'h') x *= 0.85; else if (td === 'w') x *= 1.2;
   if (ta === 'w') x *= 0.7;
   if (d.status === 'confuse') x *= 1.25;
+  return x;
+}
+function dmgUU(a, d, mult, ranged) {
+  var x = dmgBase(a, d, mult, ranged);
   x *= 0.92 + rnd() * 0.16;
   return Math.max(30, Math.round(x));
 }
@@ -1422,16 +1427,17 @@ function tacticList(u) {
   return out;
 }
 function tacticCrit(u, d) {
-  if (uHas(u, '신장') && uWar(u) > uWar(d)) return 1.3;
-  if (u.type === 'spear' && (uHas(u, '창장') || uHas(u, '투신'))) return 1.3;
-  if (u.type === 'halberd' && (uHas(u, '극장') || uHas(u, '투신'))) return 1.3;
-  if (u.type === 'bow') { if (uHas(u, '궁신')) return 1.43; if (uHas(u, '궁장')) return 1.3; }
-  if (u.type === 'cav') { if (uHas(u, '기신')) return 1.43; if (uHas(u, '기장')) return 1.3; }
+  var c = TACTIC_K.crit, g = TACTIC_K.critGod;
+  if (uHas(u, '신장') && uWar(u) > uWar(d)) return c;
+  if (u.type === 'spear' && (uHas(u, '창장') || uHas(u, '투신'))) return c;
+  if (u.type === 'halberd' && (uHas(u, '극장') || uHas(u, '투신'))) return c;
+  if (u.type === 'bow') { if (uHas(u, '궁신')) return g; if (uHas(u, '궁장')) return c; }
+  if (u.type === 'cav') { if (uHas(u, '기신')) return g; if (uHas(u, '기장')) return c; }
   return 0;
 }
 /* 전법의 성공·대성공 확률(%) — v0.8: 상대와 병력까지 본다. 대성공은 성공 안에 들어 있다.
    성공 = 적성(TACTIC_RATE)
-        + 무장: (내 부대 최고 무력×0.6 + 내 주장 통솔×0.4 − 적 부대 최고 통솔) × 0.6      [−24 ~ +12]
+        + 무장: (내 부대 최고 무력×0.6 + 내 주장 통솔×0.4 − 적 부대 최고 통솔) × 0.8      [−30 ~ +15]   (v0.8~0.9: × 0.6 [−24 ~ +12])
         + 병력: log2(내 병력 ÷ 적 병력) × 8                                              [−16 ~ +8]   (절반이면 −8, 두 배면 +8)
         + 적의 병과 적성: C +3 · B 0 · A −3 · S −6
         + 적이 선 곳: 숲·구릉 −5, 강 +5   + 적이 혼란 중 +10   + 맞는 특기(창장·기장·신장…) +5
@@ -1442,7 +1448,7 @@ function uLdr(u) { return bestOf(uMembers(u), 'ldr'); }
 function tacticParts(u, d) {
   var pow = uWar(u) * 0.6 + uLeader(u).ldr * 0.4, td = terr(d.c, d.r);
   return { apt: TACTIC_RATE[uApt(u)],
-    stat: Math.round(clamp((pow - uLdr(d)) * 0.6, -24, 12)),
+    stat: Math.round(clamp((pow - uLdr(d)) * TACTIC_K.stat, TACTIC_K.statLo, TACTIC_K.statHi)),
     troops: Math.round(clamp(Math.log(Math.max(1, u.troops) / Math.max(1, d.troops)) / Math.LN2 * 8, -16, 8)),
     dapt: -3 * (APT_RANK[uApt(d)] - 1),
     terr: (td === 'f' || td === 'h') ? -5 : (td === 'w' ? 5 : 0),
@@ -1455,7 +1461,7 @@ function tacticOdds(u, d) {
   if (forced) return { ok: ok, crit: ok, mult: forced, sure: true, parts: P };
   var w = uWar(u);
   var cr = Math.round(clamp(TACTIC_CRIT[uApt(u)] + clamp((w - 70) * 0.5, -4, 15) + clamp((w - uLdr(d)) * 0.15, -6, 6), 2, 45));
-  return { ok: ok, crit: Math.min(cr, ok), mult: 1.3, sure: false, parts: P };
+  return { ok: ok, crit: Math.min(cr, ok), mult: TACTIC_K.crit, sure: false, parts: P };
 }
 /* 전법 피해에 얹는 병력 비: 큰 부대를 작은 부대가 전법 한 번으로 무너뜨리지 못한다(¼ 병력이면 ×0.75, 두 배 넘어도 ×1.1 까지) */
 function tacticSizeK(u, d) { return clamp(Math.pow(Math.max(1, u.troops) / Math.max(1, d.troops), 0.25), 0.75, 1.1); }
@@ -1494,6 +1500,53 @@ function behindHex(u, d) {
   for (var i = 0; i < ns.length; i++) { var q = hdist(u.c, u.r, ns[i][0], ns[i][1]); if (q > bd) { bd = q; best = ns[i]; } }
   return best;
 }
+/* 전법에 함께 맞는 적들: [부대, 피해 비율] — 밀어내기 전의 자리로 잡는다. e = 이번에 적용되는 효과(대성공이면 강화된 것) */
+function tacticOthers(u, d, tac, e) {
+  var others = [], i, ns, q;
+  if (tac.arc) { ns = nbrs(u.c, u.r); for (i = 0; i < ns.length; i++) { q = UAT[K(ns[i][0], ns[i][1])]; if (q && q.f !== u.f && q !== d && hdist(q.c, q.r, d.c, d.r) === 1) others.push([q, e.side || 0.8]); } }
+  if (tac.all) { ns = nbrs(u.c, u.r); for (i = 0; i < ns.length; i++) { q = UAT[K(ns[i][0], ns[i][1])]; if (q && q.f !== u.f && q !== d) others.push([q, 1.0]); } }
+  if (tac.pierce) { var bh = behindHex(u, d); if (bh && inMap(bh[0], bh[1])) { q = UAT[K(bh[0], bh[1])]; if (q && q.f !== u.f) others.push([q, e.side || 0.8]); } }
+  if (tac.splash) { ns = nbrs(d.c, d.r); for (i = 0; i < ns.length; i++) { q = UAT[K(ns[i][0], ns[i][1])]; if (q && q.f !== u.f && q !== d) others.push([q, e.side || 0.6]); } }
+  return others;
+}
+/* 적 뒤로 n 칸까지 가운데 밀어낼 수 있는 칸 수 */
+function pushRoom(u, d, n) {
+  var dx = cubeX(d.c, d.r) - cubeX(u.c, u.r), dz = d.r - u.r, c = d.c, r = d.r, room = 0;
+  for (var i = 0; i < n; i++) { var nx = stepDir(c, r, dx, dz); if (!canPushInto(nx[0], nx[1], d)) break; c = nx[0]; r = nx[1]; room++; }
+  return room;
+}
+/* 보통 공격 한 번의 기대값(주사위 없이): 주는 피해 · 받는 반격. 맞은 뒤 줄어든 병력으로 반격이 약해지는 몫과 일기토는 넣지 않는다 */
+function attackExpect(u, d) {
+  var ranged = hdist(u.c, u.r, d.c, d.r) > 1, quiet = d.status === 'confuse' || d.status === 'rumor', bow = d.type === 'bow';
+  var cN = quiet ? 0 : (ranged ? (bow ? 0.4 : 0) : 0.55 * (bow ? 0.6 : 1));
+  return { dealt: dmgBase(u, d, 1, ranged) * (uHas(d, '금강') ? 0.65 : 1) * ((critNormal(u, d) ? 1.3 : 1) + (uHas(u, '연전') ? 0.4 : 0)),
+    recv: dmgBase(d, u, 1, ranged) * (uHas(u, '금강') ? 0.65 : 1) * cN * (uHas(u, '급습') ? 0.5 : 1) };
+}
+/* 전법 한 번의 기대값(v0.9.1): 성공·대성공·실패를 확률대로 섞은 '주는 피해 · 받는 반격', 그리고 같은 자리에서 보통 공격을 했을 때의 값.
+   넣은 것: 전법 배수 · 병력 비 · 대성공 배수 · 막힌 적을 밀 때의 +20% · 함께 맞는 적(extra) · 실패 때의 피해와 반격 · 반격을 받지 않는 경우(갈퀴·돌파, 멀리서 쏜 전법, 밀려나 떨어진 적, 혼란·위보 중인 적, 이 전법으로 혼란에 빠진 적) · 금강·철벽
+   넣지 않은 것: 맞은 뒤 줄어든 병력으로 반격이 약해지는 몫, 일기토, 혼란·기력 깎기 같은 효과의 값어치 */
+function tacticExpect(u, d, tac) {
+  var ranged = hdist(u.c, u.r, d.c, d.r) > 1, quiet = d.status === 'confuse' || d.status === 'rumor', bow = d.type === 'bow';
+  var od = tacticOdds(u, d), p = od.ok / 100, g = od.ok > 0 ? od.crit / od.ok : 0;            // g = 성공 가운데 대성공의 몫
+  var kN = uHas(d, '금강') ? 0.65 : 1, kT = uHas(d, '철벽') ? 0.7 : 1;
+  var e1 = tacticEff(tac, true), n0 = !ranged && tac.push ? tac.push : 0, n1 = !ranged && e1.push ? e1.push : 0;
+  var room = (n0 || n1) ? pushRoom(u, d, Math.max(n0, n1)) : 0;
+  var s0 = n0 && room < n0 ? 1.2 : 1, s1 = n1 && room < n1 ? 1.2 : 1;                          // 뒤가 막혀 있으면 +20%
+  var AD = dmgBase(u, d, 1, ranged);
+  var dealt = AD * (p * tac.mult * tacticSizeK(u, d) * kT * ((1 - g) * s0 + g * od.mult * s1) + (1 - p) * TACTIC_K.failDmg * kN);
+  var os0 = tacticOthers(u, d, tac, tac), os1 = tacticOthers(u, d, tac, e1), extra = 0, i;
+  for (i = 0; i < os0.length; i++) {
+    var o = os0[i][0];
+    extra += dmgBase(u, o, 1, hdist(u.c, u.r, o.c, o.r) > 1) * tac.mult * tacticSizeK(u, o) * (uHas(o, '철벽') ? 0.7 : 1) * ((1 - g) * os0[i][1] + g * od.mult * os1[i][1]);
+  }
+  extra *= p;
+  var away = n0 > 0 && !tac.follow && room >= 1;                                               // 밀려나 한 칸 떨어진 적은 반격하지 못한다
+  var cOk = (quiet || tac.noCounter || ranged || away) ? 0 : TACTIC_K.okCounter * (bow ? 0.6 : 1);
+  cOk *= (1 - g) * (1 - confuseOdds(tac, d) / 100) + g * (1 - confuseOdds(e1, d) / 100);         // 이 전법으로 혼란에 빠진 적은 반격하지 못한다(나선첨·돌진)
+  var cFl = quiet ? 0 : (ranged ? (bow ? 0.4 : 0) : TACTIC_K.failCounter * (bow ? 0.6 : 1));
+  var N = attackExpect(u, d);
+  return { ok: od.ok, crit: od.crit, dealt: dealt + extra, extra: extra, others: os0.length, recv: dmgBase(d, u, 1, ranged) * (uHas(u, '금강') ? 0.65 : 1) * (p * cOk + (1 - p) * cFl), nDealt: N.dealt, nRecv: N.recv };
+}
 function unitTactic0(u, tac, t) {
   if (u.done) return ERR('이미 행동을 마쳤습니다');
   if (u.morale < tac.cost) return ERR('기력이 부족합니다');
@@ -1502,7 +1555,7 @@ function unitTactic0(u, tac, t) {
   u.done = true; u.ox = -1; u.morale -= tac.cost;
   var od = tacticOdds(u, d), roll = rnd() * 100;
   res.pOk = od.ok; res.pCrit = od.crit;
-  if (roll >= od.ok) {                                         // 실패: 피해는 보통 공격의 절반, 반격은 보통 공격보다 크게 받는다(원거리는 노병에게만)
+  if (roll >= od.ok) {                                         // 실패: 피해는 보통 공격의 TACTIC_K.failDmg, 반격은 보통 공격보다 크게 받는다(원거리는 노병에게만)
     res.fail = true;
     var fdm = defMods(d, dmgUU(u, d, TACTIC_K.failDmg, ranged), 'normal');
     res.dmg = fdm; res.killed = hurtUnit(d, fdm, u.f, u);
@@ -1518,11 +1571,7 @@ function unitTactic0(u, tac, t) {
   var dmg = defMods(d, dmgUU(u, d, tac.mult * cm * tacticSizeK(u, d), ranged), 'tactic');
   var oc = d.c, or_ = d.r, dx = cubeX(d.c, d.r) - cubeX(u.c, u.r), dz = d.r - u.r;
   // 부가 대상(먼저 목록을 잡아 둔다)
-  var others = [], i, ns, q;
-  if (tac.arc) { ns = nbrs(u.c, u.r); for (i = 0; i < ns.length; i++) { q = UAT[K(ns[i][0], ns[i][1])]; if (q && q.f !== u.f && q !== d && hdist(q.c, q.r, d.c, d.r) === 1) others.push([q, e.side || 0.8]); } }
-  if (tac.all) { ns = nbrs(u.c, u.r); for (i = 0; i < ns.length; i++) { q = UAT[K(ns[i][0], ns[i][1])]; if (q && q.f !== u.f && q !== d) others.push([q, 1.0]); } }
-  if (tac.pierce) { var bh = behindHex(u, d); if (bh && inMap(bh[0], bh[1])) { q = UAT[K(bh[0], bh[1])]; if (q && q.f !== u.f) others.push([q, e.side || 0.8]); } }
-  if (tac.splash) { ns = nbrs(d.c, d.r); for (i = 0; i < ns.length; i++) { q = UAT[K(ns[i][0], ns[i][1])]; if (q && q.f !== u.f && q !== d) others.push([q, e.side || 0.6]); } }
+  var others = tacticOthers(u, d, tac, e), i;
   // 밀어내기
   if (e.push && !ranged) {
     for (i = 0; i < e.push; i++) {
@@ -1693,9 +1742,17 @@ function deserialize(s) {
     for (var pj = gb.plots.length; pj < pl.length; pj++) gb.plots.push({ c: pl[pj][0], r: pl[pj][1], fac: null });
   }
   // v0.8.1: 초반 보호. 0.8까지의 저장에는 없다 — 그 세력의 시작 병력으로 기간을 정해 붙인다(아직 그 기간 안이면 보호받는다. 누구를 먼저 쳤는지는 알 수 없어 비워 둔다)
-  if (!g.peace && SCENARIO.factions[g.player]) g.peace = { until: 1 + peaceFor(startTroops(g.player)), broken: {} };
+  if (!g.peace && SCENARIO.factions[g.player]) g.peace = { until: 1 + peaceFor(startTroops(g.player)), broken: {}, v: 2 };
+  // v0.9.1: 보호 기간이 짧아졌다(36/24/12턴 → 18/12/9턴). 0.8.1~0.9 에서 시작한 판은 옛 끝이 저장되어 있다 — 새 기간으로 당기되, 불러온 때부터 적어도 30일은 남긴다
+  var peaceCut = 0;
+  if (g.peace && !g.peace.v) {
+    var nu = SCENARIO.factions[g.player] ? 1 + peaceFor(startTroops(g.player)) : g.peace.until;
+    if (nu < g.peace.until && g.turn < g.peace.until) { peaceCut = g.peace.until; g.peace.until = Math.max(nu, Math.min(g.peace.until, g.turn + 3)); if (g.peace.until === peaceCut) peaceCut = 0; }
+    g.peace.v = 2;
+  }
   if (g.seed0 === undefined) g.seed0 = (g.seed ^ 0x2545F491) | 0;        // v0.9: 미리 정해 두는 결과의 고정 씨앗(옛 저장에는 없다 — 열 때 한 번 정해 저장본에 남는다)
   G = g; reindex(); REPORT = []; EVQ = [];
+  if (peaceCut) { var pcap = facCities(G.player)[0] || facBases(G.player)[0]; if (pcap) logMsg('초반 보호 기간이 짧아졌습니다(v0.9.1) — 이 판의 보호는 ' + dateOfTurn(G.peace.until - 1) + '까지입니다(전에는 ' + dateOfTurn(peaceCut - 1) + '까지)', pcap.c, pcap.r, G.player, 2); REPORT = []; }
   for (var fi = 0; fi < G.factions.length; fi++) if (G.factions[fi].adv === undefined) { G.factions[fi].adv = -1; if (G.factions[fi].alive) autoAdvisor(fi); }   // v0.9: 군사
   for (var oi = 0; oi < G.officers.length; oi++) { var go = G.officers[oi]; if (go.f >= 0 && go.st !== 'hidden' && bondOf(go)) go.loy = 100; }   // v0.8: 인연이 있는 무장
   return true;

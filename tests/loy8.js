@@ -33,7 +33,10 @@ ups.forEach(function (o) { o._f = o.f; o._n = loyNat(o); o.loy = o._n + 6; o._l 
 downs.forEach(function (o) { o._f = o.f; o._n = loyNat(o); o.loy = o._n - 10; o._l = o.loy; });
 g.loy = 60;
 if (typeof aiPoach === 'function') aiPoach = function () {};      // v0.9: 다른 세력 무장 등용(거절하면 충성 +3, 떠나면 남은 무장 +2)은 여기서 보는 '분기마다의 흐름'과 별개라 꺼 둔다 — 그쪽은 tests/adv9.js
-function stay(o) { return o.f === o._f && o.st === 'active'; }
+// v0.9.1: 사로잡혔다가 남의 세력에 등용되고, 다시 사로잡혀 제 세력으로 돌아온 무장은 '그대로 있던 무장'이 아니다(등용되면 충성이 70~85 로 새로 매겨진다).
+//         0.9.1 의 판에서 손관이 도겸 → 손책(196년 2월) → 도겸(196년 10월)으로 돌아와 끝날 때 세력은 같고 충성은 자리 잡는 값 아래였다 — 등용된 적이 있는 무장은 뺀다
+var _cr8 = cmdRecruit; cmdRecruit = function (b, id, tid) { var t = off(tid), r = _cr8.apply(this, arguments); if (r && r.ok && r.joined && t) t._moved = true; return r; };
+function stay(o) { return o.f === o._f && o.st === 'active' && !o._moved; }
 quarter();
 chk('인연 무장은 분기가 바뀌면 100 으로 돌아온다', by('관우').loy === 100 || by('관우').f !== by('유비').f, by('관우').loy);
 var d1 = downs.filter(stay);
