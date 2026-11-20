@@ -1,5 +1,5 @@
 /* ===== 천하도 — 정적 데이터 ===== */
-var GAME_VERSION = 'v0.9.3';
+var GAME_VERSION = 'v0.10';
 var SAVE_KEY = 'chunhado_save_v2';
 
 var UNIT_TYPES = {
@@ -46,6 +46,11 @@ var POACH = { base: 15, cha: 0.5, pol: 0.2, lord: 0.25, loy0: 70, loyK: 2.5, tal
 var POACH_AI = { tryPct: 25, min: 12, spare: 4 };
 /* 군사의 조언이 맞을 확률(%) = 군사 지력 + (군사 지력 − 상대 지력) × k, min~100 */
 var ADVISE = { k: 0.5, min: 50 };
+/* 군단(v0.10): 방침 넷, 군단 수의 한도, 군단의 행동력(턴마다 base + 도시 × city + 군단장 매력 ÷ 5, max 까지) */
+var CORPS_MAX = 6;
+var CORPS_DIR = { dev: '내정', arm: '군비', atk: '공격', sup: '지원' };
+var CORPS_AP = { base: 20, city: 8, max: 120, cap: 255 };
+var CORPS_ATK = { mul: 2.0, add: 3000, grow: 1500 };      // 공격에 나서는 문턱: (수비 + grow × 가는 턴 수) × mul × (지키는 장수의 몫) + add
 
 /* 초반 보호(v0.8.1): 처음 PEACE_ALL 턴 동안은 어느 AI 세력도 남이 지키는 거점·시설을 먼저 치지 않는다(빈 성 차지·방어·부대끼리의 싸움은 한다).
    플레이어는 시작 병력이 적을수록 더 오래 보호받는다. 플레이어가 먼저 친 세력에게는 보호가 풀린다.

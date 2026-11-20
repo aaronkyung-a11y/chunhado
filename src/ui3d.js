@@ -409,7 +409,8 @@ function mkLabel() {
 }
 function labelSize(L, k) { L.sp.scale.set(L.w / 2 / CH * K3 * k, L.h / 2 / CH * K3 * k, 1); }
 /* lines: [{t, px, font, color, bold}], 판 색 bg, 테두리 색 */
-function drawLabel(L, lines, bg, border, badge) {
+function corpsMark(cp) { return cp.n >= 1 && cp.n <= 20 ? String.fromCharCode(0x245F + cp.n) : String(cp.n); }      // ① ② ③ …
+function drawLabel(L, lines, bg, border, badge, badgeBg) {
   var x = L.cv.getContext('2d'), i, w = 0, h = 10, S = 2;
   for (i = 0; i < lines.length; i++) { x.font = (lines[i].bold || 700) + ' ' + lines[i].px * S + 'px ' + (lines[i].font || FONT_B); lines[i].w = x.measureText(lines[i].t).width; w = Math.max(w, lines[i].w); h += lines[i].px * S * 1.18; }
   w = Math.ceil(w + 22 * S / 2 + (badge ? 30 : 8)); h = Math.ceil(h);
@@ -427,7 +428,7 @@ function drawLabel(L, lines, bg, border, badge) {
     x.fillStyle = 'rgba(20,18,16,0.38)'; x.fillText(ln.t, bw / 2 + 1, y + 1.5);
     x.fillStyle = ln.color || '#fbf6ea'; x.fillText(ln.t, bw / 2, y); y += ln.px * S * 1.18;
   }
-  if (badge) { rr(x, w - 31, 3, 28, 28, 4); x.fillStyle = SEAL; x.fill(); x.lineWidth = 1.5; x.strokeStyle = '#fbf6ea'; x.stroke(); x.fillStyle = '#fbf6ea'; x.font = '800 19px ' + FONT_B; x.textBaseline = 'middle'; x.fillText(badge, w - 17, 18); }
+  if (badge) { rr(x, w - 31, 3, 28, 28, 4); x.fillStyle = badgeBg || SEAL; x.fill(); x.lineWidth = 1.5; x.strokeStyle = '#fbf6ea'; x.stroke(); x.fillStyle = '#fbf6ea'; x.font = '800 19px ' + FONT_B; x.textBaseline = 'middle'; x.fillText(badge, w - 17, 18); }
   L.tex.dispose(); L.tex.needsUpdate = true;
 }
 /* 상태 딱지(부대 머리 위): segs = [{t, bg}] 를 옆으로 나란히. 종이 빛 테두리를 둘러 어떤 땅 위에서도 읽힌다 */
@@ -529,12 +530,13 @@ function syncScene() {
       o.zone.scale.set(zr, 1, zr * 0.93); o.zone.rotation.y = hash2(i, 77) * 6.283; o.zone.position.set(o.g.position.x, o.g.position.y + 0.06, o.g.position.z); o.zone.renderOrder = 0.5; R3.objs.add(o.zone);
     }
     if (o.zone && o.zcol !== col) { o.zcol = col; o.zone.material.color.set(shade(col, 0.82)); }
-    sig = b.owner + '|' + (b.owner >= 0 ? Math.round(b.troops / 100) : '') + '|' + (mineB ? (idleN[b.id] || 0) : '') + '|' + (UI.sel && UI.sel.kind === 'base' && UI.sel.id === b.id);
+    var cpL = mineB ? baseCorps(b) : null;                                 // 군단에 맡긴 거점: 쉬는 무장 수 대신 군단 번호 딱지
+    sig = b.owner + '|' + (b.owner >= 0 ? Math.round(b.troops / 100) : '') + '|' + (mineB && !cpL ? (idleN[b.id] || 0) : '') + '|' + (UI.sel && UI.sel.kind === 'base' && UI.sel.id === b.id) + '|' + (cpL ? cpL.n : '');
     if (sig !== o.sig) {
       o.sig = sig;
       var ls = [{ t: b.n, px: 15, font: FONT_D, bold: 900 }];
       if (b.owner >= 0) ls.push({ t: fmt(b.troops), px: 10.5, color: '#f6efdf' });
-      drawLabel(o.lab, ls, shade(col, 0.86), (UI.sel && UI.sel.kind === 'base' && UI.sel.id === b.id) ? SEAL : INK, mineB && idleN[b.id] ? idleN[b.id] : 0);
+      drawLabel(o.lab, ls, shade(col, 0.86), (UI.sel && UI.sel.kind === 'base' && UI.sel.id === b.id) ? SEAL : INK, cpL ? corpsMark(cpL) : (mineB && idleN[b.id] ? idleN[b.id] : 0), cpL ? INK : null);
       R3.labelK = 0;
     }
     // 시설
@@ -568,7 +570,8 @@ function syncScene() {
     }
     var showName = isSel || R3.nameZoom, fim = (isSel || R3.faceZoom) ? porImg(L.por) : null;
     var segs = statusSegs(u);
-    sig = u.f + '|' + u.type + '|' + Math.round(u.troops / 10) + '|' + (u.f === G.player && u.done) + '|' + segs.map(function (g) { return g.t; }).join('+') + '|' + isSel + '|' + o.face + '|' + L.n + '|' + (u.dest >= 0) + '|' + showName + '|' + (fim ? 1 : 0);
+    var cpU = unitCorps(u);
+    sig = (cpU ? cpU.n : '') + '|' + u.f + '|' + u.type + '|' + Math.round(u.troops / 10) + '|' + (u.f === G.player && u.done) + '|' + segs.map(function (g) { return g.t; }).join('+') + '|' + isSel + '|' + o.face + '|' + L.n + '|' + (u.dest >= 0) + '|' + showName + '|' + (fim ? 1 : 0);
     if (sig !== o.sig) {
       o.sig = sig; setSprite(o.sp, key, UNIT_W, o.face < 0);
       var dim = u.f === G.player && u.done;
@@ -580,7 +583,7 @@ function syncScene() {
       o.sw.visible = !!o.stK;
       if (o.stK) { o.sw.material.color.set(ST_COL[o.stK] || ST_COL.confuse); o.sw.scale.set(1.18, 1.18, 1); o.sw.position.set(0.02, o.sp.userData.top * 0.72, 0); }
       o.lab.sp.center.set(0.5, 1); o.lab.sp.position.set(0, -0.16, 0);
-      var mark = (!u.status && u.dest >= 0) ? '▸ ' : '', lns = [{ t: mark + fmt(u.troops), px: 12, bold: 800, color: '#fbf6ea' }];      // 상태는 머리 위 딱지가 알린다(0.8까지는 여기에 '혼란 ' 글자를 붙였다)
+      var mark = cpU ? corpsMark(cpU) + ' ' : ((!u.status && u.dest >= 0) ? '▸ ' : ''), lns = [{ t: mark + fmt(u.troops), px: 12, bold: 800, color: '#fbf6ea' }];      // 상태는 머리 위 딱지가 알린다(0.8까지는 여기에 '혼란 ' 글자를 붙였다)
       if (showName) lns.unshift({ t: L.n, px: 10.5, font: FONT_D, bold: 900, color: '#fbf6ea' });
       drawLabel(o.lab, lns, dim ? mixHex(fcol, '#8d877b', 0.6) : shade(fcol, 0.84), isSel ? SEAL : INK);
       o.fcOn = !!fim;

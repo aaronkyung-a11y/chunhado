@@ -57,6 +57,15 @@
 - **충성과 인연**: `data.js`의 `BONDS`(군주 이름 → { 무장: 사이 }), `core.js`의 `bondWith`·`bondOf`·`loyNat`. 분기마다 `roundEnd`에서 자리 잡는 값 쪽으로 움직인다.
 - **지도 끝**: `ui3d.js`의 `APRON`(지도 밖 띠의 폭)·`apronY`(띠의 높이)·`TERRAIN_FS`의 `edge`(거울 비춤 + 번짐 + 종이로 풀림)·`camLimits`(지도 끝이 화면에 들어오는 한도)·`settleCam`(아래 창 높이가 바뀌면 제자리로).
 
+## 군단(v0.10)
+바뀐 기록은 `build/v010/p1_core`(규칙) · `p2_ai`(군단장의 판단) · `p3_ui`(화면). `bash build/v010/apply.sh`가 0.9.3의 소스에 차례로 입힌다. AI 세력의 규칙은 건드리지 않았다(AI 대전 216턴의 출력이 0.9.3과 같다).
+- **자료**: `G.corps = [{ id, n(제n군단), lead(군단장 무장 id, 비면 -1), dir, target, ap, t0, note, wait }]`, 거점 `b.corps` · 부대 `u.corps` = 군단 id(직할이면 0 · 없음). 방침 `dir`: `dev` 내정 · `arm` 군비 · `atk` 공격(`target` = 칠 거점) · `sup` 지원(`target` = 보낼 내 거점). 상수는 `data.js`의 `CORPS_MAX`·`CORPS_DIR`·`CORPS_AP`·`CORPS_ATK`.
+- **규칙**(`core.js`): `corpsCreate(거점들)` · `corpsAssign` · `corpsRelease`(직할로) · `corpsTakeUnit`(부대를 직할로) · `corpsDisband` · `corpsSetDir` · `corpsSetLead`. 뒤처리는 `corpsFix()` — 잃은 거점의 표시 지우기, 거점이 없는 군단 해산, 빈 군단장 자리 채우기, 이룬 방침을 군비로 돌리기(내 차례가 시작될 때와 군단의 차례 앞뒤에 부른다). 거점의 주인이 바뀔 때(`captureBase`) 군단의 부대가 차지했으면 그 군단에 든다.
+- **행동력**: 군단은 `cp.ap`을 따로 쓴다 — 차례마다 `corpsRegen` = 20 + 도시 × 8 + 군단장 매력 ÷ 5(120까지), 255까지 쌓인다. 직할의 `apRegen`은 직할 도시만 센다.
+- **차례**: `turnStepper`의 첫 단계 — 내가 턴 종료를 누른 직후, 다른 세력보다 먼저. `corpsStart`(행동력을 채우고 장부 `JOT`를 연다) → `ai.js`의 `corpsStepper`(한 행동씩) → `corpsEnd`(한 일을 `corpsNoteText`로 한 줄 — 기록에 `corps: id`가 붙는다).
+- **군단장의 판단**(`ai.js`): AI 세력의 판단을 그대로 쓰되 `AISCOPE`(지금 도는 군단)로 볼 거점·부대를 좁힌다(`aiBases`·`aiCities`·`aiNearBase`). 도는 동안 세력의 행동력 자리에 군단의 행동력을 잠깐 넣는다. 방침에 따른 차이는 `aiInternal`의 `DIR`(징병 한도 · 한꺼번에 벌이는 공사 수 · 탐색 · 병기), 공격은 `corpsTargets`·`corpsNeed`·`corpsDef`·`corpsFoeK`·`corpsAvail`·`corpsPool`(나서는 문턱과 낼 수 있는 병력), 지원은 `corpsSupply`. 화면이 쓰는 가늠은 `corpsOutlook(cp, 거점)` → `{ need, have, going, len, k }`.
+- **화면**(`ui_panels.js`): STATUS 창의 군단 줄 `corpsStrip`, 군단 창 `showCorps`, 새 군단 `showCorpsNew`, 목표 고르기 `pickCorpsTarget` · 보낼 곳 `pickCorpsDest` · 거점 넣기 `pickCorpsBase`. 거점 창은 `baseCorps(b)`가 있으면 군단 띠(`.cpbn`)와 [군단] · [직할로]만, 직할 거점에는 `corps` 탭. 부대 창은 `unitCorps(u)`가 있으면 하는 일(`unitMission`)과 [군단] · [직할로]. '지금 할 일'과 `pendingUnits`는 `directBases`·`directUnits`만 본다. 군단장의 대답은 `corpsSaid`(말은 `SAY.corps`·`cdev`·`carm`·`catk`·`csup`). 지도의 딱지는 `ui3d.js`의 `corpsMark`.
+
 ## v0.9.3에서 바뀐 것의 자리
 바뀐 기록은 `build/v093/p1~p3`(`bash build/v093/apply.sh`가 0.9.2의 소스에 차례로 입힌다). 규칙이 바뀐 곳은 `tacticCrit` 하나다.
 - **대화창**: `index.html`의 `#talk`, `ui_panels.js`의 `talk(무장, 말, 결과 한 줄, 뜨는 시간)`·`talkHide()`. 화면 위쪽에 초상 · 이름 · 딱지(`roleOf` — 군주/군사) · 세력 · 말 · 결과가 뜨고 2.6~5.2초 뒤(말의 길이에 따라) 사라진다. 누르면 바로 닫힌다(`ui3d.js`의 누름 처리). 창(`#modal`)보다 위에 뜨고 명령의 흐름은 막지 않는다. 메뉴의 '대화창 켜짐/꺼짐'(`UI.talk`, 설정 `chunhado_opts.talk`)을 끄면 `talk`이 결과 한 줄만 태그를 떼어 알림 줄(`toast`)로 넘긴다.
