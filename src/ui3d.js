@@ -408,6 +408,33 @@ function drawLabel(L, lines, bg, border, badge) {
   if (badge) { rr(x, w - 31, 3, 28, 28, 4); x.fillStyle = SEAL; x.fill(); x.lineWidth = 1.5; x.strokeStyle = '#fbf6ea'; x.stroke(); x.fillStyle = '#fbf6ea'; x.font = '800 19px ' + FONT_B; x.textBaseline = 'middle'; x.fillText(badge, w - 17, 18); }
   L.tex.dispose(); L.tex.needsUpdate = true;
 }
+/* 상태 딱지(부대 머리 위): segs = [{t, bg}] 를 옆으로 나란히. 종이 빛 테두리를 둘러 어떤 땅 위에서도 읽힌다 */
+var ST_COL = { confuse: '#2f4f6f', rumor: '#8a5a12', fire: '#b5332a' }, ST_TINT = { confuse: 0xaebdd2, rumor: 0xdccda4 };
+function drawChips(L, segs) {
+  var x = L.cv.getContext('2d'), S = 2, px = 12.5 * S, pad = 6.5 * S, gap = 2.5 * S, bh = Math.ceil(px * 1.5), w = 6, i, tail = 9;
+  x.font = '800 ' + px + 'px ' + FONT_B;
+  for (i = 0; i < segs.length; i++) { segs[i].w = Math.ceil(x.measureText(segs[i].t).width + pad * 2); w += segs[i].w + (i ? gap : 0); }
+  L.cv.width = w; L.cv.height = bh + 6 + tail; L.w = w; L.h = bh + 6 + tail;
+  x = L.cv.getContext('2d'); x.font = '800 ' + px + 'px ' + FONT_B; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round';
+  // 꼬리(가운데 아래 세모) — 어느 부대의 딱지인지 가리킨다
+  x.beginPath(); x.moveTo(w / 2 - 9, bh + 1); x.lineTo(w / 2, bh + 3 + tail); x.lineTo(w / 2 + 9, bh + 1); x.closePath(); x.fillStyle = segs[0].bg; x.fill(); x.lineWidth = 2.4; x.strokeStyle = '#fbf6ea'; x.stroke();
+  var X = 3;
+  for (i = 0; i < segs.length; i++) {
+    rr(x, X, 3, segs[i].w, bh, 6); x.fillStyle = segs[i].bg; x.fill(); x.lineWidth = 2.4; x.strokeStyle = '#fbf6ea'; x.stroke();
+    x.fillStyle = 'rgba(20,18,16,0.4)'; x.fillText(segs[i].t, X + segs[i].w / 2 + 1, 3 + bh / 2 + 2.5);
+    x.fillStyle = '#fbf6ea'; x.fillText(segs[i].t, X + segs[i].w / 2, 3 + bh / 2 + 1);
+    X += segs[i].w + gap;
+  }
+  x.beginPath(); x.moveTo(w / 2 - 7.5, bh + 1.5); x.lineTo(w / 2, bh + tail); x.lineTo(w / 2 + 7.5, bh + 1.5); x.closePath(); x.fillStyle = segs[0].bg; x.fill();   // 테두리 선을 덮어 판과 꼬리를 잇는다
+  L.tex.dispose(); L.tex.needsUpdate = true;
+}
+/* 부대의 상태 딱지에 적을 것 */
+function statusSegs(u) {
+  var segs = [], n = statusLeft(u);
+  if (u.status) segs.push({ t: statusName(u.status) + (n > 0 ? ' ' + n : ''), bg: ST_COL[u.status] || ST_COL.confuse });
+  if (unitOnFire(u)) segs.push({ t: '불길', bg: ST_COL.fire });
+  return segs;
+}
 /* 부대 왼쪽 위에 붙는 주장 얼굴 딱지(둥근 초상). 테두리는 세력 색 */
 function drawFace(L, img, ring) {
   var S = 60, x; L.cv.width = L.cv.height = S; L.w = L.h = S; x = L.cv.getContext('2d');
@@ -505,6 +532,9 @@ function syncScene() {
       o = R3.units[u.id] = { g: new THREE.Group(), sig: '', anim: false, face: 1, c: -1, r: -1 };
       o.sp = spriteObj(key, UNIT_W, 3); o.lab = mkLabel(); o.g.add(o.sp); o.g.add(o.lab.sp);
       o.fc = mkLabel(); o.fc.sp.center.set(0.5, 0.5); o.fc.sp.renderOrder = 7; o.fc.sp.visible = false; o.fcOn = false; o.g.add(o.fc.sp);
+      o.st = mkLabel(); o.st.sp.renderOrder = 8; o.st.sp.visible = false; o.stOn = false; o.stK = ''; o.ph = (u.id * 1.7) % 6.283; o.g.add(o.st.sp);      // 상태 딱지
+      o.sw = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTex('swirl'), color: 0x2f4f6f, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false }));   // 머리 위 소용돌이
+      o.sw.renderOrder = 5; o.sw.visible = false; o.g.add(o.sw);
       o.ring = new THREE.Mesh(R3.ringGeo || (R3.ringGeo = new THREE.CircleGeometry(1.0, 24).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: fcol, map: R3.dotTex || (R3.dotTex = inkDotTexture()), transparent: true, opacity: 0.78, depthTest: false, depthWrite: false }));
       o.ring.renderOrder = 1; R3.objs.add(o.ring); R3.objs.add(o.g);
     }
@@ -514,13 +544,20 @@ function syncScene() {
       o.c = u.c; o.r = u.r; o.g.position.set(p[0], p[1], p[2]); o.ring.position.set(p[0], p[1] + 0.04, p[2]);
     }
     var showName = isSel || R3.nameZoom, fim = (isSel || R3.faceZoom) ? porImg(L.por) : null;
-    sig = u.f + '|' + u.type + '|' + Math.round(u.troops / 10) + '|' + (u.f === G.player && u.done) + '|' + (u.status || '') + '|' + isSel + '|' + o.face + '|' + L.n + '|' + (u.dest >= 0) + '|' + showName + '|' + (fim ? 1 : 0);
+    var segs = statusSegs(u);
+    sig = u.f + '|' + u.type + '|' + Math.round(u.troops / 10) + '|' + (u.f === G.player && u.done) + '|' + segs.map(function (g) { return g.t; }).join('+') + '|' + isSel + '|' + o.face + '|' + L.n + '|' + (u.dest >= 0) + '|' + showName + '|' + (fim ? 1 : 0);
     if (sig !== o.sig) {
       o.sig = sig; setSprite(o.sp, key, UNIT_W, o.face < 0);
       var dim = u.f === G.player && u.done;
-      o.sp.material.color.setHex(0xffffff); o.sp.material.opacity = dim ? 0.52 : 1; o.ring.material.color.set(fcol); o.ring.material.opacity = dim ? 0.4 : 0.78;
+      o.sp.material.color.setHex(u.status ? (ST_TINT[u.status] || 0xffffff) : 0xffffff); o.sp.material.opacity = dim ? 0.52 : 1; o.ring.material.color.set(fcol); o.ring.material.opacity = dim ? 0.4 : 0.78;
+      // 상태: 머리 위 딱지 + 소용돌이. 혼란이면 tick 에서 좌우로 비틀거리게 한다
+      o.stOn = segs.length > 0; o.stK = u.status || '';
+      if (!o.stK) o.sp.material.rotation = 0;
+      if (o.stOn) { drawChips(o.st, segs); o.stY = o.sp.userData.top * 0.97; o.st.sp.position.set(0.06, o.stY, 0); }
+      o.sw.visible = !!o.stK;
+      if (o.stK) { o.sw.material.color.set(ST_COL[o.stK] || ST_COL.confuse); o.sw.scale.set(1.18, 1.18, 1); o.sw.position.set(0.02, o.sp.userData.top * 0.72, 0); }
       o.lab.sp.center.set(0.5, 1); o.lab.sp.position.set(0, -0.16, 0);
-      var mark = u.status ? (u.status === 'confuse' ? '혼란 ' : '위보 ') : (u.dest >= 0 ? '▸ ' : ''), lns = [{ t: mark + fmt(u.troops), px: 12, bold: 800, color: '#fbf6ea' }];
+      var mark = (!u.status && u.dest >= 0) ? '▸ ' : '', lns = [{ t: mark + fmt(u.troops), px: 12, bold: 800, color: '#fbf6ea' }];      // 상태는 머리 위 딱지가 알린다(0.8까지는 여기에 '혼란 ' 글자를 붙였다)
       if (showName) lns.unshift({ t: L.n, px: 10.5, font: FONT_D, bold: 900, color: '#fbf6ea' });
       drawLabel(o.lab, lns, dim ? mixHex(fcol, '#8d877b', 0.6) : shade(fcol, 0.84), isSel ? SEAL : INK);
       o.fcOn = !!fim;
@@ -531,7 +568,7 @@ function syncScene() {
   }
   for (var id in R3.units) {
     if (seen[id] || R3.units[id].anim) continue;
-    o = R3.units[id]; R3.objs.remove(o.g); R3.objs.remove(o.ring); o.sp.material.dispose(); o.lab.tex.dispose(); o.lab.sp.material.dispose(); o.fc.tex.dispose(); o.fc.sp.material.dispose(); o.ring.material.dispose(); delete R3.units[id];
+    o = R3.units[id]; R3.objs.remove(o.g); R3.objs.remove(o.ring); o.sp.material.dispose(); o.lab.tex.dispose(); o.lab.sp.material.dispose(); o.fc.tex.dispose(); o.fc.sp.material.dispose(); o.st.tex.dispose(); o.st.sp.material.dispose(); o.sw.material.dispose(); o.ring.material.dispose(); delete R3.units[id];
   }
   // 불
   for (var fk2 in G.fires) {
@@ -644,7 +681,15 @@ function tick(now) {
     var fzm = cam.z >= 0.5; if (fzm !== R3.faceZoom) { R3.faceZoom = fzm; UI.dirty = true; }
     if (UI.dirty) { UI.dirty = false; syncScene(); UI.render = true; }
     var nf = 0; for (var fk in R3.fires) { nf++; var fg = R3.fires[fk]; for (i = 0; i < fg.children.length; i++) { var s = 0.9 + 0.22 * Math.sin(now / 90 + i * 2.1 + (+fk)); fg.children[i].scale.set(0.8 * s, 1.25 * s + 0.15 * Math.sin(now / 57 + i), 1); } }
-    if (hot || UI.floats.length || (nf && now - (R3.fireT || 0) > 50)) { UI.render = true; R3.fireT = now; }   // 불은 초당 20번만 다시 그린다
+    var nst = 0;
+    for (var sid in R3.units) {
+      var so = R3.units[sid]; if (!so.stK) continue;
+      nst++;
+      so.sw.material.rotation = -now / 380 + so.ph;                                                    // 소용돌이가 돈다
+      if (so.stK === 'confuse') so.sp.material.rotation = 0.075 * Math.sin(now / 250 + so.ph);          // 혼란: 비틀거린다
+      so.st.sp.position.y = so.stY + 0.05 * Math.sin(now / 320 + so.ph);                               // 딱지가 살짝 오르내린다
+    }
+    if (hot || UI.floats.length || ((nf || nst) && now - (R3.fireT || 0) > 50)) { UI.render = true; R3.fireT = now; }   // 불·상태 표시는 초당 20번만 다시 그린다
     if (UI.render) {
       UI.render = false; applyCam();
       var lk = clamp(0.72 + 0.26 * cam.z, 0.66, 1.12);
@@ -652,7 +697,7 @@ function tick(now) {
         R3.labelK = lk; R3.billboard = false;
         var q = R3.cam.quaternion, showU = cam.z >= 0.26, showF = cam.z >= 0.3;
         for (i = 0; i < R3.bases.length; i++) { var bo = R3.bases[i]; if (!bo) continue; bo.g.quaternion.copy(q); labelSize(bo.lab, lk * (cam.z < 0.3 ? 0.82 : 1)); }
-        for (var id in R3.units) { var uo = R3.units[id]; uo.g.quaternion.copy(q); labelSize(uo.lab, lk * 0.82); uo.lab.sp.visible = showU; labelSize(uo.fc, lk * 0.92); uo.fc.sp.visible = showU && uo.fcOn; }
+        for (var id in R3.units) { var uo = R3.units[id]; uo.g.quaternion.copy(q); labelSize(uo.lab, lk * 0.82); uo.lab.sp.visible = showU; labelSize(uo.fc, lk * 0.92); uo.fc.sp.visible = showU && uo.fcOn; labelSize(uo.st, lk * 0.84); uo.st.sp.visible = showU && uo.stOn; }
         for (var k2 in R3.facs) R3.facs[k2].sp.visible = showF;
         for (var f2 in R3.fires) R3.fires[f2].quaternion.copy(q);
       }

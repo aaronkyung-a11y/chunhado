@@ -12,6 +12,16 @@ function fr() { R = (R * 1103515245 + 12345) & 0x7fffffff; return R / 0x7fffffff
 function fpick(a) { return a[Math.floor(fr() * a.length)]; }
 function fsome(a, n) { var b = a.slice(), out = []; while (b.length && out.length < n) out.push(b.splice(Math.floor(fr() * b.length), 1)[0]); return out; }
 var STAT = {};
+/* v0.8.1 초반 보호 감시: 보호 기간에, 플레이어가 먼저 치지 않은 세력이 플레이어의 거점·시설을 치면(또는 빼앗으면) 어김 */
+var PV = { viol: 0, hits: 0, first: 0 };
+var _ua0 = unitAttack0; unitAttack0 = function (u, t) {
+  var mine = (t.kind === 'base' || t.kind === 'fac') && t.b && t.b.owner === G.player && u.f !== G.player;
+  var prot = mine && G.peace && G.turn < G.peace.until && !G.peace.broken[u.f];
+  var r = _ua0(u, t);
+  if (r && r.ok && mine) { PV.hits++; if (!PV.first) PV.first = G.turn; if (prot) PV.viol++; }
+  return r;
+};
+var _cb0 = captureBase; captureBase = function (b, u) { if (b.owner === G.player && u && u.f !== G.player && G.peace && G.turn < G.peace.until && !G.peace.broken[u.f]) PV.viol++; return _cb0(b, u); };
 function note(k, r) { STAT[k] = STAT[k] || [0, 0]; STAT[k][r && r.ok ? 0 : 1]++; }
 function fuzzTurn() {
   var f = G.player, i;
@@ -79,4 +89,6 @@ for (let t = 0; t < turns; t++) {
   if (errs.length) { console.log('turn', t, ctx.dateStr(), 'INVARIANT', errs.slice(0, 6)); if (++bad > 3) process.exit(1); }
   if (ctx.G.over) { console.log('over', ctx.G.over, 'turn', t); break; }
 }
+if (ctx.G.peace) console.log('peace: until turn', ctx.G.peace.until, '| 먼저 친 세력', Object.keys(ctx.G.peace.broken).map(k => ctx.G.factions[+k].name).join('·') || '없음', '| 내 거점·시설이 처음 맞은 턴', ctx.PV.first || '-', '| 맞은 횟수', ctx.PV.hits, '| 보호 어김', ctx.PV.viol);
+if (ctx.PV.viol) { console.log('FAIL: 보호 중인 거점·시설이 공격받음'); process.exit(1); }
 console.log('fuzz ok', ctx.dateStr(), JSON.stringify(ctx.STAT), 'save bytes', ctx.serialize().length);

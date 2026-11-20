@@ -47,7 +47,7 @@ function aiUnitAct(u) {
   var T = (ai.target !== undefined && ai.target >= 0) ? G.bases[ai.target] : null;
   var mode = ai.mode;
   if (u.type === 'trans') mode = 'supply';
-  if (mode === 'attack') { if (!T) mode = 'return'; else if (T.owner === f) mode = 'garrison'; }
+  if (mode === 'attack') { if (!T) mode = 'return'; else if (T.owner === f) mode = 'garrison'; else if (T.owner >= 0 && !aiMayStrike(f, T.owner)) ai.mode = mode = 'return'; }   // 아직 칠 수 없는 세력이 먼저 들어간 성: 그 앞에 눌러앉지 않고 돌아간다
   if (mode === 'defend') {
     var home = G.bases[ai.home];
     if (!home || home.owner !== f || enemyUnitsNear(f, home.c, home.r, 5).length === 0) mode = 'return';
@@ -82,7 +82,7 @@ function aiUnitAct(u) {
         if (v > bv) { bv = v; best = { kind: 'unit', u: e, k: k }; }
       }
     }
-    if (mode === 'attack' && T && T.owner >= 0 && T.owner !== f) {
+    if (mode === 'attack' && T && T.owner >= 0 && T.owner !== f && aiMayStrike(f, T.owner)) {
       for (s = 0; s < stops.length; s++) {
         k = stops[s]; c = k % W; r = (k - c) / W;
         var db = hdist(c, r, T.c, T.r);
@@ -96,7 +96,7 @@ function aiUnitAct(u) {
     // 길을 막는 적 시설
     if (!best && mode === 'attack') {
       var ats = attackTargets(u);
-      for (i = 0; i < ats.length; i++) if (ats[i].kind === 'fac' && chance(15)) { best = { kind: 'fac', t: ats[i], k: K(u.c, u.r) }; bv = 1; break; }
+      for (i = 0; i < ats.length; i++) if (ats[i].kind === 'fac' && aiMayStrike(f, ats[i].b.owner) && chance(15)) { best = { kind: 'fac', t: ats[i], k: K(u.c, u.r) }; bv = 1; break; }
     }
   }
   if (best && bv > 0) {
@@ -111,6 +111,7 @@ function aiUnitAct(u) {
       var pl = (!tg.status && chance(50)) ? PLOYS[1] : PLOYS[0];
       var pts = ployTargets(u, pl), pt = null;
       for (i = 0; i < pts.length; i++) if (pts[i].u === tg) pt = pts[i];
+      if (pt && pl.id === 'fire') { var hf = actHoldF(pt, pl); if (hf >= 0 && hf !== f && !aiMayStrike(f, hf)) pt = null; }   // 초반 보호: 남의 시설 위에는 불을 놓지 않는다
       if (pt && ployChance(u, pl, tg) >= 55) { aiReport(u, unitPloy(u, pl, pt), tg); return; }
     }
     // 전법
@@ -163,8 +164,8 @@ function aiReport(u, res, tg) {
   if (!res || !res.ok || G.aiOnly) return;
   if (tg && tg.f === G.player) {
     var txt = facName(u.f) + ' ' + uLeader(u).n + '대';
-    if (res.kind === 'ploy') txt += '의 ' + res.ploy + (res.success ? ' 성공' : ' 실패') + ' → ' + (uLeaderSafe(tg)) + (res.dmg ? ' (-' + nf(res.dmg) + ')' : '');
-    else if (res.kind === 'tactic') txt += '의 ' + res.tac + (res.fail ? ' 실패' : (res.crit ? ' 대성공' : '')) + ' → ' + uLeaderSafe(tg) + ' (-' + nf(res.dmg) + ')';
+    if (res.kind === 'ploy') txt += '의 ' + res.ploy + (res.success ? ' 성공' : ' 실패') + ' → ' + (uLeaderSafe(tg)) + (res.dmg ? ' (-' + nf(res.dmg) + ')' : '') + (res.success && res.st ? ' — ' + statusName(res.st) + ' ' + res.stN + '턴' : '');
+    else if (res.kind === 'tactic') txt += '의 ' + res.tac + (res.fail ? ' 실패' : (res.crit ? ' 대성공' : '')) + ' → ' + uLeaderSafe(tg) + ' (-' + nf(res.dmg) + ')' + (res.confused ? ' — 혼란 ' + res.stN + '턴' : '');
     else txt += '의 공격 → ' + uLeaderSafe(tg) + ' (-' + nf(res.dmg) + ')';
     if (res.duel) txt += ' · 일기토 ' + (res.duel.win ? res.duel.a : res.duel.d) + ' 승';
     if (res.killed) txt += ' 궤멸';
@@ -349,11 +350,14 @@ function aiOffense(f) {
       var T = tg[i].T, len = tg[i].len, sc, need;
       if (T.owner === -1) { need = 600; sc = 90 - len * 0.5 + (T.kind === 'city' ? 10 : 0); }
       else {
-        var def = T.troops;
+        if (!aiMayStrike(f, T.owner)) continue;                      // 초반 보호: 남이 지키는 거점을 먼저 치지 않는다
+        var ramp = T.owner === G.player && peaceRamp(f);              // 보호가 끝난 뒤의 완충 기간
+        if (ramp && othersOnPlayer(f)) continue;                     //   한 번에 한 세력만 플레이어를 치러 온다
+        var def = T.troops, mul = aiNeedMul(f, T.owner);
         enemyUnitsNear(f, T.c, T.r, 3).forEach(function (e) { if (e.f === T.owner) def += e.troops; });
-        need = def * 1.25 + 2500 + (T.kind === 'gate' ? 1500 : 0);
-        if (avail >= 12000 && avail < need && aiFacTroops(f) >= def * 4 && chance(50)) need = avail;   // 국력이 압도적이면 파상 공세
-        sc = 50 - def / 400 - len * 0.5 + (T.kind === 'city' ? 15 : 0) + (T.sz === 'L' ? 8 : 0) + (T.owner === G.player ? 3 : 0);
+        need = def * mul + 2500 + (T.kind === 'gate' ? 1500 : 0);
+        if (avail >= 12000 && avail < need && aiFacTroops(f) >= def * 4 * mul / 1.25 && chance(50)) need = avail;   // 국력이 압도적이면 파상 공세(완충 기간에는 문턱도 함께 높다)
+        sc = 50 - def / 400 - len * 0.5 + (T.kind === 'city' ? 15 : 0) + (T.sz === 'L' ? 8 : 0);      // v0.8.1: 플레이어의 성에 주던 가산점(+3)을 없앰
         if (b.morale < 55 || (b.ai.cool || 0) > G.turn) continue;
       }
       // 이미 그 거점으로 향하는 아군이 충분하면 건너뛴다

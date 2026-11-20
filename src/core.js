@@ -73,8 +73,7 @@ function pick(arr) { return arr[Math.floor(rnd() * arr.length)]; }
   }
 })();
 /* 성역(城域): 성 둘레 ZONE_R 칸. 값 = 그 성의 번호, 성역 밖은 -1. 관문에는 성역이 없다.
-   성역의 경계를 넘는 걸음(들어가든 나오든)을 디디면 그 턴의 이동은 거기서 끝난다 →
-   성에서 나와(1턴째에 경계 밖에서 멈춤) 다른 성의 성역에 들어서고(멈춤) 성에 닿기까지 적어도 3턴(30일)이 걸린다. */
+   v0.8부터 이동을 막지 않는다(0.5~0.7에서는 경계를 넘으면 그 턴 이동이 끝났다) — 이름·고리 표시·긴장한 음악의 기준으로만 쓴다. */
 var ZONE = new Int16Array(NHEX);
 (function () {
   var i, c, r;
@@ -106,6 +105,50 @@ function reindex() {
 function facName(f) { return f < 0 ? '재야' : G.factions[f].name; }
 function isLord(o) { return o.f >= 0 && G.factions[o.f].lord === o.id; }
 function dateStr() { return G.year + '년 ' + G.month + '월 ' + ['상순', '중순', '하순'][G.xun]; }
+function dateOfTurn(t) { var m = Math.floor((t - 1) / 3); return (194 + Math.floor(m / 12)) + '년 ' + (m % 12 + 1) + '월 ' + ['상순', '중순', '하순'][(t - 1) % 3]; }   // 턴 번호 → 날짜(1턴 = 194년 1월 상순)
+/* ---------- 초반 보호 ---------- */
+function peaceFor(troops) {               // 시작 병력 → 보호 턴 수
+  for (var i = 0; i < PEACE_PLAYER.length; i++) if (troops < PEACE_PLAYER[i][0]) return PEACE_PLAYER[i][1];
+  return PEACE_ALL;
+}
+function peaceTurns(f) {                 // 세력 f 로 시작하면 몇 턴 보호받는가(지금 가진 병력으로 — 새 판을 만들 때 부른다)
+  var t = 0; G.bases.forEach(function (b) { if (b.owner === f) t += b.troops; });
+  return peaceFor(t);
+}
+/* 시나리오에서 세력 i 가 처음 가진 병력(성 + 관문) — newGame 과 같은 셈. 판을 만들기 전(군주 고르기)에 쓴다 */
+function startTroops(i) {
+  var sf = SCENARIO.factions[i], st = START[sf.n] || [10000, 1500, 15000, 1000], t = 0, j;
+  for (j = 0; j < sf.cities.length; j++) t += Math.round(st[0] * (j === 0 ? 1 : 0.55) / 100) * 100;
+  for (var gn in SCENARIO.gates) if (SCENARIO.gates[gn] === i && baseByName(gn) >= 0) t += 2000;
+  return t;
+}
+/* 지금 플레이어가 세력 o 의 거점·시설을 치면 초반 보호가 깨지는가 */
+function peaceWouldBreak(o) { return !!G.peace && o >= 0 && o !== G.player && G.turn < G.peace.until && !G.peace.broken[o]; }
+/* 플레이어가 먼저 쳐서 보호가 풀린 세력(살아 있는 것만) */
+function peaceBroken() { var out = []; if (G.peace) for (var k in G.peace.broken) if (G.peace.broken[k] && G.factions[+k] && G.factions[+k].alive) out.push(+k); return out; }
+function peaceLeft() { return G.peace ? Math.max(0, G.peace.until - G.turn) : 0; }      // 플레이어의 보호가 몇 턴 남았나
+/* AI 세력 f 가 owner 의 거점·시설을 '먼저' 쳐도 되는가 */
+function aiMayStrike(f, owner) {
+  if (owner < 0 || owner === f) return true;
+  var P = G.peace;
+  if (!P) return true;                                             // 옛 저장: 보호 없음
+  if (owner === G.player) return G.turn >= P.until || !!P.broken[f];
+  if (f === G.player) return G.turn > PEACE_ALL;                   // 플레이어 자리를 AI 가 대신 둘 때(시험·AI 대전): 다른 AI 와 같다
+  return G.turn > PEACE_ALL;                                       // AI 끼리: 처음 PEACE_ALL 턴은 쉰다
+}
+/* AI 가 플레이어의 거점을 칠 때 필요한 병력 우위(배): 보호가 막 끝났을 때 2.0, PEACE_RAMP 턴 뒤 1.25. 플레이어가 먼저 친 세력은 1.25 */
+function aiNeedMul(f, owner) {
+  var P = G.peace;
+  if (!P || owner !== G.player || P.broken[f]) return 1.25;
+  return 1.25 + 0.75 * clamp(1 - (G.turn - P.until) / PEACE_RAMP, 0, 1);
+}
+/* 완충 기간(보호가 끝난 뒤 PEACE_RAMP 턴)인가 — 이때는 한 번에 한 세력만 플레이어를 치러 온다. 플레이어가 먼저 친 세력에게는 해당 없음 */
+function peaceRamp(f) { var P = G.peace; return !!P && !P.broken[f] && G.turn < P.until + PEACE_RAMP; }
+/* 세력 f 말고 다른 AI 세력이 지금 플레이어의 거점을 치러 가고 있는가 */
+function othersOnPlayer(f) {
+  for (var i = 0; i < G.units.length; i++) { var u = G.units[i]; if (u.f !== f && u.f !== G.player && u.ai && u.ai.mode === 'attack' && u.ai.target >= 0 && G.bases[u.ai.target].owner === G.player) return true; }
+  return false;
+}
 
 function baseOfficers(b) {
   var out = [];
@@ -365,6 +408,7 @@ function newGame(playerFaction, seed) {
     G.officers.push(o);
   }
   for (i = 0; i < G.officers.length; i++) { var lo = G.officers[i]; if (lo.f >= 0 && G.factions[lo.f].lord !== lo.id) lo.loy = loyNat(lo); }   // 군주가 정해진 뒤에 매긴다
+  G.peace = { until: 1 + peaceTurns(G.player), broken: {} };      // 초반 보호: until 턴부터 AI 가 플레이어의 거점을 칠 수 있다
   reindex();
   REPORT = []; EVQ = [];
   phaseStart(G.player);
@@ -404,6 +448,11 @@ function apRegen(f) {
 
 /* ---------- 턴 진행 ---------- */
 function phaseStart(f) {
+  if (f === G.player && G.peace && !G.aiOnly) {                    // 보호가 끝나 가는 것을 미리 알린다
+    var pl = G.peace.until - G.turn, cap = facCities(f)[0] || facBases(f)[0];
+    if (pl === 3 && cap) { logMsg('초반 보호가 3턴 남았습니다 — ' + dateOfTurn(G.peace.until) + '부터는 다른 세력이 우리 거점을 칠 수 있습니다', cap.c, cap.r, f, 2); ev({ t: 'news', f: f, c: cap.c, r: cap.r, warn: 1, text: '<b>초반 보호가 3턴 남았습니다</b> — ' + dateOfTurn(G.peace.until) + '부터는 다른 세력이 우리 거점을 칠 수 있습니다' }); }
+    if (pl === 0 && cap) { logMsg('초반 보호가 끝났습니다 — 이제 다른 세력이 우리 거점을 칠 수 있습니다', cap.c, cap.r, f, 2); ev({ t: 'news', f: f, c: cap.c, r: cap.r, warn: 1, text: '<b>초반 보호가 끝났습니다</b> — 이제 다른 세력이 우리 거점을 칠 수 있습니다' }); }
+  }
   var F = G.factions[f], i;
   if (!F.alive) return;
   F.ap = Math.min(255, F.ap + apRegen(f));
@@ -461,11 +510,14 @@ function phaseStart(f) {
     }
     // 상태
     if (u.status) {
-      if (u.stT <= 0) { u.status = null; }
+      if (u.stT <= 0) { if (f === G.player && !G.aiOnly) logMsg(uName(u) + ' ' + statusName(u.status) + '에서 벗어남 — 다시 명령을 받습니다', u.c, u.r, f, 1); u.status = null; }
       else {
         u.stT--;
         if (u.status === 'rumor') autoRetreat(u);
-        if (UMAP[u.id]) u.done = true;
+        if (UMAP[u.id]) {
+          u.done = true; u.stSkip = G.turn;                         // 이 턴을 건너뛴다(화면이 '이번 턴 포함 N턴'을 셀 수 있게 적어 둔다)
+          if (f === G.player && !G.aiOnly) logMsg(uName(u) + ' ' + statusName(u.status) + (u.status === 'rumor' ? ' — 명령을 듣지 않고 물러남' : ' — 움직이지 못함') + (u.stT > 0 ? ' (이번 턴 포함 ' + (u.stT + 1) + '턴)' : ' (다음 턴에 풀림)'), u.c, u.r, f, 1);
+        }
       }
     }
   }
@@ -1167,7 +1219,11 @@ function afterHit(a, d, dealt) {
   if (uHas(a, '위풍') && UMAP[d.id]) d.morale = Math.max(0, d.morale - 10);
 }
 function alive(u) { return !!UMAP[u.id]; }
-function setStatus(u, st, turns) { if (!alive(u)) return; u.status = st; u.stT = turns; }
+function setStatus(u, st, turns) { if (!alive(u)) return; u.status = st; u.stT = turns; u.stSkip = -1; }
+/* 상태 이상(혼란·위보)으로 잃는 차례 수 — 지금부터 셈. 지금 건너뛰고 있는 차례가 있으면 그것까지 넣는다. 0 이면 '다음 차례에 풀린다'(그때까지는 아직 걸려 있다) */
+function statusLeft(u) { return u.status ? (u.stT || 0) + (u.stSkip === G.turn ? 1 : 0) : 0; }
+function statusName(st) { return st === 'confuse' ? '혼란' : (st === 'rumor' ? '위보' : ''); }
+function unitOnFire(u) { return !!G.fires[K(u.c, u.r)]; }
 function setFire(c, r, turns) {
   var t = terr(c, r);
   if (t === 'w' || t === 's' || t === 'm' || t === 'x') return false;
@@ -1396,7 +1452,7 @@ function unitTactic0(u, tac, t) {
   if (!dead) {
     if (e.moraleDmg) { var md = Math.min(d.morale, e.moraleDmg); d.morale -= md; if (md) res.mor = md; }
     var cp = confuseOdds(e, d);
-    if (cp) { res.pConf = cp; if (cp >= 100 || chance(cp)) { setStatus(d, 'confuse', 1); res.confused = true; } }
+    if (cp) { res.pConf = cp; if (cp >= 100 || chance(cp)) { setStatus(d, 'confuse', 1); res.confused = true; res.st = 'confuse'; res.stN = 1; } }
   }
   if (tac.fire) { if (setFire(oc, or_, e.fireT || 2)) res.fire = true; }
   if (tac.pass && !ranged) {
@@ -1471,7 +1527,7 @@ function applyPloy(u, ploy, c, r, tu, res) {
     setFire(c, r, 3 + ext);
     if (tu && alive(tu) && !uHas(tu, '화신')) { var fd = fireDamage(u); res.dmg = (res.dmg || 0) + fd; tu.morale = Math.max(0, tu.morale - 5); res.killed = hurtUnit(tu, fd, u.f, u) || res.killed; }
     var pf = PAT[K(c, r)]; if (pf) { var fc = G.bases[pf.b].plots[pf.i].fac; if (fc) { fc.hp -= 300; if (fc.hp <= 0) G.bases[pf.b].plots[pf.i].fac = null; } }
-  } else if (tu && alive(tu)) setStatus(tu, ploy.id, 2 + ext);
+  } else if (tu && alive(tu)) { setStatus(tu, ploy.id, 2 + ext); res.st = ploy.id; res.stN = 2 + ext; }
 }
 function unitPloy0(u, ploy, t) {
   if (u.done) return ERR('이미 행동을 마쳤습니다');
@@ -1494,7 +1550,7 @@ function unitPloy0(u, ploy, t) {
     if (tu && uHas(tu, '반계') && alive(u)) {
       res.reflected = true;
       if (ploy.id === 'fire') { setFire(u.c, u.r, 2); if (!uHas(u, '화신')) { var rd = fireDamage(tu); res.selfDmg = rd; if (hurtUnit(u, rd, tu.f, tu)) res.selfDead = true; } }
-      else if (!uHas(u, '통찰') && !uHas(u, '명경')) setStatus(u, ploy.id, 2);
+      else if (!uHas(u, '통찰') && !uHas(u, '명경')) { setStatus(u, ploy.id, 2); res.selfSt = ploy.id; res.selfStN = 2; }
     }
   }
   return res;
@@ -1503,7 +1559,21 @@ function unitPloy0(u, ploy, t) {
 /* ---------- 저장 ---------- */
 /* 행동 + 연출용 사건 기록. tf = 맞은 쪽 세력(행동 전 기준) */
 function actTargetF(t) { return t && t.u ? t.u.f : (t && t.b ? t.b.owner : -1); }
-function actEv(u, t, res, f, name, ac, ar, tf) {
+/* 이 행동이 건드리는 거점·시설의 주인(없으면 -1) — 행동 '전'에 잰다. 화계는 그 칸에 남의 시설이 있으면 시설을 친 것으로 본다 */
+function actHoldF(t, ploy) {
+  if (!t) return -1;
+  if (t.kind === 'base' || t.kind === 'fac') return t.b ? t.b.owner : -1;
+  if (ploy && ploy.id === 'fire') { var p = PAT[K(t.c, t.r)]; if (p && G.bases[p.b].plots[p.i].fac) return G.bases[p.b].owner; }
+  return -1;
+}
+function actEv(u, t, res, f, name, ac, ar, tf, hf) {
+  if (res && res.ok && G.peace && f === G.player && hf !== undefined && hf >= 0 && hf !== f && !G.peace.broken[hf]) {   // 플레이어가 남의 거점·시설을 먼저 치면 그 세력에 대한 보호가 풀린다
+    G.peace.broken[hf] = true;
+    if (G.turn < G.peace.until) {                                  // 보호 기간 안에 깼을 때만 화면에 알리고 기록한다
+      res.brokePeace = hf;
+      logMsg('우리가 먼저 ' + facName(hf) + '군의 ' + (t.kind === 'base' ? josa(t.b.n, '을를') : '시설을') + ' 쳤다 — 이제 ' + facName(hf) + '군도 우리 거점을 칠 수 있다', t.c, t.r, f, 2);
+    }
+  }
   if (res && res.ok) {
     // 화면 연출에 쓰는 정보: 공격한 부대·맞은 부대의 번호와 병과, 행동 뒤의 자리
     res.aid = u.id; res.atype = u.type; res.af = f; res.ac0 = ac; res.ar0 = ar;
@@ -1514,9 +1584,9 @@ function actEv(u, t, res, f, name, ac, ar, tf) {
   }
   return res;
 }
-function unitAttack(u, t) { var f = u.f, n = uName(u), ac = u.c, ar = u.r, tf = actTargetF(t); return actEv(u, t, unitAttack0(u, t), f, n, ac, ar, tf); }
-function unitTactic(u, tac, t) { var f = u.f, n = uName(u), ac = u.c, ar = u.r, tf = actTargetF(t); return actEv(u, t, unitTactic0(u, tac, t), f, n, ac, ar, tf); }
-function unitPloy(u, ploy, t) { var f = u.f, n = uName(u), ac = u.c, ar = u.r, tf = actTargetF(t); return actEv(u, t, unitPloy0(u, ploy, t), f, n, ac, ar, tf); }
+function unitAttack(u, t) { var f = u.f, n = uName(u), ac = u.c, ar = u.r, tf = actTargetF(t), hf = actHoldF(t, null); return actEv(u, t, unitAttack0(u, t), f, n, ac, ar, tf, hf); }
+function unitTactic(u, tac, t) { var f = u.f, n = uName(u), ac = u.c, ar = u.r, tf = actTargetF(t); return actEv(u, t, unitTactic0(u, tac, t), f, n, ac, ar, tf, -1); }
+function unitPloy(u, ploy, t) { var f = u.f, n = uName(u), ac = u.c, ar = u.r, tf = actTargetF(t), hf = actHoldF(t, ploy); return actEv(u, t, unitPloy0(u, ploy, t), f, n, ac, ar, tf, hf); }
 
 function serialize() { return JSON.stringify(G); }
 function deserialize(s) {
@@ -1532,6 +1602,8 @@ function deserialize(s) {
     if (!gb.plots) gb.plots = [];
     for (var pj = gb.plots.length; pj < pl.length; pj++) gb.plots.push({ c: pl[pj][0], r: pl[pj][1], fac: null });
   }
+  // v0.8.1: 초반 보호. 0.8까지의 저장에는 없다 — 그 세력의 시작 병력으로 기간을 정해 붙인다(아직 그 기간 안이면 보호받는다. 누구를 먼저 쳤는지는 알 수 없어 비워 둔다)
+  if (!g.peace && SCENARIO.factions[g.player]) g.peace = { until: 1 + peaceFor(startTroops(g.player)), broken: {} };
   G = g; reindex(); REPORT = []; EVQ = [];
   for (var oi = 0; oi < G.officers.length; oi++) { var go = G.officers[oi]; if (go.f >= 0 && go.st !== 'hidden' && bondOf(go)) go.loy = 100; }   // v0.8: 인연이 있는 무장
   return true;

@@ -1,6 +1,6 @@
 # 삼국지 천하도 (三國志 天下圖)
 
-삼국지 11 PK식 시스템의 모바일 단일 HTML 게임. 현재 v0.8(건설 담당 묶기·성역 멈춤 없앰·돈과 병량 약 2배·전법 균형·부지 10·13·16곳·충성과 인연·지도 끝·초상 가운데 맞춤) — 변경 내역은 `CHANGELOG.md`.
+삼국지 11 PK식 시스템의 모바일 단일 HTML 게임. 현재 v0.8.1(초반 보호 — 시작 병력이 적을수록 오래, 다른 세력이 우리 거점을 먼저 치지 않는다 · 혼란·위보·불길에 걸린 부대를 지도와 창에서 바로 알아보게) — 변경 내역은 `CHANGELOG.md`. v0.8: 건설 담당 묶기·성역 멈춤 없앰·돈과 병량 약 2배·전법 균형·부지 10·13·16곳·충성과 인연·지도 끝·초상 가운데 맞춤.
 
 - **바로 하기 / 앱으로 설치**: https://aaronkyung-a11y.github.io/chunhado/ — 휴대폰 크롬에서 열고 제목 화면의 **앱으로 설치**(또는 브라우저 메뉴의 *홈 화면에 추가*)를 누르면 앱처럼 전체 화면으로 열리고, 한 번 연 뒤에는 인터넷 없이도 된다.
 - 저장소에 올라 있는 것: 맨 위의 `index.html`·`manifest.webmanifest`·`sw.js`·`icons/`·`bgm/`가 게임(= `tools/build.py --pwa`의 결과), 나머지가 소스.
@@ -9,7 +9,7 @@
 - `src/` — 손으로 쓰는 소스
   - `data.js` 정적 수치, `core.js` 규칙 엔진(DOM 없음), `ai.js` AI
   - `ui3d.js` 3D 지도(three.js)·입력·효과음·음악, `fx.js` 이동·공격·전법·계략 연출(v0.4)과 그 순간의 소리(v0.7), `ui_panels.js` 패널·대화상자·조작 흐름
-  - v0.5부터 `src/`의 파일은 모두 직접 고침. `build/patch_v04_ui3d.py`·`build/patch_v04_panels.py`는 v0.3 → v0.4 작업 기록(다시 돌리면 v0.5 변경이 사라지니 돌리지 않음). 판별 원본은 `build/*.v03.js`·`build/*.v04.js`·`build/*.v05.js`·`build/*.v06.*`. v0.6 → v0.7에서 고친 자리는 `build/v07/p1~p4_*.py`에, v0.7 → v0.8에서 고친 자리는 `build/v071/p1~p9_*.py`에 기록(역시 다시 돌리지 않음 — 순서대로 p1 건설 담당 묶기, p2 그 화면, p3 수송, p4 지도 끝, p5·p5b·p5c 성역 멈춤 없애기, p6 돈과 병량, p7·p7b 전법, p8·p8b 부지, p9 충성과 인연). 판별 원본에 `build/*.v07.*` 추가
+  - v0.5부터 `src/`의 파일은 모두 직접 고침. `build/patch_v04_ui3d.py`·`build/patch_v04_panels.py`는 v0.3 → v0.4 작업 기록(다시 돌리면 v0.5 변경이 사라지니 돌리지 않음). 판별 원본은 `build/*.v03.js`·`build/*.v04.js`·`build/*.v05.js`·`build/*.v06.*`. v0.6 → v0.7에서 고친 자리는 `build/v07/p1~p4_*.py`에, v0.7 → v0.8에서 고친 자리는 `build/v071/p1~p9_*.py`에 기록(역시 다시 돌리지 않음 — 순서대로 p1 건설 담당 묶기, p2 그 화면, p3 수송, p4 지도 끝, p5·p5b·p5c 성역 멈춤 없애기, p6 돈과 병량, p7·p7b 전법, p8·p8b 부지, p9 충성과 인연), v0.8 → v0.8.1에서 고친 자리는 `build/v081/p1~p8_*.py`에(p1·p1b·p2 초반 보호의 규칙과 AI, p3 그 화면, p4 상태 이상의 규칙 쪽 준비, p5 지도의 딱지·소용돌이, p6 창과 글, p7 손질, p8 옛 저장). 판별 원본에 `build/*.v07.*`·`build/*.v08.*` 추가
   - `style.css`, `index.html`(틀)
   - 생성물: `mapdata.js`(지형·거점·도로), `map3d.js`(높이맵·도로 선·미니맵), `sprites.js`(지도 그림), `assets.js`(초상 `PORTRAITS` = 얼굴 중심 정사각 흉상, `SCENES` = 3:4 장면, 타이틀, 한지 무늬), `roster.js`(세력·무장), `sfxdata.js`(효과음 27개 — mp3를 base64로, v0.7)
 - `tools/` — 생성 스크립트
@@ -27,7 +27,7 @@
   - v0.7 소리: `dl_audio7.py`(내려받기), `make_audio_v07.py [music] [sfx]`(`audio7/raw/` → `bgm/*.mp3`, `src/sfxdata.js`)
   - v0.7 앱: `make_icons.py [미리 보기.jpg]`(관우 초상 + 낙관 → `pwa/icons/`)
   - v0.8: `add_plots.py <mapdata.js> [mapdata.json…]`(성마다 부지를 10·13·16곳으로 — 있던 부지는 순서까지 그대로 두고 뒤에 덧붙임. 두 번 돌려도 같음), `make_assets_v08.py`(초상을 가운데로 다시 자름 — 인자는 `make_assets_v05.py`와 같고, `<out_dir>/crops.tsv`에 인물마다 자른 틀과 전후 수치를 남김. `KEEP=키,키`로 장면을 그대로 둘 인물을 정함)
-- `tests/` — `sim.js`(AI 대 AI + 불변식), `fuzz.js`(무작위 명령), 행군 규칙 `floor.js`(빈 지도 전수 탐색: 출진한 턴에 거점·시설을 칠 수 있는 길이 없는가)·`zonecheck.js`(AI 대전에서 규칙 위반 감시) — v0.7까지는 성역 멈춤 규칙을 봤고 `dist.js`는 그때의 것, v0.8 규칙 `job8.js`(건설 담당 묶기)·`loy8.js`(충성·인연·부지 채우기)·`tac7.js`(전법 — v0.8 항목 포함)·`bal8.js <턴> <씨앗>`(균형 재기: 돈·병량·병력·시설·전투 집계, `SRC=<폴더>`로 다른 판과 견줌), 화면 `d14.py`(지도 끝 — `PAGE=../chunhado-v0.7-offline.html python3 tests/d14.py old`로 예전 판의 수치를 잼), `browser.py`와 v0.4 화면 `d1.py`(둘러보기)·`d2.py`/`d2b.py`(전투 연출: 장면 찍기 / 전법·계략 전부)·`d3.py`(회귀)·`d4.py`/`d5.py`(적 턴 재생·시간)·`d6.py`(모든 창)·`d7.py`(v0.8: 성역에서 멈추지 않음·출진한 턴에는 거점을 못 침)·`d8.py <옛 판.html>`(옛 저장 호환), `d9.py`(여는 시간 비교), `b9.py`(CDN), v0.6 뒤로 가기 `d10.py`(경로마다 눌러서 확인 — `PAGE=../chunhado-v0.5-offline.html`로 예전 판과 견줌)·`d11.py <걸음> <씨앗> <세력>`(마구 눌러 보기), v0.7 `tac7.js [횟수]`(전법의 성공·대성공 확률과 효과를 되풀이해 확인)·`d12.py`(소리·음악·전법 표시·부대 목록 — `PAGE=pwa/index.html`로 돌려야 음악 파일까지 봄)·`d13.py`(앱판을 내 컴퓨터의 http 서버로 띄워 서비스 워커·오프라인을 확인)·`d11.py <걸음> <씨앗> <세력>`(마구 눌러 보기: 상태 어긋남·오류·×만으로 STATUS 창까지). 헤드리스 Chrome, 기본은 `dist/offline.html`. `c1~c7.py`는 v0.3, `b1~b6.py`는 v0.2 화면 기준이라 지금은 맞지 않음(기록용)
+- `tests/` — **`regress.sh [로그 폴더]`(전체 회귀: 세 판을 모두 빌드한 뒤 돌린다. 끝나면 `<로그 폴더>/_summary.txt`에 시험마다 종료 코드)**, v0.8.1 `rush8.js [턴=72] [씨앗 수=5]`(초반 압박 재기: 약한 일곱 세력을 플레이어 자리에 두고 첫 피격·첫 함락·멸망 턴을 셈. `PASSIVE=1`이면 그 세력은 손을 놓음, `SRC=<폴더>`로 다른 판과 견줌. 보호가 어겨지면 종료 코드 1)·화면 `d15.py`(초반 보호의 표시·경고·풀림, 상태 이상의 딱지·소용돌이·풀이 띠·남은 턴 — 그림은 `tests/shots15/`), `sim.js`(AI 대 AI + 불변식), `fuzz.js`(무작위 명령 — v0.8.1부터 보호 어김도 셈), 행군 규칙 `floor.js`(빈 지도 전수 탐색: 출진한 턴에 거점·시설을 칠 수 있는 길이 없는가)·`zonecheck.js`(AI 대전에서 규칙 위반 감시) — v0.7까지는 성역 멈춤 규칙을 봤고 `dist.js`는 그때의 것, v0.8 규칙 `job8.js`(건설 담당 묶기)·`loy8.js`(충성·인연·부지 채우기)·`tac7.js`(전법 — v0.8 항목 포함)·`bal8.js <턴> <씨앗>`(균형 재기: 돈·병량·병력·시설·전투 집계, `SRC=<폴더>`로 다른 판과 견줌), 화면 `d14.py`(지도 끝 — `PAGE=../chunhado-v0.7-offline.html python3 tests/d14.py old`로 예전 판의 수치를 잼), `browser.py`와 v0.4 화면 `d1.py`(둘러보기)·`d2.py`/`d2b.py`(전투 연출: 장면 찍기 / 전법·계략 전부)·`d3.py`(회귀)·`d4.py`/`d5.py`(적 턴 재생·시간)·`d6.py`(모든 창)·`d7.py`(v0.8: 성역에서 멈추지 않음·출진한 턴에는 거점을 못 침)·`d8.py <옛 판.html>`(옛 저장 호환), `d9.py`(여는 시간 비교), `b9.py`(CDN), v0.6 뒤로 가기 `d10.py`(경로마다 눌러서 확인 — `PAGE=../chunhado-v0.5-offline.html`로 예전 판과 견줌)·`d11.py <걸음> <씨앗> <세력>`(마구 눌러 보기), v0.7 `tac7.js [횟수]`(전법의 성공·대성공 확률과 효과를 되풀이해 확인)·`d12.py`(소리·음악·전법 표시·부대 목록 — `PAGE=pwa/index.html`로 돌려야 음악 파일까지 봄)·`d13.py`(앱판을 내 컴퓨터의 http 서버로 띄워 서비스 워커·오프라인을 확인)·`d11.py <걸음> <씨앗> <세력>`(마구 눌러 보기: 상태 어긋남·오류·×만으로 STATUS 창까지). 헤드리스 Chrome, 기본은 `dist/offline.html`. `c1~c7.py`는 v0.3, `b1~b6.py`는 v0.2 화면 기준이라 지금은 맞지 않음(기록용)
 - `build/` — 중간 산출물과 판별 백업(`*.v03.js`, `*.v04.js`, `*.v05.js` 등). `patch_v04_*.py`는 v0.3 → v0.4 패치 기록. `patch_c.py`·`v03_home.js`·`v03_play.js`는 v0.2 → v0.3 작업 기록(다시 돌리지 않음)
 - `pwa/` — 앱판에만 들어가는 것: `manifest.webmanifest`, `sw.js`(서비스 워커), `icons/`
 - `bgm/` — 음악 8곡(v0.7, HTML 옆에 두면 재생 — 없으면 코드로 만든 음악). `audio7/` — 소리 원본 기록(`jobs.tsv`). `versions/` — 버전별 스냅샷.
@@ -55,6 +55,18 @@
 - **부지**: `mapdata.js`의 `plots`(성마다 S 10·M 13·L 16). 옛 저장은 `deserialize`가 모자란 부지를 뒤에 채운다.
 - **충성과 인연**: `data.js`의 `BONDS`(군주 이름 → { 무장: 사이 }), `core.js`의 `bondWith`·`bondOf`·`loyNat`. 분기마다 `roundEnd`에서 자리 잡는 값 쪽으로 움직인다.
 - **지도 끝**: `ui3d.js`의 `APRON`(지도 밖 띠의 폭)·`apronY`(띠의 높이)·`TERRAIN_FS`의 `edge`(거울 비춤 + 번짐 + 종이로 풀림)·`camLimits`(지도 끝이 화면에 들어오는 한도)·`settleCam`(아래 창 높이가 바뀌면 제자리로).
+
+## v0.8.1에서 바뀐 규칙의 자리
+- **초반 보호**: `data.js`의 `PEACE_ALL`(12턴 — AI끼리도 서로의 거점을 먼저 치지 않는 기간)·`PEACE_PLAYER`(시작 병력 → 플레이어의 보호 턴 수: 1만 미만 36, 2만 미만 24, 그 밖 `PEACE_ALL`)·`PEACE_RAMP`(보호가 끝난 뒤의 완충 24턴).
+  - 판에 `G.peace = { until, broken }` — `until` 턴부터 AI가 플레이어의 거점·시설을 칠 수 있다. `broken[f]`는 플레이어가 세력 f의 거점·시설을 먼저 쳤다는 표시(그 세력은 바로 칠 수 있고 완충도 없다). 0.8까지의 저장은 `deserialize`가 시작 병력으로 `until`을 정해 붙인다.
+  - 판정은 `core.js`의 `aiMayStrike(f, owner)` 한 곳. AI는 `ai.js`의 `aiOffense`(출진 목표에서 뺌)·`aiUnitAct`(거점 공격·길을 막는 시설 공격·시설 위의 화계)에서 이것을 묻는다. 치러 가던 거점의 주인이 '아직 칠 수 없는 세력'으로 바뀌면 돌아간다.
+  - 지켜지는 것은 거점과 시설뿐이다 — 들판의 부대끼리는 싸우고, 주인 없는 성은 누구나 차지한다.
+  - '먼저 쳤다'는 `actEv`에서 행동 **전**의 주인(`actHoldF`)으로 잰다: 거점·시설 공격, 남의 시설이 있는 칸에 놓는 화계.
+  - 완충: `aiNeedMul`(출진에 필요한 병력 우위 2.0 → 1.25배, `PEACE_RAMP` 턴에 걸쳐. '국력이 압도적이면 파상 공세'의 문턱 4배도 같은 비율로 올린다)·`peaceRamp`·`othersOnPlayer`(다른 AI 세력이 이미 플레이어를 치러 가고 있으면 기다린다). v0.8까지 플레이어의 성에 주던 가산점 +3은 없앴다.
+  - 화면: `ui_panels.js`의 `peaceNote`·`showPeaceInfo`(풀이), `todoList`의 맨 윗줄, STATUS 창 날짜 옆의 `.pz`, 대상 줄 아래의 경고(`peaceWouldBreak`), 군주 고르기의 `startTroops`·`peaceFor`. 3턴 남았을 때와 끝났을 때는 `phaseStart`가 기록과 `news` 사건을 낸다.
+- **상태 이상 표시**(규칙은 그대로): `core.js`의 `statusLeft(u)`(지금부터 잃는 차례 수 — 건너뛰고 있는 턴은 `u.stSkip`에 적어 둔다)·`statusName`·`unitOnFire`. 계략·전법 결과에 `res.st`·`res.stN`(걸린 상태와 턴 수), 반계로 되돌아오면 `res.selfSt`·`res.selfStN`.
+  - 지도: `ui3d.js`의 `statusSegs`·`drawChips`(머리 위 딱지: 혼란 쪽빛·위보 황토·불길 인주, 숫자는 남은 턴), 부대마다 `o.st`(딱지)·`o.sw`(소용돌이 — `fx.js`의 `fxTex('swirl')`), `ST_TINT`(바랜 빛). `tick`에서 소용돌이를 돌리고 혼란이면 그림을 좌우로 기울인다(불과 같은 박자로 초당 20번만 다시 그림).
+  - 창: `ui_panels.js`의 `stChips`(딱지)·`statusBanner`(풀이 띠)·`statusLeftText`, `todoList`의 내 부대 줄, `resultMsg`·`resultFx`의 "혼란 2턴".
 
 ## 앱(PWA)과 GitHub Pages(v0.7)
 - `python3 tools/build.py --pwa` → `dist/pwa/`를 저장소 맨 위에 그대로 올린다(GitHub Pages: main 브랜치 / 루트).

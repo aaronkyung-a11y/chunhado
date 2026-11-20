@@ -350,3 +350,27 @@ p { margin: 6px 0; }
 .tacs .sum { margin: 6px 0 2px; font-size: 12px; color: var(--ink-2, #55504a); line-height: 1.5; }
 
 .bond { font-style: normal; font-size: 11.5px; font-weight: 800; color: var(--seal); border: 1px solid var(--seal); border-radius: 2px; padding: 0 4px; margin-left: 3px; vertical-align: 1px; }
+
+/* v0.8.1 초반 보호 */
+.pz { display: inline-block; margin-left: 5px; padding: 0 6px; border: 1px solid var(--jade); border-radius: 2px; color: var(--jade); font: 700 12px var(--font-body); vertical-align: 1px; white-space: nowrap; }
+.pz.end { border-color: var(--seal); color: var(--seal); }
+.todo.peace .n { border-color: var(--jade); color: var(--jade); font-family: var(--font-display); }
+.todo.peace b { color: var(--jade); }
+.note.pzw { margin: -2px 0 8px; padding: 6px 9px; border-left: 4px solid var(--ochre); background: var(--paper-2); color: var(--ink-2); font-size: 12.5px; line-height: 1.4; }
+.row .ds.fs-st { margin-top: 2px; color: var(--ink-2); }
+.row .ds.fs-st b { font-weight: 800; }
+.dlg-f .pv small { color: var(--dim); font-size: 12px; }
+
+/* v0.8.1 상태 이상: 딱지(.stc)와 풀이 띠(.stb). 지도 위 딱지와 같은 빛 — 혼란 쪽빛 · 위보 황토 · 불길 인주 */
+.stc { display: inline-block; padding: 0 6px; border-radius: 3px; color: #fbf6ea; font: 800 12px var(--font-body); white-space: nowrap; vertical-align: 1px; margin-left: 2px; }
+.stc.st-confuse, .stb.st-confuse b { background: var(--indigo); }
+.stc.st-rumor, .stb.st-rumor b { background: var(--ochre); }
+.stc.st-fire, .stb.st-fire b { background: var(--seal); }
+.stb { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 0 0 8px; padding: 6px 9px; background: var(--paper-2); border-left: 4px solid var(--indigo); font-size: 12.5px; line-height: 1.4; }
+.stb.st-rumor { border-left-color: var(--ochre); }
+.stb.st-fire { border-left-color: var(--seal); }
+.stb b { padding: 0 7px; border-radius: 3px; color: #fbf6ea; font-weight: 800; font-size: 13px; }
+.stb i { font-style: normal; font-weight: 800; color: var(--ink); }
+.stb span { flex-basis: 100%; color: var(--ink-2); }
+.note.stn { margin: -2px 0 8px; color: var(--ink-2); }
+.todo.warn .n { font-family: var(--font-display); }
