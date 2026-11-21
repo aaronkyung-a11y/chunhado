@@ -1,6 +1,6 @@
 # 삼국지 천하도 (三國志 天下圖)
 
-삼국지 11 PK식 시스템의 모바일 단일 HTML 게임. 현재 v0.9.2(화면의 글을 덜어 냄 · 건설을 고르면 지도가 어두워지고 지을 수 있는 빈 부지만 밝게 — 규칙은 0.9.1 그대로) — 변경 내역은 `CHANGELOG.md`. v0.9.1(기간을 턴 수가 아니라 날짜·날수·개월로 적는다 · 초반 보호 6·4·3개월 · 전법: 성공해도 반격은 통상 공격만큼, 무장의 차이를 더 크게, 전법 풀이에 기대값). v0.9: 군사(軍師)를 두고 등용·계략 전에 조언을 듣는다 · 이웃 거점에 있는 다른 세력의 무장을 등용한다. v0.8.1: 초반 보호 · 혼란·위보·불길 표시. v0.8: 건설 담당 묶기·성역 멈춤 없앰·돈과 병량 약 2배·전법 균형·부지 10·13·16곳·충성과 인연·지도 끝·초상 가운데 맞춤.
+삼국지 11 PK식 시스템의 모바일 단일 HTML 게임. 현재 v0.11(시설의 레벨 표시 · 무장 줄의 적성 · 치안 풀이 · 출진 군량 90~360일분 · 공유 · 등용과 옛 관계 · 수송대의 보급 · 군사의 헌책과 탐색 조언 · 확대한 지도). v0.10.1(고른 시설의 표시 · 군사의 적중률 = 지력 · 공사장 그림 · 세이브 칸). v0.10(군단에 맡기기). v0.9.3(부지 번호 · 대화창). v0.9.2(화면의 글을 덜어 냄 · 건설을 고르면 지도가 어두워지고 지을 수 있는 빈 부지만 밝게 — 규칙은 0.9.1 그대로) — 변경 내역은 `CHANGELOG.md`. v0.9.1(기간을 턴 수가 아니라 날짜·날수·개월로 적는다 · 초반 보호 6·4·3개월 · 전법: 성공해도 반격은 통상 공격만큼, 무장의 차이를 더 크게, 전법 풀이에 기대값). v0.9: 군사(軍師)를 두고 등용·계략 전에 조언을 듣는다 · 이웃 거점에 있는 다른 세력의 무장을 등용한다. v0.8.1: 초반 보호 · 혼란·위보·불길 표시. v0.8: 건설 담당 묶기·성역 멈춤 없앰·돈과 병량 약 2배·전법 균형·부지 10·13·16곳·충성과 인연·지도 끝·초상 가운데 맞춤.
 
 - **바로 하기 / 앱으로 설치**: https://aaronkyung-a11y.github.io/chunhado/ — 휴대폰 크롬에서 열고 제목 화면의 **앱으로 설치**(또는 브라우저 메뉴의 *홈 화면에 추가*)를 누르면 앱처럼 전체 화면으로 열리고, 한 번 연 뒤에는 인터넷 없이도 된다.
 - 저장소에 올라 있는 것: 맨 위의 `index.html`·`manifest.webmanifest`·`sw.js`·`icons/`·`bgm/`가 게임(= `tools/build.py --pwa`의 결과), 나머지가 소스.
@@ -56,6 +56,19 @@
 - **부지**: `mapdata.js`의 `plots`(성마다 S 10·M 13·L 16). 옛 저장은 `deserialize`가 모자란 부지를 뒤에 채운다.
 - **충성과 인연**: `data.js`의 `BONDS`(군주 이름 → { 무장: 사이 }), `core.js`의 `bondWith`·`bondOf`·`loyNat`. 분기마다 `roundEnd`에서 자리 잡는 값 쪽으로 움직인다.
 - **지도 끝**: `ui3d.js`의 `APRON`(지도 밖 띠의 폭)·`apronY`(띠의 높이)·`TERRAIN_FS`의 `edge`(거울 비춤 + 번짐 + 종이로 풀림)·`camLimits`(지도 끝이 화면에 들어오는 한도)·`settleCam`(아래 창 높이가 바뀌면 제자리로).
+
+## v0.11에서 바뀐 것의 자리
+바뀐 기록은 `build/v011/p1_small`(시설의 레벨 표시 · 적성 줄 · 치안 풀이 · 출진 군량 · 공유) · `p2_recruit`(등용과 옛 관계) · `p3_supply`(수송대의 보급) · `p4_counsel`(군사의 헌책 · 탐색) · `p5_zoom`(확대한 지도). `bash build/v011/apply.sh`가 0.10.1의 소스에 차례로 입힌다. 규칙이 바뀐 곳은 등용 · 탐색 · 보급 · 출진 군량의 선택지다.
+- **시설의 글**(`ui_panels.js`): `facDesc(fac)` = 지금 레벨의 값이 먼저인 한 줄(줄 · 창), `facYield(b, pi)` = 그 시설 하나를 뺀 수입 셈과의 차이(실제로 보태는 수입), `facNow(b, pi)` = 창의 둘째 줄(까닭 · "보탬이 없습니다"), `mergeGain` · `mergeNote` = 합치면 달라지는 수입과 비는 부지. `FAC[t].desc`는 새로 지을 때(Lv1)의 카드에만 쓴다.
+- **적성 줄**: `apt5(무장, 밑줄 칠 칸)`을 `offRow`가 능력치 아래에 붙인다(`opt.noapt`로 뺄 수 있다). CSS `.ap5`.
+- **치안**: `incPct(치안)` · `draftPct(치안)`(셈은 `goldIncome` · `draftAmount`와 같다), 풀이 창 `showOrderInfo(b)` — 거점 창의 치안 칸(`data-a="order"`).
+- **출진 군량**: `DEPLOY_FOOD = [9, 18, 27, 36]`(턴 수), 처음 값은 둘째. `flowDeploy`의 `foodNote()`가 모자랄 때의 날수를 적는다.
+- **공유**: `SHARE_URL` · `SHARE_QR`(그 주소의 QR 33줄 — 주소를 바꾸면 다시 만든다), `shareUrl()`(manifest가 있는 빌드면 지금 주소) · `shareGame()`(공유 창 → 안 되면 `showShare()`) · `qrSvg` · `copyText`.
+- **등용과 옛 관계**(`core.js`, 상수 `TIES`): 무장의 `pf`(마지막으로 섬긴 세력) · `past`(그 앞의 세력들) — `pastNote(o)` · `pastSweep()`(턴이 넘어갈 때 · 등용 직후 · 불러올 때), `servedF(o)`(섬겼던 세력, 지금 세력은 뺀다) · `lastF(o)` · `fallenOf(t)`. 사이는 `tieOf(보내는 무장, 대상, 권하는 세력)` → `{ k: bond|lord|kin|vassal|mate, v, label, short }`, 원한은 `grudgeOf(세력, 대상)`(참수한 쪽이 `exBy`에 남는다). 성공률은 `recruitTerms(b, o, t)` → `{ p, why: [[글, 값]…], tie, no }`이고 `recruitChance`는 `p`만 돌려준다. 화면은 `originTxt` · `whyTxt` · `servedTxt`, 등용 창의 `tieSub`.
+- **보급**(`core.js`): `supplyTargets(수송대)` · `supplySources(부대)` · `supplyMax(t, u)` → `{ food, troops, why }` · `cmdSupply(t, u, { food, troops })`. 화면은 `supplyPairs(부대)` · `pickSupply` · `flowSupply`, 수송대 창의 `cargoLine`.
+- **탐색**(`core.js`): `searchSkill(o)` · `searchChance(b, o)`(숨은 인재가 없으면 0) · `searchKey(b)`(도시 · 턴 · 그 턴의 몇 번째 — 도시의 `sN` · `sT`) · `searchRoll` · `searchRollA`. `cmdSearch`는 그 주사위로 정한다. 조언은 `searchAdvice(b, o)`.
+- **헌책**(`core.js`, 상수 `COUNSEL`): `counselRaw(세력)` = 후보 `{ kind, b, w, d, x }`(직접 다스리는 거점만) → `counsel(세력)` = 군사의 지력으로 거른 `{ adv, lvl, list }`. 무엇을 지을지는 `buildPick(b, 이웃의 위협)`, 이웃의 위협은 `nbrThreat(b)`. 말은 화면 쪽 `counselText(후보)` → `{ say, tip, go }`, 지금 말할 것은 `counselPick`(되풀이를 `UI.cSaid`로 막고 `UI.cSkip`으로 넘긴다). `advTop`의 차례: 급한 알림 → 헌책 → 그 밖. 재 보는 것은 `node tests/cns11.js`.
+- **확대한 지도**(`ui3d.js`): 땅 셰이더의 `#ifdef MAGFIX` 토막 — `magK`(화면 한 점에 그림 몇 점인가 × `pxr`로 정한다), `texBic`(3차 B-스플라인), `nz`(잡음을 맞는 축소본에서 읽는다). 켜는 조건은 `R3.magfix`(WebGL2 또는 `EXT_shader_texture_lod`). 문턱(0.28 · 0.45), 흔드는 폭(1.2), 종이 결의 세기(0.06 · 0.045)는 셰이더 안의 숫자다.
 
 ## v0.10.1에서 바뀐 것의 자리
 바뀐 기록은 `build/v0101/p1_adv`(군사의 적중률) · `p2_fsel_site`(고른 시설의 표시 · 부지 번호 · 공사장 그림) · `p3_saves`(세이브 칸). `bash build/v0101/apply.sh`가 0.10의 소스에 차례로 입힌다. 규칙이 바뀐 곳은 `adviceAcc` 하나다.

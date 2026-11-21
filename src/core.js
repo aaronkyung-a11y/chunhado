@@ -435,7 +435,7 @@ function newGame(playerFaction, seed) {
   for (i = 0; i < SCENARIO.officers.length; i++) {
     var so = SCENARIO.officers[i];
     var o = { id: i, n: so.n, ldr: so.ldr, war: so.war, int: so.int, pol: so.pol, cha: so.cha, apt: so.apt, sk: so.sk || '', por: so.por,
-      f: so.f, st: so.st || 'active', loc: baseByName(so.c), unit: null, loy: 100, merit: 0, acted: false, y: so.y || 0, j: so.j || null, capF: -1, dest: -1, eta: 0 };
+      f: so.f, st: so.st || 'active', loc: baseByName(so.c), unit: null, loy: 100, merit: 0, acted: false, y: so.y || 0, j: so.j || null, capF: -1, dest: -1, eta: 0, pf: so.f };
     if (o.f >= 0) {
       if (SCENARIO.factions[o.f].n === o.n) { G.factions[o.f].lord = i; o.merit = 2000; }
       else { o.merit = Math.max(0, (o.ldr + o.war - 120) * 20); }
@@ -582,6 +582,7 @@ function roundEnd() {
     G.fires[k]--;
     if (G.fires[k] <= 0) delete G.fires[k];
   }
+  pastSweep();                                                        // 섬겼던 세력을 적어 둔다(v0.11)
   // 날짜
   G.turn++; G.xun++;
   if (G.xun > 2) { G.xun = 0; G.month++; if (G.month > 12) { G.month = 1; G.year++; } }
@@ -1149,19 +1150,22 @@ function cmdTrade(b, dir, gold) {
   b.food -= gold * 6; b.gold += gold; useAP(b.owner, AP.trade); jot('trade', b, gold, dir);
   return { ok: true, n: gold };
 }
+/* 탐색(v0.11): 숨은 인재를 찾아낼 확률(%)과 그 주사위. 주사위는 거점 · 턴 · 그 턴의 몇 번째 탐색인가로 정해진다(누가 가도 같은 주사위 — 성공률만 다르다) */
+function searchSkill(o) { return (25 + o.pol * 0.35 + o.cha * 0.15) * (o.sk === '안력' ? 2 : 1); }
+function searchChance(b, o) { return hiddenOfficers(b).length ? Math.min(100, searchSkill(o)) : 0; }
+function searchKey(b) { return 's' + b.id + ':' + (b.sT === G.turn ? (b.sN || 0) : 0); }
+function searchRoll(b) { return omenRoll(searchKey(b)); }
+function searchRollA(b) { return omenRoll('a|' + searchKey(b)); }                // 군사의 조언이 맞는가
 function cmdSearch(b, id) {
   if (b.kind !== 'city') return ERR('도시에서만 가능합니다');
   var os = getIdle(b, [id]); if (!os) return ERR('담당 무장을 고르세요');
   if (!needAP(b.owner, AP.search)) return ERR('행동력이 부족합니다');
   useAP(b.owner, AP.search); jot('search', b);
   var o = os[0]; markActed(os, 15);
-  var hid = hiddenOfficers(b);
-  if (hid.length) {
-    var p = 25 + o.pol * 0.35 + o.cha * 0.15;
-    if (o.sk === '안력') p *= 2;
-    if (chance(p)) { var h = pick(hid); h.st = 'free'; return { ok: true, found: h.id }; }
-  }
-  if (chance(35)) { var g = ri(5, 20) * 10; b.gold += g; return { ok: true, gold: g }; }
+  var key = searchKey(b), hid = hiddenOfficers(b), p = searchChance(b, o);       // v0.11: 미리 정해 둔 결과(군사가 미리 말해 줄 수 있다)
+  b.sN = (b.sT === G.turn ? (b.sN || 0) : 0) + 1; b.sT = G.turn;                 // 같은 턴에 다시 찾으면 주사위가 새로 정해진다
+  if (hid.length && omenRoll(key) < p) { var h = hid[Math.min(hid.length - 1, Math.floor(omenRoll('w|' + key) / 100 * hid.length))]; h.st = 'free'; return { ok: true, found: h.id }; }
+  if (omenRoll('g|' + key) < 35) { var g = (5 + Math.floor(omenRoll('q|' + key) / 100 * 16)) * 10; b.gold += g; return { ok: true, gold: g }; }
   return { ok: true };
 }
 /* 다른 세력의 무장 가운데 거점 b 에서 등용을 권할 수 있는 사람: b 와 길로 바로 이어진 이웃 거점에 머무는 무장(군주 제외, 출진·이동 중 제외) */
@@ -1178,7 +1182,7 @@ function poachTargets(b) {
 }
 /* 무장 o 를 이웃 세력이 데려갈 위험: 이웃 거점에 있는 다른 세력 무장 가운데 가장 잘 권하는 사람과 그 성공률 { p, by, base }. 위험이 없으면 null */
 function poachRisk(o) {
-  if (!o || o.st !== 'active' || o.unit !== null || o.f < 0 || isLord(o) || bondOf(o) || o.loy >= POACH.wall) return null;
+  if (!o || o.st !== 'active' || o.unit !== null || o.f < 0 || isLord(o) || bondOf(o)) return null;
   if (facOfficers(o.f).length <= POACH_AI.spare) return null;          // AI 는 무장이 몇 안 되는 세력의 무장에게는 권하지 않는다
   var best = null;
   ADJ[o.loc].forEach(function (e) {
@@ -1189,26 +1193,90 @@ function poachRisk(o) {
 }
 /* 등용을 권한 뒤 다시 권할 수 있을 때까지 남은 턴(0 이면 권할 수 있다). 재야·포로는 한 턴에 한 번, 다른 세력의 무장은 한 달에 한 번(다음 달 상순부터 다시) */
 function askWait(t) { return (t.ask !== undefined && t.ask > G.turn) ? t.ask - G.turn : 0; }
-function recruitChance(b, o, t) {
-  var L = off(G.factions[b.owner].lord);
+/* ---------- 옛 관계(v0.11) ----------
+   o.pf = 마지막으로 섬긴 세력(지금 섬기고 있으면 그 세력, 섬긴 적이 없으면 -1), o.past = 그 앞에 섬겼던 세력들(없으면 필드가 없다).
+   세력이 바뀌는 곳이 여럿이라(등용 · 장성 · 멸망 · 이탈 …) 그때마다 적지 않고 pastSweep() 이 훑어서 적는다 — 턴이 넘어갈 때와 등용 직후.
+   세력의 군주(G.factions[f].lord)는 바뀌지 않으므로 '누가 누구의 옛 주군인가'는 이것만으로 알 수 있다. */
+function homeF(o) { var so = SCENARIO.officers[o.id]; return (so && so.f >= 0) ? so.f : -1; }             // 시나리오가 시작될 때 섬기던 세력
+function pastInit(o) {                                                  // 옛 저장(v0.10.1 까지)에는 없다: 시나리오의 세력에서 지금 세력으로 한 번 옮긴 것으로 본다
+  var h = homeF(o);
+  o.pf = o.f >= 0 ? o.f : h;
+  if (h >= 0 && h !== o.pf) o.past = [h];
+}
+function pastNote(o) {
+  if (o.pf === undefined) { pastInit(o); return; }
+  if (o.f < 0 || o.f === o.pf) return;                                  // 재야 · 주인 잃은 포로: 마지막 세력을 그대로 둔다
+  if (o.pf >= 0) { if (!o.past) o.past = []; var k = o.past.indexOf(o.pf); if (k >= 0) o.past.splice(k, 1); o.past.push(o.pf); }
+  o.pf = o.f;
+  if (o.past) { var k2 = o.past.indexOf(o.f); if (k2 >= 0) o.past.splice(k2, 1); }      // 예전에 섬기던 세력으로 돌아왔다: 옛 세력 목록에서는 뺀다
+}
+function pastSweep() { for (var i = 0; i < G.officers.length; i++) pastNote(G.officers[i]); }
+function lastF(o) { return o.pf === undefined ? (o.f >= 0 ? o.f : homeF(o)) : o.pf; }
+function servedF(o) {                                                   // 섬겼던 세력들 — 지금 섬기는 세력은 뺀다(재야 · 주인 잃은 포로라면 마지막 세력도 든다)
+  var pf = lastF(o), out = o.past ? o.past.slice() : [], k;
+  if (o.pf === undefined) { var h = homeF(o); if (h >= 0 && out.indexOf(h) < 0) out.push(h); }
+  if (pf >= 0 && out.indexOf(pf) < 0) out.push(pf);
+  if (o.f >= 0) { k = out.indexOf(o.f); if (k >= 0) out.splice(k, 1); }
+  return out;
+}
+function fallenOf(t) { var lf = lastF(t); return t.f < 0 && lf >= 0 && !!G.factions[lf] && !G.factions[lf].alive && G.factions[lf].lord !== t.id; }   // 멸망한 세력 출신(그 군주 자신은 아니다)
+function lordOfAny(o, fs) { for (var i = 0; i < fs.length; i++) if (G.factions[fs[i]] && G.factions[fs[i]].lord === o.id) return true; return false; }
+function bondDirect(a, b) { var m = BONDS[a.n], n = BONDS[b.n]; return (m && m[b.n]) || (n && n[a.n]) || null; }
+function bondShared(a, b) { for (var L in BONDS) if (BONDS[L][a.n] && BONDS[L][b.n]) return L; return null; }
+/* 보내는 무장 o 와 대상 t 의 옛 사이(가장 큰 것 하나) → { k, v, label, short } 또는 null. f = 권하는 세력(o 가 지금 섬기는 세력)
+   같은 주군과의 인연(kin)은 그 주군이 권하는 세력의 군주가 아닐 때만 센다 — 그때는 '우리 군주와 인연'으로 이미 세었다 */
+function tieOf(o, t, f) {
+  if (f === undefined) f = o.f;
+  var FL = (f >= 0 && G.factions[f]) ? off(G.factions[f].lord) : null;
+  var d = bondDirect(o, t); if (d) return { k: 'bond', v: TIES.bond, label: (FL && FL.id === o.id ? '군주가 직접 설득' : '보내는 무장과 ' + d), short: d };
+  var st = servedF(t), so = servedF(o), i;
+  if (lordOfAny(o, st)) return { k: 'lord', v: TIES.lord, label: '옛 주군의 설득', short: '옛 주군' };
+  var sh = bondShared(o, t); if (sh && !(FL && FL.n === sh)) return { k: 'kin', v: TIES.kin, label: josa(sh, '과와') + ' 맺은 인연', short: '인연' };
+  if (lordOfAny(t, so)) return { k: 'vassal', v: TIES.vassal, label: '옛 신하의 설득', short: '옛 신하' };
+  for (i = 0; i < so.length; i++) if (st.indexOf(so[i]) >= 0) return { k: 'mate', v: TIES.mate, label: '옛 동료의 설득', short: '옛 동료' };
+  return null;
+}
+/* 세력 f 가 t 의 주군(지금 · 예전)을 참수했는가 → { lord, bond } 또는 null */
+function grudgeOf(f, t) {
+  var fs = servedF(t); if (t.f >= 0) fs.push(t.f);
+  for (var i = 0; i < fs.length; i++) { var F = G.factions[fs[i]], L = F ? off(F.lord) : null; if (L && L.id !== t.id && L.st === 'dead' && L.exBy === f) return { lord: L, bond: (BONDS[L.n] && BONDS[L.n][t.n]) || null }; }
+  return null;
+}
+/* 등용 성공률과 그 까닭 { p, why: [[글, 값]…], tie, no: 응하지 않는 까닭 } — recruitChance 는 p 만 돌려준다 */
+function recruitTerms(b, o, t) {
+  var L = off(G.factions[b.owner].lord), why = [], tie = tieOf(o, t, b.owner), home = servedF(t).indexOf(b.owner) >= 0, gr = grudgeOf(b.owner, t), mine = bondWith(t, b.owner), k;
   if (t.st === 'active') {                                              // 다른 세력의 무장(v0.9)
-    var mine = bondWith(t, b.owner);
-    if (bondOf(t)) return 0;                                            //   제 주군과 인연이 있으면 응하지 않는다
-    if (t.loy >= POACH.wall && !mine) return 0;                         //   충성이 아주 높아도 응하지 않는다
+    if (bondOf(t)) return { p: 0, why: why, tie: tie, no: '주군과 ' + bondOf(t) };                       //   제 주군과 인연이 있으면 응하지 않는다
+    if (t.loy >= POACH.wall && !mine && !(tie && tie.k === 'bond')) return { p: 0, why: why, tie: tie, no: '충성 ' + POACH.wall + ' 이상' };   //   충성이 아주 높아도 응하지 않는다(인연이 있는 사람이 가면 다르다)
     var q = POACH.base + (o.cha - 50) * POACH.cha + (o.pol - 50) * POACH.pol + (L.cha - off(G.factions[t.f].lord).cha) * POACH.lord - (t.loy - POACH.loy0) * POACH.loyK;
-    if (o.sk === '논객') q += POACH.talker;
-    if (mine) q += POACH.bond;
-    return clamp(Math.round(q), 0, POACH.max);
+    if (o.sk === '논객') { q += POACH.talker; why.push(['논객', POACH.talker]); }
+    if (mine) { q += POACH.bond; why.push(['우리 군주와 ' + mine, POACH.bond]); }
+    if (tie) { k = Math.round(tie.v * TIES.poach); q += k; why.push([tie.label, k]); }
+    if (home) { k = Math.round(TIES.home * TIES.poach); q += k; why.push(['예전에 섬긴 세력', k]); }
+    if (gr) { q += TIES.grudge; why.push([gr.lord.n + ' 참수의 원한', TIES.grudge]); }
+    q = clamp(Math.round(q), 0, POACH.max);
+    if (gr && gr.bond) q = Math.min(q, TIES.grudgeCap);
+    return { p: q, why: why, tie: tie };
   }
   var p = 35 + (o.cha - 50) * 0.7 + (o.pol - 50) * 0.2;
   p += (L.cha - 70) * 0.4;
-  if (o.sk === '논객') p += 20;
-  if (bondWith(t, b.owner)) p += 30;                                    // 내 군주와 인연이 있는 사람
-  if (t.st === 'captive') { p -= 15; if (t.f >= 0 && G.factions[t.f].alive) p -= (t.loy - 60) * 0.8; }
+  if (o.sk === '논객') { p += 20; why.push(['논객', 20]); }
+  if (mine) { p += 30; why.push(['우리 군주와 ' + mine, 30]); }           // 내 군주와 인연이 있는 사람
+  var dead = fallenOf(t);
+  if (t.st === 'captive') {
+    if (dead) why.push(['멸망한 세력 출신', 15 + TIES.fallen]);            //   돌아갈 곳이 없다: 포로라서 깎이던 15 가 없고, 거기에 더한다
+    else { p -= 15; if (t.f >= 0 && G.factions[t.f].alive) p -= (t.loy - 60) * 0.8; }
+  } else if (dead) why.push(['멸망한 세력 출신', TIES.fallen]);
+  if (dead) p += TIES.fallen;
+  if (tie) { p += tie.v; why.push([tie.label, tie.v]); }
+  if (home) { p += TIES.home; why.push(['예전에 섬긴 세력', TIES.home]); }
+  if (gr) { p += TIES.grudge; why.push([gr.lord.n + ' 참수의 원한', TIES.grudge]); }
   p = clamp(Math.round(p), 3, 95);
   if (t.st === 'captive' && t.f >= 0 && G.factions[t.f].alive && bondOf(t)) p = Math.min(p, 5);   // 주군과 인연이 있는 포로는 주군의 세력이 살아 있는 한 거의 응하지 않는다
-  return p;
+  if (gr && gr.bond) p = Math.min(p, TIES.grudgeCap);                    // 인연이 있던 주군을 벤 세력에는 거의 응하지 않는다
+  return { p: p, why: why, tie: tie };
 }
+function recruitChance(b, o, t) { return recruitTerms(b, o, t).p; }
 function cmdRecruit(b, id, tid) {
   var os = getIdle(b, [id]); if (!os) return ERR('담당 무장을 고르세요');
   var t = off(tid), far = canPoach(b, t);
@@ -1227,6 +1295,7 @@ function cmdRecruit(b, id, tid) {
       for (var qi = 0; qi < G.officers.length; qi++) { var q = G.officers[qi]; if (q.f === from && q !== t && (q.st === 'active' || q.st === 'travel') && G.factions[from].lord !== q.id && q.loy < 100) q.loy = Math.min(100, q.loy + POACH.tighten); }   // 남은 무장들이 마음을 다잡는다(주군의 단속)
     }
     t.st = 'active'; t.f = b.owner; t.capF = -1; t.unit = null; t.acted = true; t.loy = 70 + ri(0, 15); t.merit = Math.round(t.merit * 0.5); if (bondOf(t)) t.loy = 100;
+    pastNote(t);                                                        // 섬겼던 세력을 적어 둔다(v0.11)
     o.merit += far ? 100 : 60;
     if (far) {
       logMsg(facName(b.owner) + '군 ' + josa(o.n, '이가') + ' ' + facName(from) + '군의 ' + josa(t.n, '을를') + ' 등용 (' + fb.n + ' → ' + b.n + ')', b.c, b.r, from === G.player ? G.player : b.owner, from === G.player ? 2 : 1);
@@ -1267,7 +1336,7 @@ function cmdCaptive(b, tid, action) {
   var t = off(tid);
   if (!t || t.st !== 'captive' || t.loc !== b.id || t.capF !== b.owner) return ERR('대상이 없습니다');
   if (action === 'release') { releaseCaptive(t); return { ok: true }; }
-  if (action === 'execute') { var i = b.captives.indexOf(t.id); if (i >= 0) b.captives.splice(i, 1); t.st = 'dead'; t.f = -1; t.capF = -1; return { ok: true }; }
+  if (action === 'execute') { var i = b.captives.indexOf(t.id); if (i >= 0) b.captives.splice(i, 1); t.st = 'dead'; t.f = -1; t.capF = -1; t.exBy = b.owner; return { ok: true }; }      // exBy: 누가 베었는가(v0.11 — 그 신하였던 무장들이 원한을 품는다)
   return ERR('?');
 }
 
@@ -1351,6 +1420,44 @@ function unitUndoMove(u) {
   return true;
 }
 function unitWait(u) { u.done = true; u.ox = -1; return { ok: true }; }
+/* ---------- 보급(v0.11): 수송대가 옆 칸의 아군 부대에 병량과 병력을 넘긴다 ----------
+   병력은 받는 주장의 지휘 한도까지, 수송대에는 100명을 남긴다. 창·극·노·기병에게는 수송대에 실은 그 무기만큼만(무기도 함께 넘어간다).
+   보급한 수송대는 그 턴의 행동을 마친다. 받는 부대의 행동은 쓰지 않는다. */
+function supplyTargets(t) {                                  // 수송대 t 가 보급할 수 있는 부대
+  var out = []; if (!t || t.type !== 'trans') return out;
+  nbrs(t.c, t.r).forEach(function (n) { var u = UAT[K(n[0], n[1])]; if (u && u.f === t.f && u.type !== 'trans') out.push(u); });
+  return out;
+}
+function supplySources(u) {                                  // 부대 u 옆에서 보급해 줄 수 있는 수송대(아직 행동하지 않은)
+  var out = []; if (!u || u.type === 'trans') return out;
+  nbrs(u.c, u.r).forEach(function (n) { var t = UAT[K(n[0], n[1])]; if (t && t.f === u.f && t.type === 'trans' && !t.done && !t.status) out.push(t); });
+  return out;
+}
+function supplyMax(t, u) {                                   // 넘길 수 있는 한도 { food, troops, why: 병력이 그만큼인 까닭 }
+  var wp = UNIT_TYPES[u.type].weapon, room = Math.max(0, cmdCap(uLeader(u)) - u.troops), spare = Math.max(0, t.troops - 100), m = Math.min(room, spare);
+  var why = room <= spare ? '지휘 한도 ' + nf(cmdCap(uLeader(u))) : '수송대에 100명은 남깁니다';
+  if (wp && wp !== 'ram') { var have = (t.cargo && t.cargo[wp]) || 0; if (have < m) { m = have; why = '실은 ' + WEAPON_NAMES[wp] + ' ' + nf(have); } }
+  return { food: Math.max(0, Math.floor(t.food)), troops: Math.floor(m / 100) * 100, why: why };
+}
+function cmdSupply(t, u, give) {
+  if (!t || !u || t.type !== 'trans' || u.type === 'trans' || t.f !== u.f) return ERR('보급할 수 없는 대상입니다');
+  if (t.done) return ERR('수송대가 이미 행동을 마쳤습니다');
+  if (t.status) return ERR('수송대가 명령을 들을 수 없습니다');
+  if (hdist(t.c, t.r, u.c, u.r) !== 1) return ERR('옆 칸의 부대에만 보급할 수 있습니다');
+  var food = Math.max(0, Math.floor(give.food || 0)), troops = Math.max(0, Math.floor((give.troops || 0) / 100) * 100), mx = supplyMax(t, u);
+  if (food > mx.food) return ERR('수송대의 병량이 모자랍니다');
+  if (troops > mx.troops) return ERR('병력은 ' + nf(mx.troops) + '명까지 넘길 수 있습니다 (' + mx.why + ')');
+  if (!food && !troops) return ERR('넘길 것을 정하세요');
+  t.food -= food; u.food += food;
+  if (troops) {
+    var wp = UNIT_TYPES[u.type].weapon;
+    if (wp && wp !== 'ram') t.cargo[wp] -= troops;                       // 무기도 함께 넘어간다
+    u.morale = Math.round((u.troops * u.morale + troops * t.morale) / (u.troops + troops));
+    u.troops += troops; t.troops -= troops; if (!(u.max >= u.troops)) u.max = u.troops;
+  }
+  t.done = true; t.ox = -1;
+  return { ok: true, food: food, troops: troops };
+}
 
 function autoRetreat(u) {
   var nb = nearestOwnBase(u.f, u.c, u.r);
@@ -1936,6 +2043,120 @@ function unitAttack(u, t) { var f = u.f, n = uName(u), ac = u.c, ar = u.r, tf = 
 function unitTactic(u, tac, t) { var f = u.f, n = uName(u), ac = u.c, ar = u.r, tf = actTargetF(t); return actEv(u, t, unitTactic0(u, tac, t), f, n, ac, ar, tf, -1); }
 function unitPloy(u, ploy, t) { var f = u.f, n = uName(u), ac = u.c, ar = u.r, tf = actTargetF(t), hf = actHoldF(t, ploy); return actEv(u, t, unitPloy0(u, ploy, t), f, n, ac, ar, tf, hf); }
 
+/* ---------- 군사의 헌책(v0.11) ----------
+   평소의 조언: 직접 다스리는 거점마다 '할 만한 일'을 후보로 뽑고(counselRaw), 군사의 지력으로 거른다(counsel).
+   후보 { kind, b, w(급한 정도), d(알아채기 어려운 정도), x(그 일의 사실들) }. 말은 화면 쪽(counselText)에서 만든다. */
+function bestBy(os, f) { var b = null, bv = -1e18; for (var i = 0; i < os.length; i++) { var v = f(os[i]); if (v > bv) { bv = v; b = os[i]; } } return b; }
+function nbrThreat(b) {                                    // 길로 이어진 이웃 거점 가운데 다른 세력의 가장 큰 병력 { nb, troops } (없으면 null)
+  var best = null;
+  ADJ[b.id].forEach(function (e) { var nb = G.bases[e.to]; if (nb.owner >= 0 && nb.owner !== b.owner && (!best || nb.troops > best.troops)) best = { nb: nb.id, troops: nb.troops }; });
+  return best;
+}
+function facGainAt(b, pi, t) { var p = b.plots[pi], g0 = goldIncome(b), f0 = foodIncome(b); p.fac = { t: t, lv: 1, done: true }; var g1 = goldIncome(b), f1 = foodIncome(b); p.fac = null; return { gold: g1 - g0, food: f1 - f0 }; }
+function cityFoodTurns(b) { var need = Math.ceil(b.troops / 60); return need > 0 ? Math.floor(b.food / need) : 999; }
+/* 무엇을 어디에 지을까: 급한 것(병영이 없다 · 병량 수입이 소비에 못 미친다)이 먼저, 아니면 수입이 가장 크게 느는 자리 → { t, pi, gain, why } 또는 null */
+function buildPick(b, thr) {
+  var em = [], i;
+  for (i = 0; i < b.plots.length; i++) if (!b.plots[i].fac && !UAT[K(b.plots[i].c, b.plots[i].r)]) em.push(i);
+  if (!em.length) return null;
+  function bestPlot(t) { var bi = em[0], bv = -1e9; em.forEach(function (pi) { var g = facGainAt(b, pi, t), v = g.gold * 3 + g.food / 5; if (v > bv) { bv = v; bi = pi; } }); return { t: t, pi: bi, gain: facGainAt(b, bi, t), v: bv }; }
+  function has(t) { for (var j = 0; j < b.plots.length; j++) if (b.plots[j].fac && b.plots[j].fac.t === t) return true; return false; }      // 짓는 중인 것도 센다
+  var upkeep = Math.ceil(b.troops / 60) * 9, fi = foodIncome(b), r;
+  if (!has('barracks') && thr && b.gold >= FAC.barracks.cost) { r = bestPlot('barracks'); r.why = 'nobarracks'; return r; }
+  if (fi < upkeep && b.gold >= FAC.farm.cost) { r = bestPlot('farm'); r.why = 'food'; r.fi = fi; r.upkeep = upkeep; return r; }
+  var cands = [];
+  ['market', 'farm', 'mint', 'granary'].forEach(function (t) { if (b.gold >= FAC[t].cost) cands.push(bestPlot(t)); });
+  cands.sort(function (x, y) { return y.v - x.v; });
+  if (cands.length && cands[0].v > 0) { cands[0].why = 'income'; return cands[0]; }
+  return null;
+}
+function counselRaw(f) {
+  var F = G.factions[f], out = [], pl = (f === G.player && !G.aiOnly) ? peaceLeft() : 0;
+  directBases(f).forEach(function (b) {
+    var idle = idleOfficers(b); if (!idle.length) return;
+    var city = b.kind === 'city', thr = nbrThreat(b);
+    function add(kind, w, d, x) { out.push({ kind: kind, b: b.id, w: w, d: d, x: x || {} }); }
+    function best(t) { var o = bestBy(idle, function (q) { return recruitChance(b, q, t) * 1000 - q.id; }); return { t: t.id, o: o.id, p: recruitChance(b, o, t) }; }
+    // 훈련
+    if (b.morale < 70 && b.troops >= 2000 && F.ap >= AP.train) add('train', 28 + (70 - b.morale) * 0.8 + (thr && !pl && thr.troops > b.troops * 0.7 ? 15 : 0), 30, { morale: b.morale });
+    // 이웃의 주인 없는 거점 · 허술한 거점
+    if (b.troops >= 3000 && F.ap >= AP.deploy) {
+      var vac = null, weak = null;
+      ADJ[b.id].forEach(function (e) { var nb = G.bases[e.to]; if (nb.owner < 0) { if (!vac) vac = nb; } else if (nb.owner !== f && nb.troops * 1.5 + 2000 < b.troops && (!weak || nb.troops < weak.troops)) weak = nb; });
+      if (vac) add('vacant', 60, 55, { nb: vac.id });
+      if (weak) { var brk = f === G.player && !G.aiOnly && peaceWouldBreak(weak.owner); add('strike', 42 + Math.min(15, (b.troops - weak.troops * 1.5 - 2000) / 1000) - (brk ? 14 : 0), 75, { nb: weak.id, def: weak.troops, troops: b.troops, brk: brk }); }
+    }
+    if (!city) return;
+    // 순찰
+    if (b.gold >= COST.patrol && F.ap >= AP.patrol) {
+      if (b.order < 60) add('patrol', 62 + (60 - b.order) * 0.6, 10, { order: b.order, by: bestBy(idle, function (o) { return Math.max(o.war, o.ldr) + (o.sk === '위압' ? 40 : 0); }).id });
+      else if (b.order < 80 && b.gold >= 300) add('patrol2', 22, 45, { order: b.order });
+    }
+    // 등용: 이 거점의 재야 · 포로, 이웃 세력의 무장(누가 응할지는 군사가 가린다)
+    if (F.ap >= AP.recruit) {
+      var ts = freeOfficers(b).concat(baseCaptives(b).filter(function (o) { return o.capF === f; })).filter(function (t) { return !askWait(t); });
+      if (ts.length) add('recruit', 60, 30, { ts: ts.map(best) });
+      var far = poachTargets(b).filter(function (t) { return !askWait(t); }).map(best).filter(function (x) { return x.p >= COUNSEL.poachMin; });
+      if (far.length) add('poach', 64, 50, { ts: far });
+    }
+    // 탐색: 숨은 인재가 있는지(x.hid)는 군사가 헤아린다
+    if (F.ap >= AP.search) { var so = bestBy(idle, searchSkill); add('search', 50, 60, { hid: hiddenOfficers(b).length > 0, o: so.id, p: searchChance(b, so) }); }
+    // 포상
+    if (b.gold >= COST.reward && F.ap >= AP.reward) { var lo = null; baseOfficers(b).forEach(function (o) { if (!isLord(o) && !bondOf(o) && o.loy < 80 && (!lo || o.loy < lo.loy)) lo = o; }); if (lo) add('reward', 40 + (80 - lo.loy) * 1.5, 35, { t: lo.id, loy: lo.loy }); }
+    // 징병: 이웃 세력의 병력이 우리보다 많을 때만(병량이 한 분기를 못 버티면 권하지 않는다)
+    if (hasFac(b, 'barracks') && b.gold >= COST.draft && b.order >= 30 && F.ap >= AP.draft && thr && b.troops < thr.troops * 0.8 && cityFoodTurns(b) >= 9) {
+      var soon = pl <= 9;
+      add('draft', soon ? 58 + Math.min(20, (thr.troops - b.troops) / 1000 * 2) : 30, 40, { nb: thr.nb, thr: thr.troops, troops: b.troops, soon: soon, pl: pl, order: b.order });
+    }
+    // 건설: 무엇을 어디에
+    var bp = F.ap >= AP.develop ? buildPick(b, thr) : null;
+    if (bp) add('build', (bp.why === 'income' ? 34 : 48) + (b.gold >= FAC[bp.t].cost * 3 ? 10 : 0), 50, { t: bp.t, pi: bp.pi, gain: bp.gain, why: bp.why, fi: bp.fi, upkeep: bp.upkeep, empty: b.plots.filter(function (q) { return !q.fac; }).length });
+    // 무기
+    if (hasFac(b, 'smithy') && b.gold >= COST.produce && F.ap >= AP.produce) { var arms = b.w.spear + b.w.halberd + b.w.bow; if (b.troops >= 3000 && arms < b.troops * 0.6) add('produce', 30, 45, { arms: arms, troops: b.troops }); }
+    // 거래
+    if (hasFac(b, 'market') && F.ap >= AP.trade) {
+      var ft = cityFoodTurns(b);
+      if (ft < 9 && b.gold >= 300) add('buyfood', 66, 30, { ft: ft });
+      else if (b.gold < 150 && ft > 40) add('sellfood', 32, 55, { gold: b.gold });
+    }
+  });
+  var seenNb = {};                                                       // 같은 이웃 거점(빈 곳 · 허술한 곳)은 병력이 가장 많은 우리 거점에서 한 번만
+  out.forEach(function (c) { if (c.kind !== 'vacant' && c.kind !== 'strike') return; var k = c.kind + c.x.nb, o = seenNb[k]; if (!o || G.bases[c.b].troops > G.bases[o.b].troops) seenNb[k] = c; });
+  return out.filter(function (c) { return (c.kind !== 'vacant' && c.kind !== 'strike') || seenNb[c.kind + c.x.nb] === c; });
+}
+/* 군사의 눈으로 거른 헌책 { adv, lvl(말의 자세함 0~2), list(급한 것부터) } — 군사가 없으면 뻔한 일(d ≤ 40)만 */
+function counsel(f) {
+  var A = facAdv(f), raw = counselRaw(f), out = [];
+  var acc0 = A ? adviceAcc(A, 0) : 0, amp = A ? COUNSEL.noise * (100 - A.int) / 50 : 0, lvl = !A ? 1 : (A.int >= COUNSEL.detail ? 2 : (A.int >= COUNSEL.some ? 1 : 0));
+  raw.forEach(function (c) {
+    var key = c.kind + ':' + c.b, b = G.bases[c.b];
+    if (!A) { if (c.d > 40) return; if (c.kind === 'recruit') { c.x.pick = c.x.ts[0]; c.x.says = null; } }
+    else {
+      if (c.kind === 'recruit' || c.kind === 'poach') {                  // 응할 사람을 군사가 가려낸다(맞힐 확률 = 적중률)
+        var yes = [], no = [];
+        c.x.ts.forEach(function (x) { var t = off(x.t), a = advise(f, recruitRoll(t), recruitRollA(t), x.p, t.int); x.says = !!(a && a.says); (x.says ? yes : no).push(x); });
+        yes.sort(function (p1, p2) { return statSum(off(p2.t)) - statSum(off(p1.t)) || p1.t - p2.t; });
+        if (c.kind === 'poach') { if (!yes.length) return; c.x.pick = yes[0]; c.x.says = true; }
+        else if (yes.length) { c.x.pick = yes[0]; c.x.says = true; c.w = 72 + Math.min(15, statSum(off(yes[0].t)) / 30); }
+        else { c.x.pick = no[0]; c.x.says = false; c.w = 18; }
+        if (lvl === 0 && c.kind === 'recruit') c.w = 55;                 // 지력이 낮으면 누가 응할지 가리지 못한다
+      }
+      if (c.kind === 'search') {                                         // 숨은 인재가 있는지: 적중률만큼 바르게 안다(달마다 정해진다)
+        var knows = omenRoll('adv|hid' + c.b, true) < acc0, belief = knows ? c.x.hid : !c.x.hid;
+        if (!belief) return;
+        var sa = advise(f, searchRoll(b), searchRollA(b), c.x.p, 0);
+        c.x.says = !!(sa && sa.says); c.w = lvl === 0 ? 40 : (c.x.says ? 68 : 26);
+      }
+      if (c.d > A.int && omenRoll('adv|see|' + key, true) < (c.d - A.int) * COUNSEL.seeK) return;      // 놓쳤다
+    }
+    c.key = key; c.lvl = lvl;
+    c.ws = c.w + (A ? (omenRoll('adv|w|' + key) / 100 - 0.5) * amp : 0);
+    out.push(c);
+  });
+  out.sort(function (a, b2) { return b2.ws - a.ws || a.b - b2.b || (a.kind < b2.kind ? -1 : 1); });
+  return { adv: A, lvl: lvl, list: out };
+}
+
 function serialize() { return JSON.stringify(G); }
 function deserialize(s) {
   var g = JSON.parse(s);
@@ -1963,6 +2184,7 @@ function deserialize(s) {
   if (!g.corps) { g.corps = []; g.nextCorps = 1; }                         // v0.10: 군단(옛 저장에는 없다)
   G = g; reindex(); REPORT = []; EVQ = []; JOT = null;
   corpsFix();
+  pastSweep();                                                           // v0.11: 섬겼던 세력(옛 저장에는 없다 — 시나리오의 세력으로 미루어 채운다)
   if (peaceCut) { var pcap = facCities(G.player)[0] || facBases(G.player)[0]; if (pcap) logMsg('초반 보호 기간이 짧아졌습니다(v0.9.1) — 이 판의 보호는 ' + dateOfTurn(G.peace.until - 1) + '까지입니다(전에는 ' + dateOfTurn(peaceCut - 1) + '까지)', pcap.c, pcap.r, G.player, 2); REPORT = []; }
   for (var fi = 0; fi < G.factions.length; fi++) if (G.factions[fi].adv === undefined) { G.factions[fi].adv = -1; if (G.factions[fi].alive) autoAdvisor(fi); }   // v0.9: 군사
   for (var oi = 0; oi < G.officers.length; oi++) { var go = G.officers[oi]; if (go.f >= 0 && go.st !== 'hidden' && bondOf(go)) go.loy = 100; }   // v0.8: 인연이 있는 무장

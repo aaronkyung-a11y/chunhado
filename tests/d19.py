@@ -58,15 +58,17 @@ def steps(pg):
     ok(not t1['on'] and t1['op'] < 0.1 and t1['pe'] == 'none', '대화창을 누르면 바로 닫힌다(닫힌 뒤에는 누름을 가로채지 않는다)')
     pg.evaluate('advBrief(30)'); pg.wait_for_timeout(500)
     ok(not tk(pg)['on'], '같은 턴에는 다시 뜨지 않는다(한 턴에 한 번)')
-    # 같은 말은 턴마다 되풀이하지 않는다: 다음 턴 · 그다음 턴에는 뜨지 않고, 세 턴(한 달) 뒤에 다시. 말이 바뀌면 바로 뜬다
-    rp = []
+    # v0.11(헌책): 같은 말은 턴마다 되풀이하지 않는다 — 다음 턴 · 그다음 턴에는 '다른' 헌책을 말하거나(있으면) 말하지 않는다. 같은 문장은 세 턴 안에 다시 뜨지 않는다. 말이 바뀌면 바로 뜬다
+    rp = []; said = [t0['say']]
     for dt in (1, 2, 3):
-        pg.evaluate('(dt) => { talkHide(); G.turn += dt; UI.briefT = undefined; advBrief(30); }', dt if dt == 1 else 1); pg.wait_for_timeout(450)
-        rp.append(tk(pg)['on'])
+        pg.evaluate('() => { talkHide(); G.turn += 1; UI.briefT = undefined; advBrief(30); }'); pg.wait_for_timeout(450)
+        t = tk(pg); rp.append(t['on']); said.append(t['say'] if t['on'] else '')
     pg.evaluate('() => { talkHide(); UI.briefT = undefined; UI.briefSay = "다른 말"; advBrief(30); }'); pg.wait_for_timeout(450)
     rp.append(tk(pg)['on'])
     pg.evaluate('() => { talkHide(); G.turn -= 3; UI.briefT = G.turn; UI.briefAt = G.turn; }')
-    ok(rp == [False, False, True, True], '같은 말은 한 달에 한 번만 — 다음 턴 · 그다음 턴에는 뜨지 않고 세 턴 뒤에 다시, 말이 바뀌면 바로 뜬다 %s' % rp)
+    print('  턴마다의 한마디:', said)
+    rep_ok = all(not said[i] or (said[i] != said[i - 1] and (i < 2 or said[i] != said[i - 2])) for i in range(1, 4))
+    ok(rep_ok and rp[3], '같은 말은 되풀이하지 않는다 — 이어지는 세 턴의 한마디가 앞의 두 턴과 겹치지 않고(다른 헌책을 말하거나 쉰다), 말이 바뀌면 바로 뜬다 %s' % rp)
     # 1-3. 저절로 사라진다
     lord = pg.evaluate('''(() => { var L = off(G.factions[G.player].lord); talk(L, "시험 삼아 한마디 하겠다.", "결과 한 줄", 700); return L.n; })()''')
     pg.wait_for_timeout(200); t2 = tk(pg); pg.wait_for_timeout(900); t3 = tk(pg)

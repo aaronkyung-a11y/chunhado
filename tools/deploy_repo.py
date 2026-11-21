@@ -30,7 +30,7 @@ add_glob('pwa/*'); add_glob('pwa/icons/*')
 add_glob('tools/*.py')
 add_glob('tests/*.js'); add_glob('tests/*.py'); add_glob('tests/*.sh')
 for f in ('build/terrain.jpg', 'build/patch_v04_ui3d.py', 'build/patch_v04_panels.py'): add(f)
-add_glob('build/v07/*.py'); add_glob('build/v071/*.py'); add_glob('build/v081/*.py'); add_glob('build/v09/*.py'); add_glob('build/v091/*.py'); add_glob('build/v092/*.py'); add_glob('build/v093/*.py'); add('build/v093/apply.sh'); add_glob('build/v010/*.py'); add('build/v010/apply.sh'); add_glob('build/v0101/*.py'); add('build/v0101/apply.sh')
+add_glob('build/v07/*.py'); add_glob('build/v071/*.py'); add_glob('build/v081/*.py'); add_glob('build/v09/*.py'); add_glob('build/v091/*.py'); add_glob('build/v092/*.py'); add_glob('build/v093/*.py'); add('build/v093/apply.sh'); add_glob('build/v010/*.py'); add('build/v010/apply.sh'); add_glob('build/v0101/*.py'); add('build/v0101/apply.sh'); add_glob('build/v011/*.py'); add('build/v011/apply.sh')
 add('vendor/package/build/three.min.js')
 def clean(rel):                                       # 그림 기록 가운데 내려받은 주소가 적힌 것(로컬 전용)은 빼고 올린다
     s = open(os.path.join(ROOT, rel), encoding='utf-8').read()

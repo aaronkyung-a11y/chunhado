@@ -1,6 +1,9 @@
 /* ===== 천하도 — 정적 데이터 ===== */
-var GAME_VERSION = 'v0.10.1';
+var GAME_VERSION = 'v0.11';
 var SAVE_KEY = 'chunhado_save_v2';
+var SHARE_URL = 'https://aaronkyung-a11y.github.io/chunhado/';      // 공유(v0.11)로 보내는 주소 — 누구나 열 수 있는 곳
+/* SHARE_URL 의 QR(33×33, 줄마다 16진수 · 왼쪽이 높은 자리). 주소를 바꾸면 다시 만들어야 한다(segno 로 만들고 OpenCV 로 읽어 확인) */
+var SHARE_QR = ['1fdd8aa7f', '104419d41', '17476ce5d', '17489065d', '1752c425d', '105194141', '1fd55557f', 'd60d00', 'fe189731', '14199266d', '1162454d6', '23bf0a5f', '19d4e47ba', '91f38263', '144c618fe', '991dbfec', 'c5a2e5b9', '16282b66d', '463f9976', '69cc5bbd', '1dc96a5bb', '121beea4d', '13f1ddc06', '1389dfe8f', '10c4667f1', '1b8ab15', '1fda59b54', '1058c7f1e', '1754005f9', '175eb7391', '175044564', '1055d98dc', '1fc6c05ea'];
 var SAVE_SLOTS = 6;                      // 직접 저장하는 칸 수(v0.10.1). 자동 저장은 SAVE_KEY 그대로, 직전 판은 SAVE_KEY + '_prev', 칸은 SAVE_KEY + '_s1' …
 
 var UNIT_TYPES = {
@@ -44,9 +47,16 @@ var TERRAIN_DESC = {
 var POACH = { base: 15, cha: 0.5, pol: 0.2, lord: 0.25, loy0: 70, loyK: 2.5, talker: 20, bond: 30, max: 85, wall: 95, up: 3, tighten: 2 };
 /* AI 가 다른 세력의 무장에게 권하는 빈도: 턴마다 tryPct% 의 확률로 한 번, 성공률이 min% 이상인 대상에게만.
    spare = 무장이 이 수 이하(군주 포함)인 세력의 무장에게는 권하지 않는다(작은 세력이 등용만으로 말라 죽지 않게) */
+/* 등용과 옛 관계(v0.11): 보내는 무장과 대상의 사이(가장 큰 것 하나) — bond 직접 인연 · lord 옛 주군 · kin 같은 주군과 인연으로 묶인 사이 · vassal 옛 신하 · mate 옛 동료.
+   home = 대상이 예전에 이 세력을 섬겼다 · fallen = 멸망한 세력 출신 · grudge = 이 세력이 옛 주군을 참수했다(그 주군과 인연이 있었으면 grudgeCap % 이하).
+   poach = 다른 세력의 무장에게 권할 때 위의 값에 곱하는 몫 */
+var TIES = { bond: 50, lord: 30, kin: 30, vassal: 20, mate: 12, home: 15, fallen: 10, grudge: -20, grudgeCap: 3, poach: 0.6 };
 var POACH_AI = { tryPct: 25, min: 12, spare: 4 };
 /* 군사의 조언이 맞을 확률(%) = 군사 지력 − (상대가 더 똑똑한 만큼) × k, min~100.
    v0.10.1: 전에는 '군사 지력 + (군사 지력 − 상대 지력) × k' 라 상대보다 똑똑한 만큼이 더해져 웬만한 군사는 90~100% 였다. 이제 지력이 곧 적중률이다 */
+/* 군사의 헌책(v0.11): seeK = 어려운 일(d > 지력)을 놓칠 확률 = (d − 지력) × seeK % · noise = 순위에 섞이는 잡음의 폭(× (100 − 지력) ÷ 50)
+   detail · some = 말이 자세해지는 지력의 문턱 · keep = 한 번 한 말을 맨 앞에 다시 세우지 않는 턴 수 · urgent = 그래도 되풀이하는 무게 */
+var COUNSEL = { seeK: 2.5, noise: 28, detail: 80, some: 65, keep: 2, urgent: 70, poachMin: 20 };      // poachMin: 이웃 세력의 무장은 성공률이 이만큼은 되어야 먼저 권한다(낮은 확률의 '응할 것'은 거의 헛짚은 것이다)
 var ADVISE = { k: 0.5, min: 50 };
 /* 군단(v0.10): 방침 넷, 군단 수의 한도, 군단의 행동력(턴마다 base + 도시 × city + 군단장 매력 ÷ 5, max 까지) */
 var CORPS_MAX = 6;
@@ -69,6 +79,7 @@ var FARM_INC = [0, 1800, 3000, 4400];
 var LV_MUL = [0, 1.0, 1.3, 1.6];
 var BASE_GOLD = { L: 700, M: 520, S: 360 };
 var BASE_FOOD = { L: 4000, M: 2900, S: 2000 };
+var DEPLOY_FOOD = [9, 18, 27, 36];      // 출진할 때 고르는 군량(턴 수): 90 · 180 · 270 · 360일분(v0.11 — 전에는 60~240일분)
 var COST = { draft: 200, patrol: 60, produce: 200, ram: 400, ramInv: 200, reward: 60, merge: 100 };   // merge 는 레벨마다
 /* 시설 */
 var FAC = {

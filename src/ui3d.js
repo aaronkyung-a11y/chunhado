@@ -130,7 +130,7 @@ function resize() {
   if (!R3) return;
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   CW = cv.clientWidth; CH = cv.clientHeight;
-  R3.renderer.setPixelRatio(DPR); R3.renderer.setSize(CW, CH, false);
+  R3.renderer.setPixelRatio(DPR); R3.renderer.setSize(CW, CH, false); if (R3.tmat && R3.tmat.uniforms.pxr) R3.tmat.uniforms.pxr.value = DPR;
   R3.cam.aspect = CW / Math.max(1, CH);
   R3.labelK = 0; clampCam(); requestDraw();
 }
@@ -183,14 +183,32 @@ var TERRAIN_FS = [
   'uniform vec2 hexN; uniform vec3 fogColor; uniform float fogNear; uniform float fogFar; uniform float gridK; uniform vec3 tint; uniform vec3 edge;',
   'varying vec2 vUv; varying vec2 vW; varying float vD;',
   'const float SQ3 = 1.7320508;',
+  '#ifdef MAGFIX',                                                                                       // v0.11: 그림이 늘어나 보일 때의 손질(위 풀이)
+  'uniform vec2 mapN; uniform float pxr;',
+  'vec4 cubicW(float v){ vec4 n = vec4(1.0, 2.0, 3.0, 4.0) - v; vec4 s = n * n * n; float x = s.x; float y = s.y - 4.0 * s.x; float z = s.z - 4.0 * s.y + 6.0 * s.x; float w = 6.0 - x - y - z; return vec4(x, y, z, w) * (1.0 / 6.0); }',
+  'vec3 texBic(sampler2D t, vec2 uv){ vec2 inv = 1.0 / mapN; uv = uv * mapN - 0.5; vec2 f = fract(uv); uv -= f; vec4 xc = cubicW(f.x), yc = cubicW(f.y); vec4 c = uv.xxyy + vec2(-0.5, 1.5).xyxy; vec4 s = vec4(xc.xz + xc.yw, yc.xz + yc.yw); vec4 o = c + vec4(xc.yw, yc.yw) / s; o *= inv.xxyy;',
+  '  vec3 s0 = texture2DLodEXT(t, o.xz, 0.0).rgb, s1 = texture2DLodEXT(t, o.yz, 0.0).rgb, s2 = texture2DLodEXT(t, o.xw, 0.0).rgb, s3 = texture2DLodEXT(t, o.yw, 0.0).rgb; float sx = s.x / (s.x + s.y), sy = s.z / (s.z + s.w); return mix(mix(s3, s2, sx), mix(s1, s0, sx), sy); }',
+  'float nz(vec2 uv, float k, float wpx, float ch){ vec4 s = texture2DLodEXT(detail, uv, max(0.0, log2(wpx * k * 256.0))); return mix(s.r, s.g, ch); }',   // 잡음: 화면 한 점에 잡음 한 점이 되는 축소본을 읽는다
+  '#endif',
   'void main(){',
   '  float od = length(max(max(-vW, vW - edge.xy), 0.0)), inMap = 1.0 - smoothstep(0.0, 0.05, od), et = od / edge.z;',   // 지도 밖으로 나간 거리(안이면 0)
   '  float ew = (texture2D(detail, vW * 0.011 + 0.13).r - 0.5) * 2.0 + (texture2D(detail, vW * 0.047 + 0.61).g - 0.5) * 0.9;',
   '  float eo = et + ew * min(1.0, et * 3.0);',                                                           // 그림이 얼마나 풀렸나 — 잡음 때문에 곳에 따라 더 멀리까지 이어진다(끝이 들쭉날쭉)
   '  vec3 col = texture2D(map, 1.0 - abs(1.0 - abs(vUv)), clamp(eo * 13.0, 0.0, 7.0)).rgb;',              // 밖은 안쪽을 거울처럼 비추되 풀릴수록 번지게(흐리게)
+  '  float mg = 0.0;',
+  '#ifdef MAGFIX',
+  '  vec2 muv = 1.0 - abs(1.0 - abs(vUv));',
+  '  float magK = (1.0 - smoothstep(0.28, 0.45, length(fwidth(muv * mapN)) * pxr)) * step(eo, 0.0);',     // 그림이 얼마나 늘어나 보이나: 화면 한 점(CSS)에 그림 몇 점인가 — 0.45 아래부터 서서히, 0.28 아래면 온전히(확대 1.25 ~ 2.1 사이). 지도 안에서만
+  '  float wpx = max(length(dFdx(vW)), length(dFdy(vW)));',
+  '  if (magK > 0.0) {',
+  '    vec2 wn = vec2(nz(vW * 3.1 + 0.27, 3.1, wpx, 0.0) + nz(vW * 9.7 + 0.53, 9.7, wpx, 1.0) * 0.6, nz(vW * 3.7 + 0.71, 3.7, wpx, 1.0) + nz(vW * 8.9 + 0.19, 8.9, wpx, 0.0) * 0.6) - 0.8;',
+  '    col = mix(col, texBic(map, muv + wn * (1.2 * magK) / mapN), magK);',                                // 둥글게 메우고, 읽는 자리를 종이 결만큼 흔든다(번짐)
+  '    mg = magK * (0.06 * (nz(vW * 4.3 + 0.11, 4.3, wpx, 0.0) - 0.5) + 0.045 * (nz(vW * 11.7 + 0.71, 11.7, wpx, 1.0) - 0.5));',   // 고운 종이 결
+  '  }',
+  '#endif',
   '  float dn = texture2D(detail, vW * 0.21).r, dn2 = texture2D(detail, vW * 1.17 + 0.37).g;',
   '  float nearK = 1.0 - smoothstep(25.0, 120.0, vD);',
-  '  col *= 0.955 + 0.09 * dn + nearK * 0.10 * (dn2 - 0.5);',
+  '  col *= 0.955 + 0.09 * dn + nearK * 0.10 * (dn2 - 0.5) + mg;',
   '  col *= tint;',
   '  vec2 p = vec2(vW.x - SQ3 * 0.5, vW.y - 1.0);',
   '  float rf = p.y / 1.5, qf = p.x / SQ3 - rf * 0.5;',
@@ -258,9 +276,12 @@ function init3d() {
   var blank = new THREE.DataTexture(new Uint8Array([120, 130, 100, 255]), 1, 1); blank.needsUpdate = true;
   R3.tmat = new THREE.ShaderMaterial({
     uniforms: { map: { value: blank }, detail: { value: noiseTexture() }, hexOv: { value: R3.ovTex }, hexSt: { value: R3.stTex }, hexN: { value: new THREE.Vector2(W, H) },
-      fogColor: { value: new THREE.Color(FOGC) }, fogNear: { value: 60 }, fogFar: { value: 200 }, gridK: { value: 1 }, tint: { value: new THREE.Vector3(1, 1, 1) }, edge: { value: new THREE.Vector3(MAP3D.WX, MAP3D.WZ, APRON) } },
-    vertexShader: TERRAIN_VS, fragmentShader: TERRAIN_FS, extensions: { derivatives: true }
+      fogColor: { value: new THREE.Color(FOGC) }, fogNear: { value: 60 }, fogFar: { value: 200 }, gridK: { value: 1 }, tint: { value: new THREE.Vector3(1, 1, 1) }, edge: { value: new THREE.Vector3(MAP3D.WX, MAP3D.WZ, APRON) },
+      mapN: { value: new THREE.Vector2(1, 1) }, pxr: { value: DPR || 1 } },
+    vertexShader: TERRAIN_VS, fragmentShader: TERRAIN_FS, extensions: { derivatives: true, shaderTextureLOD: true }
   });
+  R3.magfix = !!(renderer.capabilities.isWebGL2 || renderer.extensions.has('EXT_shader_texture_lod'));      // v0.11: 확대했을 때의 손질을 켤 수 있는 기기인가
+  if (R3.magfix) R3.tmat.defines = { MAGFIX: 1 };
   buildTerrain(); buildRoads(); buildTrees();
   R3.objs = new THREE.Group(); scene.add(R3.objs);
   R3.flame = flameTexture();
@@ -370,7 +391,7 @@ function loadAssets() {
   function img(src, done) { var im = new Image(); R3.loading++; im.onload = function () { done(im); R3.loading--; if (!R3.loading) { R3.ready = true; requestDraw(); } }; im.onerror = function () { R3.loading--; }; im.src = src; }
   img(URL.createObjectURL(b64blob(TERRAIN_B64, 'image/jpeg')), function (im) {
     var t = new THREE.Texture(im); t.flipY = false; t.anisotropy = Math.min(8, R3.renderer.capabilities.getMaxAnisotropy()); t.needsUpdate = true;
-    R3.tmat.uniforms.map.value = t;
+    R3.tmat.uniforms.map.value = t; R3.tmat.uniforms.mapN.value.set(im.width, im.height);
   });
   Object.keys(SPRITES).forEach(function (key) {
     img(SPRITES[key].u, function (im) {

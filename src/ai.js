@@ -242,7 +242,7 @@ function aiCaptives(f) {
       b.ai.capTry = b.ai.capTry || {};
       var n = b.ai.capTry[cp.id] = (b.ai.capTry[cp.id] || 0) + 1;
       if (os.length && F.ap >= AP.recruit && !(AISCOPE && n > 3 && n % 3)) {      // 군단: 세 번 권한 뒤에는 석 턴에 한 번만
-        os.sort(function (a, c2) { return c2.cha - a.cha; });
+        os.sort(function (a, c2) { return recruitChance(b, c2, cp) - recruitChance(b, a, cp) || c2.cha - a.cha || a.id - c2.id; });      // v0.11: 옛 주군 · 옛 동료가 있으면 그 사람이 간다
         var rr = cmdRecruit(b, os[0].id, cp.id);
         if (rr.ok && rr.joined) { delete b.ai.capTry[cp.id]; continue; }
       }
@@ -286,7 +286,7 @@ function aiInternal(f) {
     for (i = 0; i < os.length; i++) if (os[i].loy < 72 && !isLord(os[i]) && b.gold >= COST.reward + 110 && F.ap >= AP.reward) cmdReward(b, os[i].id);
     // 재야 등용
     var fr = freeOfficers(b);
-    for (i = 0; i < fr.length; i++) { os = idle(); if (!os.length || F.ap < AP.recruit) break; os.sort(function (a, c2) { return c2.cha - a.cha; }); cmdRecruit(b, os[0].id, fr[i].id); }
+    for (i = 0; i < fr.length; i++) { os = idle(); if (!os.length || F.ap < AP.recruit) break; var frT = fr[i]; os.sort(function (a, c2) { return recruitChance(b, c2, frT) - recruitChance(b, a, frT) || c2.cha - a.cha || a.id - c2.id; }); cmdRecruit(b, os[0].id, frT.id); }
     // 순찰
     if (b.order < 60 && b.gold >= COST.patrol + 40 && F.ap >= AP.patrol) { os = idle(); if (os.length) { os.sort(function (a, c2) { return Math.max(c2.war, c2.ldr) - Math.max(a.war, a.ldr); }); cmdPatrol(b, [os[0].id]); } }
     // 개발 — 공사를 맡은 무장은 완공까지 묶이므로: 적이 가까우면 새로 짓지 않고, 싸움에 가장 쓸모 있는 둘은 남겨 두고, 한꺼번에 벌이는 공사 수를 줄인다
