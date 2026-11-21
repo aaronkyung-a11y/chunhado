@@ -39,6 +39,15 @@
 - **음악**: `BGM_TRACKS`가 장면(title·field·tense·battle·victory·defeat)마다 곡을 정한다. 여러 곡이면 끝날 때마다 다음 곡으로 돌아간다. 지금의 장면은 `bgmForState()` — 싸운 지 한 턴 안이거나 적이 내 성 2칸 안이면 전투, 적 부대가 내 성 7칸·내 부대 4칸 안이거나 내 부대가 남의 성역에 있으면 긴장, 아니면 평시.
   - 곡을 바꾸려면 `bgm/<이름>.mp3`를 바꿔 넣으면 된다(앱판은 `pwa/sw.js`의 `BGM` 번호도 올린다). 곡을 늘리려면 `BGM_TRACKS`에 이름을 더한다.
 
+## AI의 일기토 · AI끼리의 협정 · 출병 요청(v0.16)
+- **AI가 거는 일기토**(`src/core.js`, 숫자는 `DUEL_K`의 `aiAsk` · `aiLead` · `aiMinWar` · `aiMorale`): `aiWantsDuel(u, d)` → `aiChallenge(u, d)`(`ai.js`가 계략보다 먼저 부른다).
+  - 내 부대에 걸면 그 자리에서 정하지 않고 `G.asks`(`{ a, d, turn }`)에 적는다 → 내 차례에 `duelAskAnswer(aid, did, yes)`: 받으면 겨룰 판(`res.duelS`)을 돌려주고 화면이 `duelOpen(S, 'd', …)` → `duelFinish(S, res)`. 답하지 않으면 턴을 넘길 때 `duelAsksLapse()`가 받지 않은 것으로 친다. 지금도 유효한 것만 `duelAsks()`.
+  - AI끼리(와 내 군단 → AI)는 `unitChallenge` 그대로. 재생은 `presentEvent`의 `e.t === 'ask'` · `e.res.kind === 'challenge'` 가지.
+- **AI끼리의 협정**(`DIP_K`의 `threat` · `aiPact` · `aiPactUp`): 달이 바뀔 때 `dipMonthAI()` — `dipNbrs()`(이웃한 세력) · `dipThreat(f)`(병력이 `threat`배 이상인 가장 센 이웃)가 같은 이웃끼리 정전 → 동맹.
+- **출병 요청**(`aimBase` · `aimWar` · `aimTurns` · `aimRel` · `aimRefuse` · `aimCool` · `aimScore` · `aimNeed`): `aimCan(f, t, x)`(청할 수 없는 까닭) · `aimTerms(f, t, x, 사신)` · `cmdAim(b, id, t, x)` → `G.dip.aim[t] = { f: x, until, by }`. AI는 `dipAimOf(f)`인 세력의 거점에 점수를 더하고 필요한 병력을 낮춘다(`ai.js`).
+- **화면**: `flowDuelAsk(aid, did)`(답하는 창) · `askSoon()`(요약을 닫은 뒤 저절로) · `todoList`의 `go: ['duelask', a, d]` / `flowAim(b, t)`(칠 상대 고르기) · `pactsLine(f)`(다른 세력끼리의 협정 한 줄).
+- 시험: `node tests/ai16.js`(규칙 26가지) · `python3 tests/d28.py`(화면). 화면 시험은 `aiAsk` · `aiPact` · `aiPactUp`을 0으로 두고 돈다(`tests/browser.py` — `AI_ASK` · `AI_PACT`로 바꿀 수 있다).
+
 ## 지형(v0.15)
 - **지도**: `MAPDATA.t`(지형) · `MAPDATA.t0`(산을 넓히기 전의 지형) · `MAPDATA.e`(칸의 높이 단계, 36진수 한 글자). `tools/terrain15.py`가 만든다:
   `steep`(산에 붙은 가파른 칸을 산으로 — `mapdata.json`의 `traw`도 고친다. 그림을 굽는 `bake3d_ink.py`가 그것을 본다) → `bake3d_ink.py`(그림 · 높이맵) → `elev`(높이 단계). 순서는 `build/v015/apply.sh` 머리에.

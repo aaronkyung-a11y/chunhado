@@ -121,6 +121,8 @@ function aiUnitAct(u) {
     var tg = best.u;
     if (!alive(tg)) { unitWait(u); return; }
     var tgt = { kind: 'unit', u: tg, c: tg.c, r: tg.r };
+    // v0.16: 일기토를 건다(주장의 무력이 높고 상대와 겨룰 만할 때)
+    if (DUEL_K.aiAsk > 0 && aiWantsDuel(u, tg) && chance(DUEL_K.aiAsk) && aiChallenge(u, tg)) return;
     // 계략
     if (uInt(u) >= 78 && u.morale >= 30 && hdist(u.c, u.r, tg.c, tg.r) <= ployRange(u) && chance(30)) {
       var pl = (!tg.status && chance(50)) ? PLOYS[1] : PLOYS[0];
@@ -403,6 +405,7 @@ function aiOffense(f) {
         need = AISCOPE ? corpsNeed(corpsDef(T), len, T) : def * mul + 2500 + (T.kind === 'gate' ? 1500 : 0);
         if (!AISCOPE && avail >= 12000 && avail < need && aiFacTroops(f) >= def * 4 * mul / 1.25 && chance(50)) need = avail;   // 국력이 압도적이면 파상 공세(완충 기간에는 문턱도 함께 높다)
         sc = 50 - def / 400 - len * 0.5 + (T.kind === 'city' ? 15 : 0) + (T.sz === 'L' ? 8 : 0);      // v0.8.1: 플레이어의 성에 주던 가산점(+3)을 없앰
+        if (!AISCOPE && dipAimOf(f) === T.owner) { sc += DIP_K.aimScore; need *= DIP_K.aimNeed; }      // v0.16: 동맹의 청을 받아 먼저 노리는 상대
         if (b.morale < 55 || (b.ai.cool || 0) > G.turn) continue;
       }
       // 이미 그 거점으로 향하는 아군이 충분하면 건너뛴다

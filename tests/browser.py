@@ -10,7 +10,8 @@ def run(steps, w=412, h=915, dpr=1):
         br = p.chromium.launch(executable_path='/usr/bin/google-chrome', headless=True, args=['--no-sandbox', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
         cxt = br.new_context(viewport={'width': w, 'height': h}, device_scale_factor=dpr, is_mobile=True, has_touch=True, locale='ko-KR')
         # v0.14: 시험은 같은 길로 흘러야 한다 — 내 공격에서 저절로 벌어지는 일기토(7%)는 화면을 덮으므로 꺼 둔다(일기토를 보는 시험 d24 는 제 손으로 켠다). DUEL_RATE 로 바꿀 수 있다
-        cxt.add_init_script("document.addEventListener('DOMContentLoaded', function () { try { if (window.DUEL_K) DUEL_K.rate = %s; } catch (e) {} });" % os.environ.get('DUEL_RATE', '0'))
+        # v0.16: AI 가 거는 일기토(aiAsk) · AI 끼리의 협정(aiPact)도 꺼 둔다 — 앞선 시험들이 같은 길로 흐르도록(d28 이 제 손으로 켠다). AI_ASK · AI_PACT 로 바꿀 수 있다
+        cxt.add_init_script("document.addEventListener('DOMContentLoaded', function () { try { if (window.DUEL_K) { DUEL_K.rate = %s; if (DUEL_K.aiAsk !== undefined) DUEL_K.aiAsk = %s; } if (window.DIP_K && DIP_K.aiPact !== undefined) { DIP_K.aiPact = %s; DIP_K.aiPactUp = %s; } } catch (e) {} });" % (os.environ.get('DUEL_RATE', '0'), os.environ.get('AI_ASK', '0'), os.environ.get('AI_PACT', '0'), os.environ.get('AI_PACT', '0')))
         pg = cxt.new_page()
         pg.on('console', lambda m: errors.append(m.type + ': ' + m.text) if m.type in ('error', 'warning') else None)
         pg.on('pageerror', lambda e: errors.append('pageerror: ' + str(e)))

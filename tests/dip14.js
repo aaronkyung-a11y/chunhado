@@ -165,7 +165,7 @@ ok(/30일 뒤에 끝납니다/.test(R.expirePact.warn) && R.pactAtEnd === false 
 ok(R.save.same && R.save.pacts >= 1 && R.save.v === 1, '저장 · 불러오기에 외교가 남는다');
 ok(R.old.rel === 40 && R.old.pact === null && R.old.month === true, '외교가 없는 옛 저장: 처음 값으로 연다');
 // ⑬
-ok(R.aiOnly[0] === 0 && R.aiOnly[1] === 0, 'AI 대전: 청해 오지 않고 주사위를 쓰지 않는다');
+ok(R.aiOnly[1] === 0, 'AI 대전: 플레이어에게 청해 오는 것은 없다(v0.16부터 AI 끼리의 협정에는 주사위를 쓴다 — ' + R.aiOnly[0] + '번)');
 ok(R.dead[0] === true && R.dead[1] === false && /상대할 세력/.test(R.dead[2]), '망한 세력과의 협정은 없는 것이 된다');
 console.log((fail ? 'FAIL ' : 'ok ') + pass + ' / ' + (pass + fail));
 process.exit(fail ? 1 : 0);

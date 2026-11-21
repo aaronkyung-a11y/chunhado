@@ -20,6 +20,7 @@ build/v0121/p1_dlcap.py build/v0121/apply.sh
 build/v013/p1_duel_core.py build/v013/p2_duel_ui.py build/v013/p3_voice.py build/v013/apply.sh tools/make_voice_v013.py voice13/lines.py voice13/jobs.tsv voice13/qa.py voice13/voiceqa.py tests/duel13.js tests/d24.py tests/d25.py
 build/v014/p1_dip_core.py build/v014/p2_dip_ui.py build/v014/p3_touch.py build/v014/apply.sh tests/dip14.js tests/d26.py
 build/v015/p1_terrain.py build/v015/p2_terrain_ui.py build/v015/apply.sh tools/terrain15.py tests/terr15.js tests/d27.py
+build/v016/p1_core16.py build/v016/p2_ui16.py build/v016/apply.sh tests/ai16.js tests/d28.py
 pwa/manifest.webmanifest pwa/sw.js
 tools/geo.py tools/mapgen2.py tools/bake3d.py tools/bake3d_ink.py tools/make_sprites.py tools/make_sprites_ink.py tools/make_roster.py tools/make_portraits.py tools/make_assets_ink.py
 tools/build.py tools/pack_sources.py tools/fetch_art.py tools/contact.py tools/dl_por2.py tools/dl_por3.py

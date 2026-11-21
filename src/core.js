@@ -228,7 +228,8 @@ function dipSign(f, t, kind) {
   D.pact[dipKey(f, t)] = { t: kind, until: G.turn + (kind === 'ally' ? K.allyTurns : K.truceTurns), by: f };
   relAdd(f, t, kind === 'ally' ? K.okRelAlly : K.okRelTruce);
   var c = facCities(t)[0] || facBases(t)[0];
-  logMsg(facName(f) + '군과 ' + facName(t) + '군이 ' + (kind === 'ally' ? '동맹을 맺었다' : '정전하기로 했다') + ' — ' + dipDays(D.pact[dipKey(f, t)].until - G.turn), c ? c.c : undefined, c ? c.r : undefined, f === G.player || t === G.player ? G.player : f, 2);
+  var mine = !G.aiOnly && (f === G.player || t === G.player);
+  logMsg(facName(f) + '군과 ' + facName(t) + '군이 ' + (kind === 'ally' ? '동맹을 맺었다' : '정전하기로 했다') + ' — ' + dipDays(D.pact[dipKey(f, t)].until - G.turn), c ? c.c : undefined, c ? c.r : undefined, mine ? G.player : f, mine ? 2 : 1);
 }
 /* 친선: 금을 보내 우호를 올린다 */
 function cmdGift(b, id, t) {
@@ -297,11 +298,80 @@ function dipHit(f, tf, fell) {
   dipOf().war[dipKey(f, tf)] = G.turn;
   if (dipFac(tf)) relAdd(f, tf, -(DIP_K.hitRel + (fell ? DIP_K.fallRel : 0)));
 }
+/* ---------- 출병 요청 · AI 끼리의 협정(v0.16) ---------- */
+/* 세력마다 이웃한 세력(거점이 길로 이어진) */
+function dipNbrs() {
+  var N = {}, i, j;
+  for (i = 0; i < G.bases.length; i++) {
+    var b = G.bases[i]; if (b.owner < 0) continue;
+    for (j = 0; j < ADJ[i].length; j++) { var o = G.bases[ADJ[i][j].to].owner; if (o >= 0 && o !== b.owner) { if (!N[b.owner]) N[b.owner] = {}; N[b.owner][o] = 1; } }
+  }
+  return N;
+}
+function dipNear(a, b, N) { N = N || dipNbrs(); return !!(N[a] && N[a][b]); }
+/* 세력 f 가 두려워할 큰 적: 이웃한 세력 가운데 병력이 threat 배 이상인 가장 센 세력(없으면 -1) */
+function dipThreat(f, N) {
+  N = N || dipNbrs(); var pf = dipPower(f), best = -1, bp = 0;
+  for (var k in N[f] || {}) { var x = +k; if (!dipFac(x)) continue; var px = dipPower(x); if (px >= pf * DIP_K.threat && px > bp) { bp = px; best = x; } }
+  return best;
+}
+/* 세력 f 가 지금 먼저 노리기로 한 상대(출병 요청을 받아들인 것). 없으면 -1 */
+function dipAimOf(f) { var D = G.dip, a = D && D.aim ? D.aim[f] : null; return a && a.until > G.turn && dipFac(a.f) && !pactOn(f, a.f) ? a.f : -1; }
+function dipAimLeft(f) { var D = G.dip, a = D && D.aim ? D.aim[f] : null; return dipAimOf(f) >= 0 ? a.until - G.turn : 0; }
+/* f 가 동맹 t 에게 x 를 쳐 달라고 청할 수 있는가 → '' 이면 된다 */
+function aimCan(f, t, x) {
+  var p = pactOf(f, t);
+  if (!p || p.t !== 'ally') return '동맹을 맺은 세력에게만 청할 수 있습니다';
+  if (x === f || x === t || !dipFac(x)) return '칠 상대가 아닙니다';
+  if (pactOn(t, x)) return facName(t) + '군이 그 세력과 협정을 맺고 있습니다';
+  if (pactOn(f, x)) return '우리가 그 세력과 협정을 맺고 있습니다';
+  if (!dipNear(t, x)) return facName(t) + '군의 거점과 이웃해 있지 않습니다';
+  if (dipAimOf(t) >= 0) return '이미 ' + facName(dipAimOf(t)) + '군을 치기로 했습니다 (' + dipDays(dipAimLeft(t)) + ' 남음)';
+  var D = G.dip, c = D && D.cd[f + ':' + t + ':aim']; if (c && c > G.turn) return dipDays(c - G.turn) + ' 뒤에 다시 청할 수 있습니다';
+  return '';
+}
+function aimTerms(f, t, x, o) {
+  var K = DIP_K, rel = relOf(f, t), pt = dipPower(t), px = dipPower(x), rt = Math.max(1, pt) / Math.max(1, px);
+  var pow = rt >= 1 ? Math.min((rt - 1) * K.powK, K.powHi) : -Math.min((1 / rt - 1) * K.powK, K.powLo), w = G.dip ? G.dip.war[dipKey(t, x)] : undefined;
+  var q = { rel: rel, base: K.aimBase, envoy: Math.round(((o ? o.cha : 70) - 70) * K.envoyK), pow: Math.round(pow), war: w !== undefined && G.turn - w <= K.warTurns ? K.aimWar : 0 };
+  q.p = clamp(q.rel + q.base + q.envoy + q.pow + q.war, 0, K.askHi);
+  return q;
+}
+function cmdAim(b, id, t, x) {
+  var f = b.owner, K = DIP_K, os = getIdle(b, [id]); if (!os) return ERR('보낼 무장을 고르세요');
+  var why = aimCan(f, t, x); if (why) return ERR(why);
+  if (!needAP(f, AP.treaty)) return ERR('행동력이 부족합니다');
+  useAP(f, AP.treaty); markActed(os, 20);
+  var D = dipOf(), p = aimTerms(f, t, x, os[0]).p, ok = rnd() * 100 < p;
+  if (!ok) { D.cd[f + ':' + t + ':aim'] = G.turn + K.aimCool; relAdd(f, t, -K.aimRefuse); logMsg(facName(t) + '군이 출병 요청을 물리쳤다', b.c, b.r, f, 0); return { ok: true, success: false, p: p, o: os[0].id }; }
+  if (!D.aim) D.aim = {};
+  D.aim[t] = { f: x, until: G.turn + K.aimTurns, by: f };
+  relAdd(t, x, -K.aimRel); os[0].merit += 60;
+  var c = facCities(x)[0] || facBases(x)[0];
+  logMsg(facName(t) + '군이 우리의 청을 받아들여 ' + facName(x) + '군을 치기로 했다 — ' + dipDays(K.aimTurns), c ? c.c : undefined, c ? c.r : undefined, f, 2);
+  return { ok: true, success: true, p: p, o: os[0].id, until: D.aim[t].until };
+}
+/* 달이 바뀔 때: AI 끼리 — 같은 큰 적을 둔 이웃끼리 손을 잡는다 */
+function dipMonthAI() {
+  var D = dipOf(), K = DIP_K, N = dipNbrs(), th = {}, i, j, n = G.factions.length;
+  for (var k in D.pact) { var p0 = D.pact[k]; if (p0.until <= G.turn) delete D.pact[k]; }               // 끝난 협정은 치운다
+  for (i = 0; i < n; i++) if (dipFac(i)) th[i] = dipThreat(i, N);
+  for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) {
+    if (!dipFac(i) || !dipFac(j)) continue;
+    if (!G.aiOnly && (i === G.player || j === G.player)) continue;
+    var x = th[i]; if (x < 0 || x !== th[j] || x === i || x === j || !dipNear(i, j, N)) continue;
+    if (pactOn(i, x) || pactOn(j, x)) continue;
+    var p = pactOf(i, j);
+    if (!p) { if (K.aiPact > 0 && rnd() * 100 < K.aiPact) dipSign(i, j, 'truce'); }
+    else if (p.t === 'truce' && K.aiPactUp > 0 && rnd() * 100 < K.aiPactUp) dipSign(i, j, 'ally');
+  }
+}
 /* 달이 바뀔 때: 우호가 처음 값 쪽으로 한 칸 돌아가고(협정 중인 사이는 그대로), 끝난 협정을 알리고, AI 가 플레이어에게 청해 온다 */
 function dipMonth() {
   var D = dipOf(), K = DIP_K, k, i;
   for (k in D.rel) { var ab = k.split('-'), a = +ab[0], b = +ab[1]; if (!dipFac(a) || !dipFac(b)) { delete D.rel[k]; continue; } if (pactOf(a, b)) continue; if (D.rel[k] > K.rel0) D.rel[k] = Math.max(K.rel0, D.rel[k] - K.drift); else if (D.rel[k] < K.rel0) D.rel[k] = Math.min(K.rel0, D.rel[k] + K.drift); }
   D.offers = [];
+  dipMonthAI();                                                    // v0.16: AI 끼리의 협정(AI 대전에서도)
   if (G.aiOnly || !dipFac(G.player)) return;
   var me = G.player, pm = dipPower(me);
   function offer(from, kind) { D.offers.push({ from: from, kind: kind, turn: G.turn }); var c = facCities(from)[0] || facBases(from)[0]; logMsg(facName(from) + '군이 ' + PACT_NAME[kind] + '을 청해 왔습니다 — 이번 턴 안에 답하십시오', c ? c.c : undefined, c ? c.r : undefined, me, 2); }
@@ -803,6 +873,7 @@ function roundEnd() {
    kind: 'phase' 세력 차례 시작 · 'step' 그 세력의 한 행동 · 'round' 날짜가 넘어감 · 'start' 내 차례 시작.
    화면은 단계 사이사이에 EVQ(사건)를 읽어 보여 준다. endTurn() 은 이것을 끝까지 돌린 것과 같다. */
 function turnStepper() {
+  if (!G.aiOnly) duelAsksLapse();                                    // v0.16: 답하지 않은 일기토 신청
   var f = -1, st = null, stage = 0;
   var cps = (!G.aiOnly && G.corps && G.corps.length) ? G.corps.slice() : [], ci = 0, cur = null;      // 군단(v0.10): 내 차례의 끝에, 다른 세력보다 먼저
   if (cps.length) stage = -1;
@@ -1989,6 +2060,53 @@ function challengeChance(u, d) {                                    // 상대가
   return Math.round(clamp(DUEL_K.accBase + (ld.war - la.war) * DUEL_K.accK + (bold ? DUEL_K.accBold : 0), 5, 95));
 }
 function challengeRoll(u, d) { return omenRoll('duel|' + u.id + '|' + d.id); }      // 미리 정해 둔 결과(턴마다): 같은 턴에 다시 물어도 같다
+/* ---------- AI 가 걸어오는 일기토(v0.16) ---------- */
+function duelAskOk(x) { var a = UMAP[x.a], d = UMAP[x.d]; return !!a && !!d && duelBattleOk(a, d) && !a.status && !d.status && d.f === G.player; }
+function duelAsks() { return G.asks ? G.asks.filter(duelAskOk) : []; }
+function aiWantsDuel(u, d) {
+  if (!duelBattleOk(u, d) || d.status || u.status || u.morale < DUEL_K.ask + DUEL_K.aiMorale || pactOn(u.f, d.f)) return false;
+  var la = uLeader(u), ld = uLeader(d);
+  return la.war >= DUEL_K.aiMinWar && la.war - ld.war >= DUEL_K.aiLead && ld.war >= DUEL_K.minWar;
+}
+/* AI 부대 u 가 d 에게 일기토를 건다 → 행동을 썼으면 true */
+function aiChallenge(u, d) {
+  if (d.f === G.player && !G.aiOnly) {
+    if (!G.asks) G.asks = [];
+    for (var i = 0; i < G.asks.length; i++) if (G.asks[i].d === d.id || G.asks[i].a === u.id) return false;      // 한 부대에는 한 번에 하나만
+    u.morale -= DUEL_K.ask; u.done = true; u.ox = -1;
+    G.asks.push({ a: u.id, d: d.id, turn: G.turn });
+    logMsg(facName(u.f) + '군 ' + josa(uLeader(u).n, '이가') + ' ' + uLeader(d).n + '에게 일기토를 걸어왔다 — 내 차례에 답한다', d.c, d.r, G.player, 2);
+    ev({ t: 'ask', f: u.f, id: u.id, c: u.c, r: u.r, tc: d.c, tr: d.r, name: uName(u), tname: uName(d), tf: d.f });
+    return true;
+  }
+  var r = unitChallenge(u, { kind: 'unit', u: d, c: d.c, r: d.r });
+  return !!(r && r.ok);
+}
+/* 걸어온 일기토에 답한다. yes → 겨룰 판(res.duelS)을 돌려준다 — 화면이 겨루고 duelFinish(S, res) 로 맺는다. no → 내 부대의 기력이 내린다 */
+function duelAskAnswer(aid, did, yes) {
+  var L = G.asks || [], i = -1;
+  for (var j = 0; j < L.length; j++) if (L[j].a === aid && L[j].d === did) i = j;
+  if (i < 0) return ERR('그런 신청이 없습니다');
+  var x = L[i]; L.splice(i, 1);
+  if (!duelAskOk(x)) return ERR('이제는 겨룰 수 없습니다 — 두 부대가 떨어졌거나 흩어졌습니다');
+  var a = UMAP[aid], d = UMAP[did];
+  if (!yes) {
+    d.morale = Math.max(0, d.morale - DUEL_K.refuse);
+    logMsg(josa(uLeader(d).n, '이가') + ' ' + uLeader(a).n + '의 일기토를 받지 않음 (기력 -' + DUEL_K.refuse + ')', d.c, d.r, G.player, 0);
+    return { ok: true, accepted: false, mor: DUEL_K.refuse };
+  }
+  var res = { ok: true, kind: 'challenge', accepted: true, asked: true, c: d.c, r: d.r, ac: a.c, ar: a.r, tname: uName(d) };
+  var keep = DUEL_DEFER; DUEL_DEFER = true; duelBattle(a, d, res); DUEL_DEFER = keep;
+  return res;
+}
+/* 차례를 넘길 때: 답하지 않은 신청은 응하지 않은 것으로 친다 */
+function duelAsksLapse() {
+  if (!G.asks || !G.asks.length) return 0;
+  var L = duelAsks(), n = 0;
+  for (var i = 0; i < L.length; i++) { var r = duelAskAnswer(L[i].a, L[i].d, false); if (r.ok) n++; }
+  G.asks = [];
+  return n;
+}
 function unitChallenge0(u, t) {
   if (u.done) return ERR('이미 행동을 마쳤습니다');
   if (u.status) return ERR('명령을 내릴 수 없는 부대입니다');

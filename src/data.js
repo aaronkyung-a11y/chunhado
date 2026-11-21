@@ -1,5 +1,5 @@
 /* ===== 천하도 — 정적 데이터 ===== */
-var GAME_VERSION = 'v0.15';
+var GAME_VERSION = 'v0.16';
 var SAVE_KEY = 'chunhado_save_v2';
 var SHARE_URL = 'https://aaronkyung-a11y.github.io/chunhado/';      // 공유(v0.11)로 보내는 주소 — 누구나 열 수 있는 곳
 /* SHARE_URL 의 QR(33×33, 줄마다 16진수 · 왼쪽이 높은 자리). 주소를 바꾸면 다시 만들어야 한다(segno 로 만들고 OpenCV 로 읽어 확인) */
@@ -116,7 +116,12 @@ var DIP_K = { rel0: 40, giftGold: 1000, giftBase: 8, giftPol: 10,
   truceTurns: 18, allyTurns: 36, truceBase: -15, allyBase: -40, allyRel: 60, envoyK: 0.4, powK: 20, powLo: 25, powHi: 20, busy: 15, warTurns: 6, askHi: 95,
   okRelTruce: 5, okRelAlly: 10, refuse: 3, cool: 6, breakRel: 40, breakOthers: 10, breakCool: 18,
   hitRel: 2, fallRel: 12, drift: 1, talkMin: 10, talkHp: 60,
-  aiAsk: 35, aiTruceRel: 45, aiAllyRel: 75, aiWeak: 0.8 };
+  aiAsk: 35, aiTruceRel: 45, aiAllyRel: 75, aiWeak: 0.8,
+  /* v0.16 출병 요청: aimTurns 동안 · 받아들일 확률의 바탕 aimBase(우호에 더한다) · 사신은 매력 · 힘의 비는 동맹 ÷ 칠 상대 · 이미 그 상대와 싸우는 중이면 aimWar
+     받아들이면 동맹과 그 상대의 우호 −aimRel · AI 의 과녁 점수 +aimScore, 필요한 병력 ×aimNeed · 거절당하면 우호 −aimRefuse, aimCool 턴 뒤에 다시 */
+  aimTurns: 9, aimBase: -35, aimWar: 15, aimRel: 10, aimScore: 40, aimNeed: 0.85, aimRefuse: 2, aimCool: 6,
+  /* v0.16 AI 끼리: 같은 큰 적(병력이 threat 배 이상인 이웃)을 둔 이웃끼리 달마다 aiPact% 로 정전, 정전 중이면 aiPactUp% 로 동맹 */
+  threat: 1.4, aiPact: 25, aiPactUp: 20 };
 var PACT_NAME = { truce: '정전', ally: '동맹' };
 
 /* 전법 */
@@ -162,7 +167,9 @@ var TACTIC_K = { okCounter: 0.55, failDmg: 0.85, failCounter: 0.85, crit: 1.25, 
    설전 등용: talkMin 이 확률(%)부터 걸 수 있다 · talkHp 대상의 버티는 힘 = hp × (1 + (talkHp − 확률) ÷ 100) */
 var DUEL_K = { hp: 100, rounds: 5, base: 24, pow: 2.5, mom: 0.12, momMax: 3, drawGap: 6, readBase: 55, readK: 0.5, readLo: 35, readHi: 85,
   rate: 7, minWar: 75, loss: 0.08, koLoss: 0.12, morLose: 25, koMor: 35, morWin: 10, merit: 100, drawMerit: 30, koTurns: 1,
-  ask: 10, refuse: 5, accBase: 50, accK: 4, accBold: 20, talkMin: 10, talkHp: 60 };
+  ask: 10, refuse: 5, accBase: 50, accK: 4, accBold: 20,
+  /* v0.16 AI 가 거는 일기토: 주장의 무력이 aiMinWar 이상이고 상대보다 aiLead 넘게 낮지 않으며, 부대의 기력이 ask + aiMorale 이상일 때 aiAsk% 로 */
+  aiAsk: 30, aiLead: -3, aiMinWar: 80, aiMorale: 30, talkMin: 10, talkHp: 60 };
 /* 수: beats = 이기는 상대 수 · mult = 이겼을 때의 피해 배수 · lose = 졌을 때 맞는 배수(없으면 1) · tie = 같은 수가 만났을 때 [방식, 값]
    방식: both = 서로 값(배수)만큼 친다 · rest = 둘 다 값만큼 회복한다 · clash = 능력으로 겨뤄 이긴 쪽이 값(배수)으로 친다 */
 var DUEL_KIND = {
