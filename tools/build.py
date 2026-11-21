@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """src/*.js, style.css, index.html + 지형 텍스처 → 단일 HTML.
-  build.py            → dist/index.html  : three.js를 CDN에서 불러오는 판(아티팩트용)
+  build.py            → dist/index.html  : three.js를 CDN에서 불러오는 단일 파일(v0.16까지는 이것을 아티팩트에 올렸다. 지금은 버전별 스냅샷 versions/ 에 쓴다)
+  build.py --split    → dist/artifact/   : 아티팩트에 올리는 판(v0.17~). index.html(three.js는 CDN) + data/scenes.json(무장의 큰 그림) — 아티팩트의 페이지 하나는 16MiB 까지라서 떼어 냈다
   build.py --embed    → dist/offline.html: three.js까지 넣은 완전 단일 파일(오프라인·시험용)
   build.py --pwa      → dist/pwa/        : 앱으로 설치할 수 있는 판(GitHub Pages용). index.html(three.js 포함) + manifest·sw.js·아이콘·음악
   음악(bgm/*.mp3)은 어느 판이든 HTML 옆의 bgm/ 폴더에서 읽는다. 없으면 코드로 만든 음악이 대신 나온다."""
@@ -8,12 +9,33 @@ import os, sys, re, base64, shutil
 root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 src = os.path.join(root, 'src')
 pwa = '--pwa' in sys.argv
+split = '--split' in sys.argv          # v0.17: 아티팩트에 올리는 판 — 큰 그림(SCENES)을 data/scenes.json 으로 떼어 낸다(페이지 하나는 16MiB 까지)
 embed = '--embed' in sys.argv or pwa
 def rd(n): return open(os.path.join(src, n), encoding='utf-8').read()
 THREE_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js'
 terrain = "var TERRAIN_B64='" + base64.b64encode(open(os.path.join(root, 'build', 'terrain.jpg'), 'rb').read()).decode('ascii') + "';\n"
 CODE = ['mapdata.js', 'roster.js', 'data.js', 'core.js', 'ai.js', 'ui3d.js', 'fx.js', 'voice.js', 'duel.js', 'ui_panels.js']
-parts = [('assets.js', rd('assets.js')), ('terrain', terrain), ('sprites.js', rd('sprites.js')), ('map3d.js', rd('map3d.js')), ('sfxdata.js', rd('sfxdata.js')), ('voicedata.js', rd('voicedata.js'))] + [(n, rd(n)) for n in CODE]
+assets = rd('assets.js')
+scenes_json = None
+if split:
+    import re, json
+    m = re.search(r'^var SCENES=(\{.*\});$', assets, re.M)
+    obj = json.loads(m.group(1))
+    scenes_json = '{\n' + ',\n'.join(json.dumps(k) + ':' + json.dumps(obj[k]) for k in sorted(obj)) + '\n}\n'
+    # 큰 그림은 페이지가 뜬 뒤에 받아 온다. 받기 전(이나 받지 못했을 때)에는 작은 초상이 그 자리에 나온다(sceneTag · duPor 가 본래 그렇게 한다)
+    LOADER = '''var SCENES={};
+(function () {
+  function go(n) {
+    fetch('data/scenes.json').then(function (r) { if (!r.ok) throw new Error('scenes ' + r.status); return r.json(); }).then(function (o) {
+      SCENES = o; window.SCENES_READY = true;
+      if (typeof SCENE_URL !== 'undefined') SCENE_URL = {};                    // 받기 전에 '없음'으로 적어 둔 것을 지운다
+      try { if (typeof MODAL !== 'undefined' && MODAL && typeof refreshDialog === 'function') refreshDialog(); } catch (e) { /* */ }
+    }).catch(function () { if (n < 3) setTimeout(function () { go(n + 1); }, 2500 * (n + 1)); else window.SCENES_READY = false; });
+  }
+  go(0);
+})();'''
+    assets = assets[:m.start()] + LOADER + assets[m.end():]
+parts = [('assets.js', assets), ('terrain', terrain), ('sprites.js', rd('sprites.js')), ('map3d.js', rd('map3d.js')), ('sfxdata.js', rd('sfxdata.js')), ('voicedata.js', rd('voicedata.js'))] + [(n, rd(n)) for n in CODE]
 js = '\n'.join('/* ==== file: ' + n + ' ==== */\n' + t for n, t in parts)
 assert '</script' not in js.lower()
 if embed:
@@ -84,6 +106,12 @@ if pwa:
     open(os.path.join(d, '.nojekyll'), 'w').close()                      # GitHub Pages: 파일을 그대로 내보내게
 else:
     out = os.path.join(root, 'dist', 'offline.html' if embed else 'index.html')
+    if split:
+        assert not embed
+        os.makedirs(os.path.join(root, 'dist', 'artifact', 'data'), exist_ok=True)
+        out = os.path.join(root, 'dist', 'artifact', 'index.html')
+        open(os.path.join(root, 'dist', 'artifact', 'data', 'scenes.json'), 'w', encoding='utf-8').write(scenes_json)
+        assert len(html.encode('utf-8')) < 16 * 1024 * 1024, '아티팩트의 페이지는 16MiB 까지'
 open(out, 'w', encoding='utf-8').write(html)
 open(os.path.join(root, 'dist', 'code.js'), 'w', encoding='utf-8').write('\n'.join(rd(n) for n in CODE))   # 문법 검사용
 print('built', out, os.path.getsize(out), 'bytes')

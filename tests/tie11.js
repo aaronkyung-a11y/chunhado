@@ -16,10 +16,11 @@ function run(ctx, code) { return JSON.parse(vm.runInContext('JSON.stringify((fun
 const ALL = `
   newGame(0, 1); var out = [];
   G.bases.forEach(function (b) { if (b.owner < 0) return; var os = baseOfficers(b), ts = poachTargets(b);
-    os.forEach(function (o) { ts.forEach(function (t) { out.push([b.id, o.id, t.id, recruitChance(b, o, t), typeof tieOf === 'function' && tieOf(o, t, b.owner) ? o.n + '→' + t.n + '(' + tieOf(o, t, b.owner).short + ')' : '']); }); }); });
+    os.forEach(function (o) { ts.forEach(function (t) { if (typeof LIM === 'number' && (o.id >= LIM || t.id >= LIM)) return; out.push([b.id, o.id, t.id, recruitChance(b, o, t), typeof tieOf === 'function' && tieOf(o, t, b.owner) ? o.n + '→' + t.n + '(' + tieOf(o, t, b.owner).short + ')' : '']); }); }); });
   return out;`;
 if (process.env.OLD) {
   const OLD = load(process.env.OLD);
+  NEW.LIM = OLD.LIM = vm.runInContext('SCENARIO.officers.length', OLD);      // v0.17: 무장이 늘었다 — 옛 판에도 있던 사람들끼리만 견준다(번호는 그대로다)
   const a = run(NEW, ALL), b = run(OLD, ALL);
   let diff = 0, tied = [], tiedUp = 0;
   for (let i = 0; i < a.length; i++) {

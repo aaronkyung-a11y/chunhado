@@ -39,6 +39,15 @@
 - **음악**: `BGM_TRACKS`가 장면(title·field·tense·battle·victory·defeat)마다 곡을 정한다. 여러 곡이면 끝날 때마다 다음 곡으로 돌아간다. 지금의 장면은 `bgmForState()` — 싸운 지 한 턴 안이거나 적이 내 성 2칸 안이면 전투, 적 부대가 내 성 7칸·내 부대 4칸 안이거나 내 부대가 남의 성역에 있으면 긴장, 아니면 평시.
   - 곡을 바꾸려면 `bgm/<이름>.mp3`를 바꿔 넣으면 된다(앱판은 `pwa/sw.js`의 `BGM` 번호도 올린다). 곡을 늘리려면 `BGM_TRACKS`에 이름을 더한다.
 
+## 무장 명부(v0.17 — 301 → 425명)
+- **명부**: `tools/make_roster.py <群雄割據 삼국지 index.html> src/roster.js`. 더한 124명은 `tools/roster17.py`에 있다 — `WOMEN`(여자 38명: 능력치 · 매력 · 적성 · 특기 · 초상 키, 모두 자체 산정) · `ACTIVE17`(194년에 세력에 있는 사람) · `FUTURE17`(재야 · 뒷날 나오는 사람: 이름 · 연도 · 도시 · 합류할 군주) · `CHA17` · `SKILL17`. 남자 86명의 능력치는 원본의 무장 표에서 온다.
+  - **더한 사람은 모두 명부의 맨 뒤에 붙는다**(앞쪽 301명의 번호가 바뀌지 않게 — 저장은 무장을 번호로 가리킨다). `SCENARIO.women`은 여성의 이름 표(목소리가 쓴다).
+- **초상 39장**(여성 38명 + 대교): `tools/por17_prompt.py`(문구 — 장면은 `art/por17_scenes.tsv`) → Higgsfield → `tools/dl_por17.py`(→ `art/raw17/`) → `tools/facebox.py art/raw17 art/por17_faces.tsv` → `tools/make_assets_v08.py`(본은 `art/raw17m` = `art/raw93m` + `art/raw17`, 얼굴은 `art/por17_faces_all.tsv`). 작업 번호는 `art/por17_ids.tsv`, 자른 틀은 `art/por17_out/crops.tsv`. 순서는 `build/v017/apply.sh` 머리에. 있던 초상 166장은 바이트까지 그대로다.
+- **옛 저장**: `rosterGrow(g)`(`deserialize` 안) — 저장의 무장 수가 명부보다 적으면 뒤쪽을 덧붙인다. 세력에 있던 사람은 그 세력이 살아 있으면 그 세력의 거점으로, 망했으면 그 도시의 재야로.
+- **인연**: `src/data.js`의 `BONDS`에 더했다. **목소리**: `voice.js`의 `VOICE_WOMEN`(= `SCENARIO.women`).
+- 시험: `OLD=<0.16의 src> node tests/roster17.js`(명부 · 번호 · 새 판 · 옛 저장 20가지) · `python3 tests/d29.py`(화면).
+- **아티팩트에 올리는 판**(v0.17~): 아티팩트의 페이지 하나는 16MiB까지라서 `python3 tools/build.py --split`이 `dist/artifact/index.html`과 `dist/artifact/data/scenes.json`(무장의 큰 그림 — `SCENES`)으로 나눠 만든다. 페이지가 뜬 뒤 `fetch('data/scenes.json')`으로 받아 `SCENES`를 채우고 `SCENE_URL`을 비운다(받기 전에는 `sceneTag` · `duPor`가 작은 초상을 쓴다). 올릴 때: `index.html` ← `dist/artifact/index.html`, `data/scenes.json` ← `dist/artifact/data/scenes.json`, `versions/chunhado-vX.html` ← `dist/index.html`(한 파일에 다 든 판). 시험은 `python3 tests/d30.py`(http로 내어 본다).
+
 ## AI의 일기토 · AI끼리의 협정 · 출병 요청(v0.16)
 - **AI가 거는 일기토**(`src/core.js`, 숫자는 `DUEL_K`의 `aiAsk` · `aiLead` · `aiMinWar` · `aiMorale`): `aiWantsDuel(u, d)` → `aiChallenge(u, d)`(`ai.js`가 계략보다 먼저 부른다).
   - 내 부대에 걸면 그 자리에서 정하지 않고 `G.asks`(`{ a, d, turn }`)에 적는다 → 내 차례에 `duelAskAnswer(aid, did, yes)`: 받으면 겨룰 판(`res.duelS`)을 돌려주고 화면이 `duelOpen(S, 'd', …)` → `duelFinish(S, res)`. 답하지 않으면 턴을 넘길 때 `duelAsksLapse()`가 받지 않은 것으로 친다. 지금도 유효한 것만 `duelAsks()`.

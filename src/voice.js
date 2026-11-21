@@ -12,12 +12,13 @@
 var VOICE = { buf: {}, order: [], cur: null, tok: 0, last: {}, alt: {}, said: 0 };
 var SAYV = null;                                   // 방금 고른 대화창의 말(sayLine 이 적어 둔다) — talk 가 같은 무장의 것이면 음성을 붙인다
 var VOICE_KEEP = 24;                               // 풀어서 쥐고 있는 소리의 수(나머지는 쓸 때 다시 푼다)
+var VOICE_WOMEN = (function () { var m = {}, L = (typeof SCENARIO !== 'undefined' && SCENARIO.women) || []; for (var i = 0; i < L.length; i++) m[L[i]] = 1; return m; })();      // v0.17: 명부(roster.js)의 여성 표
 var VOICE_LADY = { '초선': 1, '축융': 1, '대교': 1, '소교': 1, '여령기': 1, '손상향': 1, '황월영': 1, '채염': 1, '왕이': 1, '마운록': 1, '견씨': 1 };
 var VOICE_PRI = { fall: 5, duel: 5, join: 4, rout: 4, great: 4, tactic: 3, ploy: 3, retreat: 3, deploy: 2, order: 2, attack: 2, hurt: 1 };
 /* 대화창의 말 갈래(SAY 의 열쇠) → 음성의 상황. 여기 없는 말에는 음성이 붙지 않는다 */
 var VOICE_KEY = { deploy: 'deploy', joined: 'join', draft: 'order', patrol: 'order', train: 'order', produce: 'order', develop: 'order', merge: 'order', move: 'order', trans: 'order', advisor: 'order', trade: 'order', corps: 'order', cdev: 'order', carm: 'order', catk: 'order', csup: 'order', envoy: 'order' };
 function voiceKind(o) {
-  if (VOICE_LADY[o.n] || /^gf\d/.test(o.por || '')) return 'lady';
+  if (VOICE_LADY[o.n] || VOICE_WOMEN[o.n] || /^gf\d/.test(o.por || '')) return 'lady';
   if (o.war >= 88 && o.int < 72) return 'brave';             // 여포 · 장비 · 손책 같은 이는 군주여도 맹장의 목소리
   if (isLord(o)) return 'lord';
   if (o.war < 70 && o.int >= o.war) return 'sage';           // 싸움보다 머리를 쓰는 이

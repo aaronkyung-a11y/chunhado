@@ -138,10 +138,21 @@ for _ln in open(_tsv, encoding='utf-8'):
         assert _p[1] not in PORTRAIT, _p[1]
         PORTRAIT[_p[1]] = _p[0]
 
+import roster17 as R17                              # v0.17: 더한 무장(맨 뒤에 붙인다 — 기존 번호가 바뀌지 않게)
+CHA.update(R17.CHA17); SKILL.update(R17.SKILL17); FEMALE |= set(R17.WOMEN)
+for _n, _w in R17.WOMEN.items():
+    assert _n not in CHA and _n not in APT and _n not in SKILL and _n not in PORTRAIT and _w[7] not in PORTRAIT.values(), _n
+    CHA[_n] = _w[4]; APT[_n] = _w[5]; SKILL[_n] = _w[6]
+    if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'art', 'raw17', _w[7] + '.png')): PORTRAIT[_n] = _w[7]
+if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'art', 'raw17', 'daqiao.png')): PORTRAIT['대교'] = 'daqiao'      # 그동안 공용 그림(gf1)을 썼다
+
 L = 'CBAS'
 def jit(name, mod):
     return sum(ord(ch) for ch in name) % mod
 def stats(name):
+    if name in R17.WOMEN:
+        w, l, i_, p = R17.WOMEN[name][:4]
+        return w, l, i_, p, [1, 1, 1]
     if name in BASE: b = BASE[name]; return b['war'], b['ldr'], b['int'], b['pol'], b['apt3']
     if name in NEW:
         w, l, i_, p = NEW[name]
@@ -199,12 +210,23 @@ for fi, (lord, color, cities) in enumerate(FACTIONS):
         for n in names: add(n, fi, city)
 for f in FUTURE:
     add(f[0], -1, f[2], year=f[1], join=(f[3] if len(f) > 3 else None), status='hidden')
+N_OLD = len(officers)
+_lord = {f['n']: i for i, f in enumerate(facs)}
+_city = set(c for f in facs for c in f['cities'])
+for lord, cities in R17.ACTIVE17.items():
+    for city, names in cities.items():
+        assert city in facs[_lord[lord]]['cities'], (lord, city)
+        for n in names: add(n, _lord[lord], city)
+for f in R17.FUTURE17:
+    assert len(f) < 4 or f[3] in _lord, f
+    add(f[0], -1, f[2], year=f[1], join=(f[3] if len(f) > 3 else None), status='hidden')
+assert all(n in seen for n in R17.WOMEN), [n for n in R17.WOMEN if n not in seen]
 
 lord_idx = {f['n']: i for i, f in enumerate(facs)}
-out = dict(factions=facs, officers=officers, gates={k: (lord_idx[v] if v else -1) for k, v in GATE_OWNER.items()})
+out = dict(factions=facs, officers=officers, women=sorted(n for n in seen if n in FEMALE), gates={k: (lord_idx[v] if v else -1) for k, v in GATE_OWNER.items()})
 with open(OUT, 'w', encoding='utf-8') as f:
     f.write('var SCENARIO=' + json.dumps(out, ensure_ascii=False, separators=(',', ':')) + ';\n')
-print('factions', len(facs), 'officers', len(officers), 'active', sum(1 for o in officers if o['f'] >= 0))
+print('factions', len(facs), 'officers', len(officers), 'active', sum(1 for o in officers if o['f'] >= 0), 'old', N_OLD, 'new', len(officers) - N_OLD, 'women', sum(1 for o in officers if o['n'] in FEMALE))
 _names = set(o['n'] for o in officers)
 _bad = [n for n in PORTRAIT if n not in _names]
 if _bad: print('로스터에 없는 초상 이름:', _bad)

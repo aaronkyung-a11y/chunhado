@@ -2640,6 +2640,29 @@ function counsel(f) {
 }
 
 function serialize() { return JSON.stringify(G); }
+/* v0.17: 무장이 늘었다. 옛 저장에는 앞쪽 사람들만 있으므로(번호는 그대로다) 명부의 뒤쪽을 덧붙인다 → 더한 수.
+   · 194년에 세력에 있던 사람: 그 세력이 살아 있으면 그 세력에(본래의 도시를 아직 쥐고 있으면 거기, 아니면 군주가 있는 거점 · 그 세력의 첫 거점). 망했으면 그 도시의 재야로.
+   · 재야 · 뒷날 나오는 사람: 새 판과 똑같이 숨은 채로(등장 연도가 되면 탐색으로 찾거나, 정해진 군주에게 간다). */
+function rosterGrow(g) {
+  var n0 = g.officers.length, i, n = 0;
+  if (n0 >= SCENARIO.officers.length) return 0;
+  for (i = 0; i < n0; i++) if (!SCENARIO.officers[i] || SCENARIO.officers[i].n !== g.officers[i].n) return 0;       // 다른 명부로 만든 저장이면 건드리지 않는다
+  for (i = n0; i < SCENARIO.officers.length; i++) {
+    var so = SCENARIO.officers[i], loc = baseByName(so.c), b = g.bases[loc];
+    var o = { id: i, n: so.n, ldr: so.ldr, war: so.war, int: so.int, pol: so.pol, cha: so.cha, apt: so.apt, sk: so.sk || '', por: so.por,
+      f: -1, st: 'hidden', loc: loc, unit: null, loy: 100, merit: 0, acted: false, y: so.y || 0, j: so.j || null, capF: -1, dest: -1, eta: 0, pf: so.f, grown: 1 };
+    var F = so.f >= 0 ? g.factions[so.f] : null;
+    if (F && F.alive && SCENARIO.factions[so.f] && F.name === SCENARIO.factions[so.f].n) {
+      var home = (b && b.owner === so.f) ? b : null, L = g.officers[F.lord], k;
+      if (!home && L && L.unit === null && g.bases[L.loc] && g.bases[L.loc].owner === so.f) home = g.bases[L.loc];
+      if (!home) for (k = 0; k < g.bases.length && !home; k++) if (g.bases[k].owner === so.f && g.bases[k].kind === 'city') home = g.bases[k];
+      if (!home) for (k = 0; k < g.bases.length && !home; k++) if (g.bases[k].owner === so.f) home = g.bases[k];
+      if (home) { o.f = so.f; o.st = 'active'; o.loc = home.id; o.merit = Math.max(0, (o.ldr + o.war - 120) * 20); }
+    }
+    g.officers.push(o); n++;
+  }
+  return n;
+}
 function deserialize(s) {
   var g = JSON.parse(s);
   if (!g || g.ver !== 2) return false;
@@ -2664,7 +2687,13 @@ function deserialize(s) {
   }
   if (g.seed0 === undefined) g.seed0 = (g.seed ^ 0x2545F491) | 0;        // v0.9: 미리 정해 두는 결과의 고정 씨앗(옛 저장에는 없다 — 열 때 한 번 정해 저장본에 남는다)
   if (!g.corps) { g.corps = []; g.nextCorps = 1; }                         // v0.10: 군단(옛 저장에는 없다)
+  var grown = rosterGrow(g);                                             // v0.17: 무장이 늘었다 — 옛 저장에 새 무장을 덧붙인다
   G = g; reindex(); REPORT = []; EVQ = []; JOT = null;
+  if (grown) {
+    var gj = 0; for (var gi = G.officers.length - grown; gi < G.officers.length; gi++) { var gn = G.officers[gi]; delete gn.grown; if (gn.f >= 0) { gn.loy = loyNat(gn); if (gn.f === G.player) gj++; } }
+    var gcap = facCities(G.player)[0] || facBases(G.player)[0];
+    logMsg('무장이 늘었습니다(v0.17) — 천하에 ' + grown + '명이 더해졌습니다' + (gj ? ' · 우리 세력에 ' + gj + '명' : ''), gcap ? gcap.c : undefined, gcap ? gcap.r : undefined, G.player, 1);
+  }
   var tfix = terrainFix();                                               // v0.15: 산이 넓어졌다 — 못 가는 칸에 서 있던 부대를 옮긴다
   for (var ti = 0; ti < tfix.length; ti++) if (tfix[ti].f === G.player) logMsg(uName(tfix[ti]) + ' — 지형이 바뀌어(v0.15) 옆의 갈 수 있는 칸으로 옮겼습니다', tfix[ti].c, tfix[ti].r, G.player, 1);
   corpsFix();
