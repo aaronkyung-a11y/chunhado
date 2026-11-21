@@ -46,7 +46,7 @@ FACSET = '''(() => {
 def steps(pg):
     # ================= 1. 공유 =================
     print('1. 공유')
-    ok(pg.evaluate('!!$("tShare") && !!$("tHelp") && $("tVer").textContent.indexOf("v0.13") === 0'), '제목 화면: [공유] 단추와 판 번호 v0.13 — ' + pg.evaluate('$("tVer").textContent'))
+    ok(pg.evaluate('!!$("tShare") && !!$("tHelp") && $("tVer").textContent.indexOf("v0.14") === 0'), '제목 화면: [공유] 단추와 판 번호 v0.14 — ' + pg.evaluate('$("tVer").textContent'))
     tapsel(pg, '#tShare'); pg.wait_for_timeout(600)
     sh = pg.evaluate('({ title: MODAL ? document.querySelector("#modal .dlg-h").textContent : "", url: $("shU") ? $("shU").value : "", want: SHARE_URL, qr: !!document.querySelector("#modal svg.qr path"), send: !!document.querySelector("#modal [data-a=send]"), nat: typeof navigator.share })')
     ok(sh['title'].startswith('공유') and sh['url'] == sh['want'] == 'https://aaronkyung-a11y.github.io/chunhado/', '공유 창: 공유 창이 없는 브라우저에서는 주소가 적힌 창이 뜬다 %s' % sh)
@@ -78,7 +78,7 @@ def steps(pg):
     print('2. 시설의 레벨 표시')
     fresh(pg, 13, 4242)
     pg.evaluate('showMenu()'); pg.wait_for_timeout(300)
-    ok('v0.13' in head(pg) and pg.evaluate('!!document.querySelector("#modal [data-a=share]")'), '메뉴: ' + head(pg) + ' · [공유]')
+    ok('v0.14' in head(pg) and pg.evaluate('!!document.querySelector("#modal [data-a=share]")'), '메뉴: ' + head(pg) + ' · [공유]')
     pg.evaluate('closeDialog()')
     S = pg.evaluate(FACSET); print('   ', S); pg.wait_for_timeout(600)
     pg.locator('#sheet .tabs button').nth(3).tap(); pg.wait_for_timeout(1000)

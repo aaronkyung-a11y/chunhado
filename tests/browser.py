@@ -9,6 +9,8 @@ def run(steps, w=412, h=915, dpr=1):
     with sync_playwright() as p:
         br = p.chromium.launch(executable_path='/usr/bin/google-chrome', headless=True, args=['--no-sandbox', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
         cxt = br.new_context(viewport={'width': w, 'height': h}, device_scale_factor=dpr, is_mobile=True, has_touch=True, locale='ko-KR')
+        # v0.14: 시험은 같은 길로 흘러야 한다 — 내 공격에서 저절로 벌어지는 일기토(7%)는 화면을 덮으므로 꺼 둔다(일기토를 보는 시험 d24 는 제 손으로 켠다). DUEL_RATE 로 바꿀 수 있다
+        cxt.add_init_script("document.addEventListener('DOMContentLoaded', function () { try { if (window.DUEL_K) DUEL_K.rate = %s; } catch (e) {} });" % os.environ.get('DUEL_RATE', '0'))
         pg = cxt.new_page()
         pg.on('console', lambda m: errors.append(m.type + ': ' + m.text) if m.type in ('error', 'warning') else None)
         pg.on('pageerror', lambda e: errors.append('pageerror: ' + str(e)))

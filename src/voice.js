@@ -15,7 +15,7 @@ var VOICE_KEEP = 24;                               // 풀어서 쥐고 있는 �
 var VOICE_LADY = { '초선': 1, '축융': 1, '대교': 1, '소교': 1, '여령기': 1, '손상향': 1, '황월영': 1, '채염': 1, '왕이': 1, '마운록': 1, '견씨': 1 };
 var VOICE_PRI = { fall: 5, duel: 5, join: 4, rout: 4, great: 4, tactic: 3, ploy: 3, retreat: 3, deploy: 2, order: 2, attack: 2, hurt: 1 };
 /* 대화창의 말 갈래(SAY 의 열쇠) → 음성의 상황. 여기 없는 말에는 음성이 붙지 않는다 */
-var VOICE_KEY = { deploy: 'deploy', joined: 'join', draft: 'order', patrol: 'order', train: 'order', produce: 'order', develop: 'order', merge: 'order', move: 'order', trans: 'order', advisor: 'order', trade: 'order', corps: 'order', cdev: 'order', carm: 'order', catk: 'order', csup: 'order' };
+var VOICE_KEY = { deploy: 'deploy', joined: 'join', draft: 'order', patrol: 'order', train: 'order', produce: 'order', develop: 'order', merge: 'order', move: 'order', trans: 'order', advisor: 'order', trade: 'order', corps: 'order', cdev: 'order', carm: 'order', catk: 'order', csup: 'order', envoy: 'order' };
 function voiceKind(o) {
   if (VOICE_LADY[o.n] || /^gf\d/.test(o.por || '')) return 'lady';
   if (o.war >= 88 && o.int < 72) return 'brave';             // 여포 · 장비 · 손책 같은 이는 군주여도 맹장의 목소리

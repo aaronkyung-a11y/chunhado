@@ -1,5 +1,5 @@
 /* ===== 천하도 — 정적 데이터 ===== */
-var GAME_VERSION = 'v0.13';
+var GAME_VERSION = 'v0.14';
 var SAVE_KEY = 'chunhado_save_v2';
 var SHARE_URL = 'https://aaronkyung-a11y.github.io/chunhado/';      // 공유(v0.11)로 보내는 주소 — 누구나 열 수 있는 곳
 /* SHARE_URL 의 QR(33×33, 줄마다 16진수 · 왼쪽이 높은 자리). 주소를 바꾸면 다시 만들어야 한다(segno 로 만들고 OpenCV 로 읽어 확인) */
@@ -97,7 +97,22 @@ var MAX_DUR = { L: 3000, M: 2400, S: 1800, G: 2200 };
 var FAC_HP = 800;
 
 /* 행동력 소모 */
-var AP = { develop: 20, merge: 20, draft: 20, patrol: 15, train: 15, produce: 20, trade: 10, search: 15, recruit: 15, reward: 5, move: 10, deploy: 10 };
+var AP = { develop: 20, merge: 20, draft: 20, patrol: 15, train: 15, produce: 20, trade: 10, search: 15, recruit: 15, reward: 5, move: 10, deploy: 10, gift: 10, treaty: 15 };
+/* 외교(v0.14)
+   rel0 처음 우호도 · gift* 친선(금 giftGold → 우호 + giftBase + 사신의 정치 ÷ giftPol, 한 세력에 턴마다 한 번)
+   truce/ally: 기간(턴) · 받아들일 확률의 바탕(우호도에 더하는 값) · 동맹은 우호 allyRel 이상이어야 청할 수 있다
+   envoyK 사신의 능력(정전 = 정치, 동맹 = 매력)이 70 을 넘는 만큼 × 이 값 · powK 힘의 비: 우리가 두 배면 +powK(+powHi 까지), 저쪽이 두 배면 −powK(−powLo 까지) · busy 저쪽이 다른 세력과 싸우는 중이면 더하는 값(warTurns 턴 안에 맞았으면)
+   okRel 맺으면 오르는 우호 · refuse 거절당하면 내리는 우호 · cool 다시 청할 수 있을 때까지(턴)
+   break* 파기: 그 세력과의 우호 · 다른 모든 세력과의 우호 · 그 세력에 다시 청하지 못하는 턴
+   hitRel 칠 때마다 · fallRel 거점을 빼앗으면 · drift 달마다 rel0 쪽으로
+   talkMin 설전을 걸 수 있는 가장 낮은 확률 · talkHp 상대의 버티는 힘이 100 이 되는 확률(등용의 설전과 같은 꼴)
+   ai*: AI 가 플레이어에게 청해 오는 것 — 달마다 aiAsk% 로, 정전은 우호 aiTruceRel 이상이면서 플레이어보다 약하거나(힘이 aiWeak 배 아래) 다른 싸움에 바쁠 때, 동맹은 우호 aiAllyRel 이상일 때 */
+var DIP_K = { rel0: 40, giftGold: 1000, giftBase: 8, giftPol: 10,
+  truceTurns: 18, allyTurns: 36, truceBase: -15, allyBase: -40, allyRel: 60, envoyK: 0.4, powK: 20, powLo: 25, powHi: 20, busy: 15, warTurns: 6, askHi: 95,
+  okRelTruce: 5, okRelAlly: 10, refuse: 3, cool: 6, breakRel: 40, breakOthers: 10, breakCool: 18,
+  hitRel: 2, fallRel: 12, drift: 1, talkMin: 10, talkHp: 60,
+  aiAsk: 35, aiTruceRel: 45, aiAllyRel: 75, aiWeak: 0.8 };
+var PACT_NAME = { truce: '정전', ally: '동맹' };
 
 /* 전법 */
 var TACTICS = {

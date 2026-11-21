@@ -203,7 +203,10 @@ def steps(pg):
     pg.evaluate('() => { UI.music = false; stopBgm(); }'); pg.wait_for_timeout(300)
     off = pg.evaluate('() => ({ paused: BGM.el ? BGM.el.paused : true, name: BGM.name, syn: SYN.timer })')
     check('음악을 끄면 멈춤', off['paused'] and off['name'] == '' and not off['syn'], off)
-    pg.evaluate('() => { UI.music = true; playBgm(bgmForState()); }'); pg.wait_for_timeout(1500)
+    pg.evaluate('() => { UI.music = true; playBgm(bgmForState()); }')
+    try: pg.wait_for_function("BGM.mode === 'file' || BGM.mode === 'syn'", timeout=8000)      # v0.14: 정해진 1.5초 대신 곡이 읽힐 때까지(기기 사정에 달렸다)
+    except Exception: pass
+    pg.wait_for_timeout(300)
     on = pg.evaluate('() => ({ mode: BGM.mode, name: BGM.name, paused: BGM.el ? BGM.el.paused : null })')
     check('다시 켜면 지금 장면의 음악', on['name'] == 'field' and on['mode'] in ('file', 'syn'), on)
     tap(pg, '#btnMenu', 0, 400)

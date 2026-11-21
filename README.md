@@ -39,6 +39,15 @@
 - **음악**: `BGM_TRACKS`가 장면(title·field·tense·battle·victory·defeat)마다 곡을 정한다. 여러 곡이면 끝날 때마다 다음 곡으로 돌아간다. 지금의 장면은 `bgmForState()` — 싸운 지 한 턴 안이거나 적이 내 성 2칸 안이면 전투, 적 부대가 내 성 7칸·내 부대 4칸 안이거나 내 부대가 남의 성역에 있으면 긴장, 아니면 평시.
   - 곡을 바꾸려면 `bgm/<이름>.mp3`를 바꿔 넣으면 된다(앱판은 `pwa/sw.js`의 `BGM` 번호도 올린다). 곡을 늘리려면 `BGM_TRACKS`에 이름을 더한다.
 
+## 외교(v0.14)
+- **규칙**(`src/core.js`, 숫자는 `src/data.js`의 `DIP_K`): 상태는 `G.dip`(우호 `rel` · 협정 `pact` · 다시 청할 수 있는 턴 `cd` · 선물한 턴 `gift` · 마지막으로 싸운 턴 `war` · 청해 온 제안 `offers`). 없으면 `dipOf()`가 그 자리에서 만든다(옛 저장).
+  - 읽기: `relOf(a, b)` · `pactOf(a, b)` · `pactOn` · `dipTerms(f, t, kind, 사신)`(받아들일 확률과 내역) · `dipCan`(청할 수 없는 까닭) · `dipOffers()`.
+  - 명령: `cmdGift(b, id, t)` · `cmdTreaty(b, id, t, 'truce' | 'ally', S)`(S = 끝난 설전) · `cmdBreak(f, t)` · `dipAnswer(from, kind, yes)`. 설전은 `dipTalkNew`.
+  - 협정의 효과는 다섯 곳에서 건다: `attackTargets` · `ployTargets` · `challengeTargets`(대상에서 뺀다), `pactErr`(공격 · 전법 · 계략 · 일기토의 문턱), `aiMayStrike`(AI). 그 밖에 `canPoach`, `ai.js`의 `enemyUnitsNear`.
+  - 때: 칠 때 `dipHit`(actEv), 턴이 바뀔 때 `dipTurn`(협정의 끝), 달이 바뀔 때 `dipMonth`(우호가 돌아감 · AI의 제안).
+- **화면**(`src/ui_panels.js`): `flowDip(b)` → `flowDipFac(b, t)` → 사신 고르기(`pickOfficers`, [설전]은 `flowDipTalk`). 청해 온 제안은 `flowDipOffer`, [지금 할 일]에는 `todoList`의 `go: ['dip', 세력, 종류]`. 칠 수 없는 상대는 `targetActions` 첫머리에서.
+- 시험: `node tests/dip14.js`(규칙 37가지) · `python3 tests/d26.py`(화면).
+
 ## 음성(v0.13)
 - **소리**: `src/voicedata.js`(생성물) — `VOICE_DATA['<갈래>_<상황>_<1|2>']` = mp3(base64) 120개, `VOICE_TEXT` = [中文, 뜻]. 만드는 법: `voice13/raw/NNN.mp3`(뽑은 원본, 순서는 `voice13/lines.py`의 `all_lines()`) → `python3 tools/make_voice_v013.py`.
 - **엔진**: `src/voice.js`. `voiceKind(o)`가 목소리 갈래를 고르고, `voiceSay(o, 상황, opt)`가 말한다(확률 `p` · 늦춤 `delay` · 뜻풀이 자리 `at`/`cap`). 겹칠 때의 차례는 `VOICE_PRI`. 효과음과 같은 길(`sndBus`)로 나간다.

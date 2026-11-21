@@ -24,7 +24,7 @@ function estUU(a, d, mult, ranged) {
 }
 function enemyUnitsNear(f, c, r, rad) {
   var out = [];
-  for (var i = 0; i < G.units.length; i++) { var u = G.units[i]; if (u.f !== f && hdist(c, r, u.c, u.r) <= rad) out.push(u); }
+  for (var i = 0; i < G.units.length; i++) { var u = G.units[i]; if (u.f !== f && hdist(c, r, u.c, u.r) <= rad && !pactOn(f, u.f)) out.push(u); }      // v0.14: 협정을 맺은 세력의 부대는 적으로 세지 않는다
   return out;
 }
 function aiMilScore(o) { return o.war * 0.55 + o.ldr * 0.45; }
@@ -265,6 +265,7 @@ function aiPoach(f) {
       var t = ts[i];
       if (askWait(t)) continue;
       if (t.f === G.player && G.peace && G.turn < G.peace.until) continue;      // 초반 보호: 그동안은 플레이어의 무장에게 권하지 않는다
+      if (pactOn(f, t.f)) continue;                                              // v0.14: 협정을 맺은 세력의 무장도
       if (facOfficers(t.f).length <= POACH_AI.spare) continue;                  // 무장이 몇 안 되는 세력은 건드리지 않는다
       var p = recruitChance(b, o, t); if (p < POACH_AI.min) continue;
       var v = p * (t.ldr + t.war + t.int + t.pol);
