@@ -50,7 +50,7 @@ def steps(pg):
       todos: Array.prototype.map.call(s.querySelectorAll(".todo"), function (t) { var b = t.querySelector("b"), sm = t.querySelector("small"); return [t.offsetHeight, b ? b.getBoundingClientRect().height : 0, sm ? sm.getBoundingClientRect().height : 0, t.innerText.replace(/\\n+/g, " / ")]; }) }; })()''')
     n1 = chars(pg, '#sheet')
     print('  STATUS 창:', home['todos'])
-    ok(home['v'] == 'v0.11', '판 번호 v0.11 [%s]' % home['v'])
+    ok(home['v'] == 'v0.12', '판 번호 v0.12 [%s]' % home['v'])
     ok(home['links'] == 0 and home['pz'] and home['adv'], 'STATUS 창: 거점·부대·무장·천하 네 단추와 숫자 띠가 없다 / 보호 표와 군사 단추는 있다')
     ok(len(home['todos']) >= 1 and all(t[0] <= 60 and t[1] <= 24 and t[2] <= 20 for t in home['todos']), "'지금 할 일'은 줄마다 한 줄씩(제목 한 줄 + 풀이 한 줄, 높이 60 이하) — %d줄" % len(home['todos']))
     ok(0 < n1 <= 150, 'STATUS 창의 보이는 글 %d자(150자까지 — 0.9.1 은 같은 판에서 302자)' % n1)

@@ -20,7 +20,8 @@ function starts(a) {
   var out = [];
   nbrs(a.c, a.r).forEach(function (q) { var c = q[0], r = q[1], k = K(c, r), t = terr(c, r);
     if (t === 'm' || t === 's' || t === 'x') return; if (UAT[k] || BAT[k] !== undefined) return;
-    var pf = PAT[k]; if (pf && G.bases[pf.b].plots[pf.i].fac) return; out.push(k); });
+    if (typeof facUnder !== 'function') { var pf = PAT[k]; if (pf && G.bases[pf.b].plots[pf.i].fac) return; }      // v0.11 까지: 시설 칸으로는 나가지 못했다
+    out.push(k); });
   return out;
 }
 /* A에서 나온 부대가 t턴째에 설 수 있는 칸 */

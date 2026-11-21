@@ -25,7 +25,7 @@ function invariants() {
     if (UAT[K(u.c, u.r)] !== u) errs.push('UAT mismatch unit ' + u.id);
     if (seen[K(u.c, u.r)]) errs.push('two units on one hex'); seen[K(u.c, u.r)] = 1;
     var t = terr(u.c, u.r); if (t === 'm' || t === 's' || t === 'x') errs.push('unit on impassable ' + t);
-    if (facAt(u.c, u.r)) errs.push('unit on facility');
+    // (v0.12: 시설 칸에 설 수 있다 — 'unit on facility' 검사는 없앴다)
     if (!G.factions[u.f].alive) errs.push('unit of dead faction');
     if (!u.off.length) errs.push('unit without officers');
     for (j = 0; j < u.off.length; j++) { var o = G.officers[u.off[j]]; if (o.unit !== u.id || o.st !== 'active' || o.f !== u.f) errs.push('unit officer mismatch ' + o.n + ' st=' + o.st + ' unit=' + o.unit + ' f=' + o.f + '/' + u.f); }

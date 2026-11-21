@@ -1,5 +1,5 @@
 /* ===== 천하도 — 정적 데이터 ===== */
-var GAME_VERSION = 'v0.11';
+var GAME_VERSION = 'v0.12';
 var SAVE_KEY = 'chunhado_save_v2';
 var SHARE_URL = 'https://aaronkyung-a11y.github.io/chunhado/';      // 공유(v0.11)로 보내는 주소 — 누구나 열 수 있는 곳
 /* SHARE_URL 의 QR(33×33, 줄마다 16진수 · 왼쪽이 높은 자리). 주소를 바꾸면 다시 만들어야 한다(segno 로 만들고 OpenCV 로 읽어 확인) */
@@ -130,8 +130,9 @@ var TACTIC_RATE = { C: 55, B: 63, A: 71, S: 80 };   // 전법 성공률의 바�
 /* 전법의 숫자(보통 공격의 피해 = 1, 보통 공격이 받는 반격 = 0.55)
    okCounter: 성공했을 때 받는 반격 · failDmg: 실패했을 때 주는 피해 · failCounter: 실패했을 때 받는 반격 · crit: 대성공 배수(critGod: 궁신·기신)
    stat: 무장 항의 기울기 — (내 부대 최고 무력×0.6 + 주장 통솔×0.4 − 상대 부대 최고 통솔) × stat, statLo ~ statHi
-   v0.9.1: 성공해도 반격은 보통 공격만큼, 실패는 더 아프게, 무장의 차이는 더 크게.   v0.8~0.9: 0.4 / 0.5 / 0.7 / 1.3(1.43) / 0.6 [−24~+12]   v0.7: 0.25 / 0.6 / 0.4 */
-var TACTIC_K = { okCounter: 0.55, failDmg: 0.4, failCounter: 0.85, crit: 1.25, critGod: 1.375, stat: 0.8, statLo: -30, statHi: 15 };
+   v0.12: 실패해도 피해는 보통 공격에 가깝게(failDmg 0.4 → 0.85) — 실패의 값은 기력과 큰 반격으로 치른다.
+   v0.9.1~0.11: 0.55 / 0.4 / 0.85 — 성공해도 반격은 보통 공격만큼, 실패는 더 아프게, 무장의 차이는 더 크게.   v0.8~0.9: 0.4 / 0.5 / 0.7 / 1.3(1.43) / 0.6 [−24~+12]   v0.7: 0.25 / 0.6 / 0.4 */
+var TACTIC_K = { okCounter: 0.55, failDmg: 0.85, failCounter: 0.85, crit: 1.25, critGod: 1.375, stat: 0.8, statLo: -30, statHi: 15 };
 
 /* 계략 */
 var PLOYS = [

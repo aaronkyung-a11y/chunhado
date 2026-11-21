@@ -70,7 +70,7 @@ def steps(pg):
     a = pg.evaluate('''() => ({ n: Object.keys(SND.buf).length, total: Object.keys(SFX_DATA).length, ac: AC ? AC.state : null, off: SND.off, dur: Object.keys(SND.buf).map(function (k) { return [k, +SND.buf[k].duration.toFixed(2)]; }),
       mode: BGM.mode, file: BGM.file, name: BGM.name, paused: BGM.el ? BGM.el.paused : null, t: BGM.el ? BGM.el.currentTime : -1, dead: Object.keys(BGM.dead), syn: SYN.name })''')
     print('  효과음 풀린 것', a['n'], '/', a['total'], 'AC', a['ac'], '| 음악', a['mode'], a['file'], 'paused', a['paused'], 't', round(a['t'], 2), 'dead', a['dead'])
-    check('효과음 27개가 모두 풀림', a['n'] == 27 and a['total'] == 27, a['n'])
+    check('효과음 29개가 모두 풀림(v0.12: thock · arrowland 가 늘었다)', a['n'] == 29 and a['total'] == 29, a['n'])
     check('효과음 시작 보정이 0~60ms', all(0 <= v <= 0.061 for v in a['off'].values()), a['off'])
     check('소리 장치가 켜짐(running)', a['ac'] == 'running', a['ac'])
     print('  시작 보정(ms):', {k: round(v * 1000) for k, v in a['off'].items()})
@@ -171,7 +171,17 @@ def steps(pg):
         check('기병이 움직이면 말발굽 소리(move:cav)', 'move:cav' in s and not any(x.startswith('syn:') for x in s), s)
     pg.evaluate('''() => { var u = UMAP[S.mine[2]], t = UMAP[S.foe[1]]; u.done = false; t.troops = t.max = 12000; t.status = null; selectUnit(u, true); UI.target = { kind: 'unit', u: t, c: t.c, r: t.r }; doAct({ kind: 'attack' }); }''')
     pg.wait_for_timeout(3200); s = spied(pg); print('  활 공격 소리:', s)
-    check('활 공격: 시위·화살 무리 → 박히는 소리', 'bow' in s and 'arrows' in s and 'thud' in s, s)
+    check('활 공격: 시위·화살 무리 → 화살이 박히는 소리(v0.12: thock — thud · crush · clang 은 나지 않는다)', 'bow' in s and 'arrows' in s and 'thock' in s and not any(x in s for x in ('thud', 'crush', 'clang')), s)
+    # v0.12: 쏘는 전법(화시)의 세 결과 — 맞는 소리도 화살 소리다
+    r = tactic(pg, 2, 1, 'TACTICS.bow[0]', 0.999, 'd12_10_bowfail')
+    print('  화시 실패:', r['fl'], '|', r['snd'])
+    check('화시 실패: 시위 소리 → 빗나간 살(thock) — 쇠 소리(clang · thud)는 없다', 'bow' in r['snd'] and 'thock' in r['snd'] and not any(x in r['snd'] for x in ('clang', 'thud', 'crush')), r['snd'])
+    r = tactic(pg, 2, 1, 'TACTICS.bow[0]', (r['odds']['crit'] + r['odds']['ok']) / 200.0, 'd12_11_bowok')
+    print('  화시 성공:', r['fl'], '|', r['snd'])
+    check('화시 성공: 살 무리가 박히는 소리(arrowland) — crush · clang 은 없다', 'bow' in r['snd'] and 'arrows' in r['snd'] and 'arrowland' in r['snd'] and not any(x in r['snd'] for x in ('clang', 'thud', 'crush', 'gong')), r['snd'])
+    r = tactic(pg, 2, 1, 'TACTICS.bow[0]', 0.001, 'd12_12_bowgreat')
+    print('  화시 대성공:', r['fl'], '|', r['snd'])
+    check('화시 대성공: arrowland + 징', 'arrowland' in r['snd'] and 'gong' in r['snd'] and not any(x in r['snd'] for x in ('clang', 'crush')), r['snd'])
     pg.evaluate('''() => { var u = UMAP[S.mine[0]], t = UMAP[S.foe[0]]; u.done = false; t.status = null; placeUnit(t, u.c + 1, u.r); syncScene(); selectUnit(u, true); UI.target = { kind: 'unit', u: t, c: t.c, r: t.r }; doAct({ kind: 'attack' }); }''')
     pg.wait_for_timeout(3200); s = spied(pg); print('  근접 공격 소리:', s)
     check('근접 공격: 발 구르기 → 베는 소리', 'stomp' in s and 'slash' in s, s)
@@ -183,6 +193,9 @@ def steps(pg):
       return [a, b]; }''')
     check('싸움이 없고 적 부대가 가까우면 긴장, 없으면 평시', t1 == ['tense', 'field'], t1)
     pg.evaluate("() => { playBgm('tense'); }"); pg.wait_for_timeout(1800)
+    if HAS_BGM:
+        try: pg.wait_for_function("BGM.mode === 'file'", timeout=6000)      # 곡을 처음 읽는 데 걸리는 시간은 기기 사정에 달렸다(v0.12: 정해진 1.8초 대신 읽힐 때까지)
+        except Exception: pass
     m = pg.evaluate('() => ({ mode: BGM.mode, file: BGM.file, name: BGM.name, loop: BGM.el && BGM.el.loop, paused: BGM.el && BGM.el.paused })')
     if HAS_BGM: check('긴장 음악: tense.mp3 한 곡을 되풀이', m['mode'] == 'file' and m['file'] == 'tense' and m['loop'] is True and m['paused'] is False, m)
     else: check('긴장 음악: 파일이 없으면 만든 음악', m['mode'] == 'syn', m)

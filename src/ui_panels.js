@@ -100,6 +100,31 @@ function refreshSheet() {
   body = el.querySelector('.sh-body'); if (body) body.scrollTop = st;
 }
 function closeSheet() { showHome(); }
+/* ---------- 아래에 더 있다는 표시(v0.12) ----------
+   굴러가는 몸통(.dlg-b · .sh-body)의 맨 끝에 높이 0 인 붙박이(sticky) 토막을 넣는다 — 아래에 더 있을 때만 몸통의 아래 끝에 보인다. */
+var MORE_GAP = 10;                                                 // 이만큼(픽셀)도 안 남았으면 끝으로 본다
+function moreSet(body) {
+  var h = body.querySelector(':scope > .morehint'); if (!h) return;
+  h.classList.toggle('on', body.scrollHeight - body.scrollTop - body.clientHeight > MORE_GAP);
+}
+function moreScan() {
+  var list = document.querySelectorAll('#modal .dlg-b, #sheet .sh-body');
+  for (var i = 0; i < list.length; i++) (function (body) {
+    if (!body.querySelector(':scope > .morehint')) {
+      var h = document.createElement('div'); h.className = 'morehint'; h.setAttribute('aria-hidden', 'true'); h.innerHTML = '<i>▼ 아래에 더 있습니다</i>';
+      h.firstChild.addEventListener('click', function (e) { e.stopPropagation(); try { body.scrollBy({ top: Math.round(body.clientHeight * 0.8), behavior: 'smooth' }); } catch (err) { body.scrollTop += Math.round(body.clientHeight * 0.8); } });
+      body.appendChild(h);
+    }
+    if (!body._more) { body._more = true; body.addEventListener('scroll', function () { moreSet(body); }, { passive: true }); }
+    moreSet(body);
+  })(list[i]);
+}
+function moreSoon() { moreScan(); if (moreSoon.t) return; moreSoon.t = setTimeout(function () { moreSoon.t = 0; moreScan(); }, 350); }      // 곧바로(다시 그린 그 자리에서 — 깜빡이지 않게) + 그림이 늦게 뜨거나 판이 미끄러져 올라온 뒤에 한 번 더
+function moreInit() {
+  try { var mo = new MutationObserver(moreSoon); mo.observe($('modal'), { childList: true }); mo.observe($('sheet'), { childList: true }); } catch (e) { /* 표시는 없어도 된다 */ }
+  window.addEventListener('resize', moreSoon);
+  document.addEventListener('toggle', moreSoon, true);              // 접힌 풀이(<details>)를 펼쳤을 때
+}
 /* 창은 겹쳐 열 수 있다. push 로 열면 지금 창을 아래에 깔아 두고, ×(또는 바깥 누르기)는 한 단계만 뒤로 간다.
    명령을 마쳤을 때처럼 한꺼번에 닫을 때는 closeDialog(). */
 var MSTACK = [], MPAINT = 0;
@@ -788,13 +813,14 @@ function onTap(c, r) {
     if (t) {
       var acts = targetActions(su, t), any = acts.some(function (a) { return a.ok; });
       if (!any) {
+        if (t.kind === 'fac' && UI.rc && UI.rc.stop[k]) { UI.march = null; doMove(su, c, r); return; }
         if ((t.kind === 'base' || t.kind === 'fac') && justOut(su) && hdist(su.c, su.r, c, r) <= (t.kind === 'fac' ? 1 : uRange(su))) toast('출진한 턴에는 거점을 칠 수 없습니다', 2400);
         else if (!(UI.pickMarch && t.kind === 'base' && proposeMarch(su, c, r))) toast('닿지 않습니다');
         return;
       }
       UI.target = t; UI.march = null; refreshSheet(); requestDraw(); return;
     }
-    if (UI.pickMarch && !u && MC[clsIdx(su)][k] < 99 && !(pl && pl.plot.fac)) { proposeMarch(su, c, r); return; }   // [행군]을 누른 뒤: 목적지 고르기
+    if (UI.pickMarch && !u && MC[clsIdx(su)][k] < 99) { proposeMarch(su, c, r); return; }   // [행군]을 누른 뒤: 목적지 고르기
     if (UI.rc && UI.rc.stop[k]) { UI.march = null; doMove(su, c, r); return; }
     if (!u && !b && !(pl && pl.base.owner === G.player) && MC[clsIdx(su)][k] < 99) { toast('닿지 않습니다 — 파란 칸까지만', 2000); return; }
   }
@@ -971,7 +997,9 @@ function resultFx(res) {
     fxs.forEach(function (tx, i) { floatText(tc, tr, tx, C_PLOY, 480 + i * 240, false, 26 + i * 22); });
     if (res.fire) sfx('fire');
     var far = res.ac0 !== undefined && hdist(res.ac0, res.ar0, res.c, res.r) > 1;
-    sfx(res.fail ? 'fail' : (res.kind === 'tactic' ? (res.crit ? 'great' : 'big') : (res.crit ? 'big' : (res.tk === 'base' || res.tk === 'fac' ? 'siege' : (far ? 'arrowhit' : 'hit')))));
+    var shot = far || (res.kind === 'tactic' && (res.tac === '화시' || res.tac === '관시' || res.tac === '난사'));      // 쏘는 공격: 맞는 소리도 화살 소리로(v0.12)
+    if (shot) sfx(res.fail ? 'arrowfail' : (res.kind === 'tactic' ? (res.crit ? 'arrowgreat' : 'arrowbig') : (res.crit ? 'arrowbig' : 'arrowhit')));
+    else sfx(res.fail ? 'fail' : (res.kind === 'tactic' ? (res.crit ? 'great' : 'big') : (res.crit ? 'big' : (res.tk === 'base' || res.tk === 'fac' ? 'siege' : 'hit'))));
   }
   if (res.counter) floatText(ac, ar, '-' + fmt(res.counter), C_CNT, 520);
   if (res.duel) floatText(res.duel.win ? tc : ac, res.duel.win ? tr : ar, '일기토 패 -' + fmt(res.duel.loss), C_INK, 1150, true, -8);   // 소리는 연출(fx.js) 쪽에서 엇갈리는 순간에
@@ -1052,6 +1080,8 @@ function unitSheet(u) {
       douse: function () { var x = selUnit(); if (!x || UI.busy) return; var res = unitPloy(x, PLOYS[3], { c: x.c, r: x.r }); if (!res.ok) { toast(res.msg); return; } UI.busy = true; animAct(res, function () { UI.busy = false; toast('주위의 불을 껐습니다'); clearSel(); afterAction(); }, function () { sfx('douse'); }); requestDraw(); },
       act: function (el) { var a = st.acts[+el.getAttribute('data-v')]; if (a && a.ok) doAct(a); else if (a) toast(a.sub); },
       untarget: function () { UI.target = null; refreshSheet(); requestDraw(); },
+      moveon: function () { var x = selUnit(), t = UI.target; if (!x || !t || !UI.rc || !UI.rc.stop[K(t.c, t.r)]) return; UI.target = null; UI.march = null; doMove(x, t.c, t.r); },
+      facunder: function () { var x = selUnit(), t = x ? facUnder(x) : null; if (!t) return; UI.target = t; UI.march = null; UI.pickMarch = false; refreshSheet(); requestDraw(); },
       tacinfo: function () { var x = selUnit(), t = UI.target; if (x && t && t.kind === 'unit' && alive(t.u)) showTacticInfo(x, t.u); },
       off: function (el) { showOfficer(off(+el.getAttribute('data-v'))); },
       corps: function () { var x = UMAP[u.id], cp = x && unitCorps(x); if (cp) showCorps(cp.id); },
@@ -1092,10 +1122,13 @@ function unitSheet(u) {
           h += '<div class="acts">';
           for (i = 0; i < st.acts.length; i++) { var a = st.acts[i]; h += '<button class="act' + (a.pri && a.ok ? ' pri' : '') + (a.ok ? '' : ' off') + '" type="button" data-a="act" data-v="' + i + '"><b>' + a.label + '</b>' + (a.sub ? '<small>' + a.sub + '</small>' : '') + '</button>'; }
           if (t.kind === 'unit' && (TACTICS[x.type] || []).length) h += '<button class="act" type="button" data-a="tacinfo"><b>전법 풀이</b></button>';
+          if (t.kind === 'fac' && UI.rc && UI.rc.stop[K(t.c, t.r)]) h += '<button class="act" type="button" data-a="moveon"><b>이 칸으로 이동</b></button>';
           h += '<button class="act" type="button" data-a="untarget"><b>대상 취소</b></button></div>';
         } else {
           var canDouse = ployTargets(x, PLOYS[3]).length > 0;
-          h += '<div class="acts"><button class="act" type="button" data-a="wait"><b>대기</b></button>' +
+          var fu = facUnder(x);
+          h += '<div class="acts">' + (fu ? '<button class="act' + (justOut(x) ? ' off' : ' pri') + '" type="button" data-a="facunder"><b>시설 파괴</b><small>' + (justOut(x) ? '다음 턴부터' : '발밑의 ' + FAC[fu.b.plots[fu.i].fac.t].name) + '</small></button>' : '') +
+            '<button class="act" type="button" data-a="wait"><b>대기</b></button>' +
             '<button class="act' + (x.ox >= 0 ? '' : ' off') + '" type="button" data-a="undo"><b>이동 취소</b></button>' +
             (canDouse ? '<button class="act" type="button" data-a="douse"><b>소화</b><small>기력 10</small></button>' : '') +
             (x.type === 'trans' ? '<button class="act' + (supplyPairs(x).length ? ' pri' : ' off') + '" type="button" data-a="supply"><b>보급</b><small>' + (supplyPairs(x).length ? '옆의 아군 부대에' : '아군 부대 옆에서') + '</small></button>' : (supplyPairs(x).length ? '<button class="act pri" type="button" data-a="supply"><b>보급 받기</b><small>옆의 수송대에서</small></button>' : '')) +
@@ -1524,11 +1557,42 @@ function appBack() {
   return false;
 }
 function backToBase(id) { return function () { var bb = G.bases[id]; if (bb && bb.owner === G.player) selectBase(bb, false, 'mil'); else clearSel(); }; }
+/* 나갈 자리(v0.12): 성 둘레 여섯 칸을 지도와 같은 방향으로 그린다. st.at = 고른 칸 [c, r] 또는 null(게임이 고른다 — 그 칸은 점선) */
+function dirName(dx, dz) { var a = Math.atan2(dz, dx) * 180 / Math.PI; return Math.abs(a) < 15 ? '동' : (Math.abs(a) > 165 ? '서' : (a < 0 ? (a > -90 ? '북동' : '북서') : (a < 90 ? '남동' : '남서'))); }
+function spotWhat(c, r) {
+  var k = K(c, r), t = terr(c, r), pf = PAT[k], fc = pf ? G.bases[pf.b].plots[pf.i].fac : null;
+  if (UAT[k]) return '부대';
+  if (fc) return FAC[fc.t].name;
+  if (G.fires[k]) return '불';
+  return isRoad(c, r) ? (t === 'w' ? '나루' : '길') : TERRAIN_NAME[t];
+}
+function deployRing(b, st) {
+  var ns = nbrs(b.c, b.r), p0 = hexCenter(b.c, b.r), okK = {}, auto = deploySpot(b), R = 29, D = R * Math.sqrt(3), cx = 92, cy = 84, h = '', i, sel = null;
+  deploySpots(b).forEach(function (q) { okK[K(q[0], q[1])] = 1; });
+  if (st.at && !okK[K(st.at[0], st.at[1])]) st.at = null;                // 고른 칸이 막혔으면(다른 부대가 섰으면) 자동으로 되돌린다
+  function hex(x, y, cls, attr) { var pts = ''; for (var a = 0; a < 6; a++) { var th = Math.PI / 180 * (60 * a - 30); pts += (x + R * 0.96 * Math.cos(th)).toFixed(1) + ',' + (y + R * 0.96 * Math.sin(th)).toFixed(1) + ' '; } return '<polygon class="' + cls + '" points="' + pts + '"' + (attr || '') + '/>'; }
+  h += hex(cx, cy, 'c') + '<text class="cn" x="' + cx + '" y="' + (cy + 4.5) + '">' + b.n + '</text>';
+  for (i = 0; i < ns.length; i++) {
+    var c = ns[i][0], r = ns[i][1], p = hexCenter(c, r), dx = p[0] - p0[0], dz = p[1] - p0[1], x = cx + dx / SQ3 * D, y = cy + dz / SQ3 * D, k = K(c, r);
+    var on = st.at && st.at[0] === c && st.at[1] === r, au = !st.at && auto && auto[0] === c && auto[1] === r, ok = !!okK[k];
+    if (on || au) sel = [dirName(dx, dz), spotWhat(c, r)];
+    h += hex(x, y, (ok ? 'ok' : 'no') + (on ? ' on' : '') + (au ? ' au' : ''), ' data-a="at" data-v="' + c + ',' + r + '"') + '<text x="' + x.toFixed(1) + '" y="' + (y + 4).toFixed(1) + '"' + (ok ? '' : ' class="no"') + '>' + spotWhat(c, r) + '</text>';
+  }
+  return '<div class="sec">나갈 자리 <small>칸을 눌러 고릅니다</small>' + (st.at ? '<button class="btn auto" type="button" data-a="atauto">자동</button>' : '') + '</div>' +
+    '<div class="dpat"><svg class="dring" viewBox="0 0 184 168" role="img" aria-label="성 둘레 여섯 칸">' + h + '</svg>' +
+    '<p class="dpat-t" id="dpAt">' + (sel ? (st.at ? '<b>' + sel[0] + '쪽</b> ' + sel[1] + '<small>고른 자리</small>' : '<b>' + sel[0] + '쪽</b> ' + sel[1] + '<small>자동 — 길이 난 쪽부터</small>') : '<b class="bad">나갈 자리가 없습니다</b>') + '</p></div>';
+}
+function ringOn(st) {                                           // 그림의 두 단추
+  return {
+    at: function (el) { if (el.getAttribute('class').indexOf('no') >= 0) return toast('그 칸으로는 나갈 수 없습니다'); var v = el.getAttribute('data-v').split(','); st.at = [+v[0], +v[1]]; refreshDialog(); },
+    atauto: function () { st.at = null; refreshDialog(); }
+  };
+}
 function flowDeploy(b) {
   var list = idleOfficers(b).sort(function (x, y) { return aiMilScore(y) - aiMilScore(x); });
   if (!list.length) return toast('행동할 수 있는 무장이 없습니다');
   if (b.troops < 100) return toast('주둔 병력이 없습니다');
-  var st = { type: 'sword', ids: [], troops: 0, turns: DEPLOY_FOOD[1], auto: true };
+  var st = { type: 'sword', ids: [], troops: 0, turns: DEPLOY_FOOD[1], auto: true, at: null }, RO = ringOn(st);
   function stock(t) { var wp = UNIT_TYPES[t].weapon; return wp === 'ram' ? b.w.ram : (wp ? b.w[wp] : 1e9); }
   function usable(t) { return t === 'ram' ? stock(t) >= 1 : stock(t) >= 100; }
   ['spear', 'halberd', 'bow', 'cav'].forEach(function (t) { if (usable(t) && (st.type === 'sword' || stock(t) > stock(st.type))) st.type = t; });
@@ -1567,7 +1631,7 @@ function flowDeploy(b) {
       if (st.ids.length) {
         h += '<div class="fld"><label><span>병력 (주둔 ' + fmt(b.troops) + ')</span><b id="dpV">' + fmt(st.troops) + '</b></label><input type="range" id="dpR" min="0" max="' + mx() + '" step="100" value="' + st.troops + '" data-i="troops"></div><div class="sec">군량</div><div class="opts c4">';
         DEPLOY_FOOD.forEach(function (n) { h += '<button class="opt' + (st.turns === n ? ' on' : '') + '" type="button" data-a="turns" data-v="' + n + '"><b>' + days(n) + '분</b><small>' + fmt(Math.ceil(st.troops / 20) * n) + '</small></button>'; });
-        h += '</div><p class="note" id="dpN">' + foodNote() + '</p>';
+        h += '</div><p class="note" id="dpN">' + foodNote() + '</p>' + deployRing(b, st);
       }
       return h + '</div><div class="dlg-f"><div class="pv" id="dpP">' + pv() + '</div><button class="btn pri" type="button" data-a="ok"' + (st.ids.length && st.troops >= 100 ? '' : ' disabled') + '>출진</button></div>';
     },
@@ -1575,6 +1639,7 @@ function flowDeploy(b) {
       type: function (el) { var t = el.getAttribute('data-v'); if (!usable(t)) return toast(t === 'ram' ? '충차가 없습니다' : WEAPON_NAMES[UNIT_TYPES[t].weapon] + ' 재고가 없습니다'); st.type = t; st.auto = true; fix(); refreshDialog(); },
       pick: function (el) { var id = +el.getAttribute('data-v'), i = st.ids.indexOf(id); if (i >= 0) st.ids.splice(i, 1); else if (st.ids.length < 3) st.ids.push(id); else return toast('최대 3명입니다'); st.auto = true; fix(); refreshDialog(); },
       turns: function (el) { st.turns = +el.getAttribute('data-v'); refreshDialog(); },
+      at: RO.at, atauto: RO.atauto,
       auto: function () { st.ids = autoTeam(b, st.type, Math.min(b.troops, 8000)); st.auto = true; fix(); toast(st.ids.length ? '자동 편성 ' + st.ids.length + '명' : '편성할 무장이 없습니다', 1800); refreshDialog(); },
       troops: function (el) {
         st.troops = +el.value; st.auto = false; $('dpV').textContent = fmt(st.troops); $('dpP').innerHTML = pv();
@@ -1583,7 +1648,7 @@ function flowDeploy(b) {
         if ($('dpN')) $('dpN').innerHTML = foodNote();
       },
       ok: function () {
-        var r = cmdDeploy(b, { type: st.type, ids: st.ids, troops: st.troops, food: food() });
+        var r = cmdDeploy(b, { type: st.type, ids: st.ids, troops: st.troops, food: food(), at: st.at || undefined });
         if (!r.ok) return toast(r.msg);
         closeDialog(); sfx('deploy');
         var u = r.unit, name = uName(u);
@@ -1603,25 +1668,27 @@ function flowTransport(b) {
   var list = idleOfficers(b).sort(function (x, y) { return aiMilScore(x) - aiMilScore(y); });
   if (!list.length) return toast('행동할 수 있는 무장이 없습니다');
   if (b.troops < 100) return toast('호위할 병력이 없습니다');
-  var st = { id: list[0].id, troops: Math.min(1000, Math.floor(b.troops / 100) * 100), gold: 0, food: 0, spear: 0, halberd: 0, bow: 0, horse: 0, ram: 0 };
+  var st = { id: list[0].id, troops: Math.min(1000, Math.floor(b.troops / 100) * 100), gold: 0, food: 0, spear: 0, halberd: 0, bow: 0, horse: 0, ram: 0, at: null }, RO = ringOn(st);
   var fs = [['troops', '병력', b.troops, 100], ['gold', '금', b.gold, 50], ['food', '병량', b.food, 500], ['spear', '창', b.w.spear, 100], ['halberd', '극', b.w.halberd, 100], ['bow', '노', b.w.bow, 100], ['horse', '군마', b.w.horse, 100], ['ram', '충차', b.w.ram, 1]];
   var on = {
     pick: function (el) { st.id = +el.getAttribute('data-v'); refreshDialog(); },
     auto: function () { var t = autoTeam(b, 'trans', 0); if (t.length) st.id = t[0]; toast('자동 선택', 1500); refreshDialog(); },
     ok: function () {
       var need = Math.ceil(st.troops / 20) * 8;
-      var r = cmdDeploy(b, { type: 'trans', ids: [st.id], troops: st.troops, food: Math.max(st.food, Math.min(b.food, need)), gold: st.gold, cargo: { spear: st.spear, halberd: st.halberd, bow: st.bow, horse: st.horse, ram: st.ram } });
+      var r = cmdDeploy(b, { type: 'trans', ids: [st.id], troops: st.troops, food: Math.max(st.food, Math.min(b.food, need)), gold: st.gold, cargo: { spear: st.spear, halberd: st.halberd, bow: st.bow, horse: st.horse, ram: st.ram }, at: st.at || undefined });
       if (!r.ok) return toast(r.msg);
       closeDialog(); sfx('drum'); talk(uLeader(r.unit), sayLine(uLeader(r.unit), 'trans'), '수송대 출발 — 거점에 들이거나, 아군 부대 옆에서 [보급]', 3200); syncScene(); selectUnit(r.unit); UI.sret = backToBase(b.id); afterAction();
     }
   };
   fs.forEach(function (f) { on[f[0]] = function (el) { st[f[0]] = +el.value; $('tv_' + f[0]).textContent = fmt(st[f[0]]); }; });
+  on.at = RO.at; on.atauto = RO.atauto;
   showDialog({
     render: function () {
       var h = dlgHead('수송 — ' + b.n) + '<div class="dlg-b"><div class="sec">호송 무장<button class="btn auto" type="button" data-a="auto">자동</button></div><div class="rows">', i;
       for (i = 0; i < list.length; i++) h += offRow(list[i], { a: 'pick', sel: list[i].id === st.id });
       h += '</div><div class="sec">실을 것</div>';
       for (i = 0; i < fs.length; i++) { var f = fs[i], m = Math.floor(f[2] / f[3]) * f[3]; if (m <= 0 && f[0] !== 'troops') continue; h += '<div class="fld"><label><span>' + f[1] + ' (보유 ' + fmt(f[2]) + ')</span><b id="tv_' + f[0] + '">' + fmt(st[f[0]]) + '</b></label><input type="range" id="tr_' + f[0] + '" min="' + (f[0] === 'troops' ? 100 : 0) + '" max="' + m + '" step="' + f[3] + '" value="' + st[f[0]] + '" data-i="' + f[0] + '"></div>'; }
+      h += deployRing(b, st);
       return h + '<p class="note">군량 80일분은 자동으로 실립니다 · 아군 거점에 들이면 합쳐지고, <b>아군 부대 옆</b>에서는 [보급]으로 병량과 병력을 넘깁니다</p></div><div class="dlg-f"><div class="pv">행동력 ' + AP.deploy + '</div><button class="btn pri" type="button" data-a="ok">출발</button></div>';
     },
     on: on
@@ -1735,7 +1802,7 @@ var HELP_HTML = '<div class="help">' +
   '<h3>행군(선택)</h3><p>먼 곳까지 매 턴 직접 움직이기 번거로우면 부대 창의 <b>행군</b>을 누르고 목적지를 누르세요. 걸리는 날수를 보여 주고, 턴을 마칠 때마다 한 구간씩 알아서 갑니다. 도중에 직접 움직이거나 공격해도 됩니다.</p>' +
   '<h3>전투</h3><p>부대를 고르고 적을 누르면 공격·전법·계략 가운데 고를 수 있습니다. 전법은 기력을 쓰고, 병과 적성(C→S)이 높을수록 쓸 수 있는 전법이 늘고 잘 통합니다. 적성은 부대의 공격·방어에도 곱해집니다(C ×' + APT_MUL.C + ' ~ S ×' + APT_MUL.S + ') — 주장과 부장 가운데 가장 높은 적성을 씁니다. 무장 줄마다 능력치 아래에 <b>창 · 극 · 노 · 기 · 병기</b> 적성이 적혀 있습니다.</p>' +
   '<p><b>전법의 결과는 세 가지</b>입니다. <b>실패</b>하면 피해가 통상 공격의 ' + Math.round(TACTIC_K.failDmg * 100) + '%로 줄고 효과가 없으며 반격을 통상 공격의 ' + (TACTIC_K.failCounter / 0.55).toFixed(2).replace(/0$/, '') + '배로 받습니다. <b>성공</b>하면 전법의 피해와 효과가 들어가고 반격은 통상 공격만큼 받습니다(갈퀴·돌파, 멀리서 쏜 전법, 밀려나 떨어진 적은 반격하지 못합니다). <b>대성공</b>이면 피해가 ' + TACTIC_K.crit + '배가 되고 <b>효과 자체가 세집니다</b> — 돌출·돌격은 두 칸 밀어내고, 나선첨은 반드시 혼란시키고, 이단첨은 기력을 30 깎는 식입니다. <b>성공률은 양쪽을 다 봅니다</b>: 내 병과 적성, 내 무력·통솔과 상대 통솔의 차이, 양쪽 병력, 상대의 병과 적성, 상대가 선 지형. 병력이 훨씬 많은 부대나 통솔이 높은 장수에게는 잘 통하지 않고, 병력 차만큼 피해도 줄어듭니다. <b>전법이 늘 이득은 아닙니다</b> — 무장이 상대보다 강할수록 이득이 크고, 약한 쪽이 쓰면 보통 공격보다 손해입니다. 대성공률은 적성·무력·(내 무력 − 상대 통솔)로 정해지며, 혼란은 상대의 지력·통솔이 높을수록 덜 걸립니다. 적을 고른 뒤 <b>전법 풀이</b>를 누르면 그 상대에 대한 확률과 효과, 그리고 전법마다 <b>기대 피해 · 받는 반격</b>을 보통 공격과 나란히 볼 수 있습니다.</p>' +
-  '<ul><li>창병은 기병에, 기병은 극병에, 극병은 창병에 강합니다.</li><li>노병은 두 칸 밖에서 반격 없이 쏩니다.</li><li>충차는 성의 내구를 크게 깎습니다.</li><li>거점은 병력이나 내구가 0이 되면 함락됩니다.</li><li>숲·구릉의 부대는 피해를 덜 받고, 강 위의 부대는 약해집니다.</li></ul>' +
+  '<ul><li>창병은 기병에, 기병은 극병에, 극병은 창병에 강합니다.</li><li>노병은 두 칸 밖에서 반격 없이 쏩니다.</li><li>충차는 성의 내구를 크게 깎습니다.</li><li>거점은 병력이나 내구가 0이 되면 함락됩니다.</li><li>출진 · 수송 창의 <b>나갈 자리</b>에서 성 둘레의 어느 칸으로 나갈지 고를 수 있습니다(고르지 않으면 길이 난 쪽부터).</li><li>시설이 선 칸도 지나가고 설 수 있습니다. 남의 시설은 옆 칸이나 그 위에서 부술 수 있습니다.</li><li>숲·구릉의 부대는 피해를 덜 받고, 강 위의 부대는 약해집니다.</li></ul>' +
   '<h3>계략과 상태 이상</h3><p>부대는 기력을 써서 <b>화계·교란·위보</b>를 겁니다(성공률은 양쪽 지력의 차이로 정해집니다). 걸린 부대는 지도에서 바로 알아볼 수 있습니다 — <b>머리 위에 색 딱지</b>가 뜨고(혼란은 쪽빛, 위보는 황토빛, 불길은 붉은빛) 딱지에 <b>남은 날수</b>가 적힙니다. 혼란·위보에 걸린 부대는 머리 위에 소용돌이가 돌고 빛이 바래며, 혼란이면 비틀거립니다.</p>' +
   '<ul><li><b>혼란</b>: 움직이지도 싸우지도 못합니다. 받는 피해가 25% 늘고 반격하지 못하며, 전법이 더 잘 통합니다. 교란으로 걸면 20일, 전법(나선첨 등)으로 걸면 10일입니다.</li><li><b>위보</b>: 20일 동안 명령을 듣지 않고 가까운 자기 거점 쪽으로 물러납니다. 반격하지 못합니다.</li><li><b>불길</b>: 불 위에 머무는 부대는 턴마다 병력 250~400명과 기력 5를 잃습니다. 불 밖으로 옮기거나 <b>소화</b>로 끕니다.</li><li>이미 혼란·위보에 걸린 부대에는 교란·위보를 다시 걸 수 없습니다.</li><li>부대를 누르면 창 맨 위에 걸린 상태·남은 날수·효과가 적혀 있습니다. 내 부대가 걸리면 <b>지금 할 일</b>과 <b>지난 열흘의 일</b>에도 나옵니다.</li></ul>' +
   '<h3>인재</h3><p>탐색으로 재야의 인재를 찾아 등용합니다. 사로잡은 적장도 등용할 수 있습니다. 해가 바뀌면 새 인물이 세상에 나옵니다.</p>' +
@@ -1760,7 +1827,7 @@ var HELP_HTML = '<div class="help">' +
   '<h3>일기토</h3><p>무력 75 이상의 주장끼리 붙어 싸우면 낮은 확률로 일기토가 벌어집니다. 지금은 자동으로 판정되며, 진 쪽은 병력과 기력을 잃습니다.</p>' +
   '<h3>소리</h3><p>효과음과 음악은 메뉴에서 따로 끌 수 있습니다. 음악은 형편에 따라 바뀝니다 — 평시에는 두 곡이 번갈아 나오고, 다른 세력의 부대가 가까이 오면 긴장된 곡으로, 싸움이 벌어지면 전투 곡으로 넘어갑니다.</p>' +
   '<h3>저장</h3><p>턴이 끝날 때와 화면을 떠날 때 저절로 저장됩니다(<b>자동</b>) — 제목 화면의 <b>이어하기</b>가 이것을 엽니다. 메뉴의 <b>저장</b>에서 번호 칸 ' + SAVE_SLOTS + '개에 따로 남길 수 있고(찬 칸은 한 번 더 눌러 덮어씁니다), <b>불러오기</b>에서 골라 엽니다. 새 게임을 시작하거나 다른 칸을 불러오면 하던 판은 <b>직전</b> 칸에 한 번 남습니다. 저장은 이 기기의 이 주소에만 남습니다.</p>' +
-  '<h3>공유</h3><p>제목 화면과 메뉴의 <b>공유</b>를 누르면 휴대폰의 공유 창이 열립니다(안 열리는 곳에서는 주소와 QR이 적힌 창). 보내는 것은 게임의 주소뿐이고, 저장한 판은 함께 가지 않습니다.</p>' +
+  '<h3>긴 창</h3><p>창이나 아래 판의 내용이 화면보다 길면 아래 끝에 <b>▼ 아래에 더 있습니다</b>가 뜹니다. 밀어 올리거나 그 딱지를 누르면 내려갑니다.</p><h3>공유</h3><p>제목 화면과 메뉴의 <b>공유</b>를 누르면 주소와 QR이 적힌 창이 열립니다(<b>보내기</b>로 휴대폰의 공유 창). 주소만 보내면 받는 사람은 새 게임으로 시작합니다.</p><p><b>하던 판을 보내려면</b> 같은 창의 <b>세이브 파일 보내기</b>에서 판을 고르세요 — 공유 창에 파일로 싣거나, 파일로 저장하거나, 글자로 복사할 수 있습니다. 받는 사람은 <b>불러오기 → 파일에서 가져오기</b>(복사해 받았으면 <b>붙여넣기로 가져오기</b>)로 빈 저장 칸에 넣고 불러옵니다.</p>' +
   '<h3>앱으로 설치</h3><p>휴대폰 브라우저에서 <b>aaronkyung-a11y.github.io/chunhado</b> 를 열면 제목 화면에 <b>앱으로 설치</b> 단추가 나옵니다(안 나오면 브라우저 메뉴의 <b>홈 화면에 추가</b>). 설치하면 앱처럼 전체 화면으로 열리고, 한 번 연 뒤에는 인터넷이 없어도 됩니다. 저장은 여는 곳마다 따로라서, 다른 주소에서 하던 판은 넘어오지 않습니다.</p>' +
   '<h3>무장이 묶이는 일</h3><p>대부분의 명령은 그 턴에 끝나서, 맡은 무장은 다음 턴에 다시 쓸 수 있습니다. <b>시설 건설</b>만은 여러 턴이 걸리고, 맡은 무장은 <b>완공될 때까지</b> 다른 명령도 출진도 이동도 못 합니다(무장 목록에 "○○ 건설 중"). 급하면 그 시설을 눌러 <b>공사 중단</b>을 하면 풀려납니다 — 들인 금은 돌아오지 않습니다. 성이 함락되면 짓다 만 시설은 버려집니다.</p>' +
   '<h3>이번 판에 아직 없는 것</h3><p>직접 조작하는 일기토·설전, 외교, 기교·능력 연구, 진·요새 같은 야전 시설, 항구와 수군은 다음 판에서 넣습니다.</p></div>';
@@ -1797,11 +1864,13 @@ function showShare() {
         '<input class="shurl" id="shU" type="text" readonly value="' + url + '">' +
         '<div class="cmds ' + (navigator.share ? 'c2' : 'c1') + '"><button class="cmd pri" type="button" data-a="copy"><b>주소 복사</b></button>' + (navigator.share ? '<button class="cmd" type="button" data-a="send"><b>보내기</b><small>앱 고르기</small></button>' : '') + '</div>' +
         (url === SHARE_URL ? '<div class="qrw">' + qrSvg(SHARE_QR) + '<small>옆 사람은 카메라로 QR을 비추면 됩니다</small></div>' : '') +
-        '<p class="note">저장한 판은 함께 가지 않습니다 — 받는 사람은 새 게임으로 시작합니다.</p></div>';
+        '<h3 class="shh">하던 판 보내기</h3><p>주소만 보내면 받는 사람은 새 게임으로 시작합니다. 하던 판을 이어서 하게 하려면 세이브 파일을 함께 보내세요.</p>' +
+        '<div class="cmds c1"><button class="cmd" type="button" data-a="savesend"><b>세이브 파일 보내기</b><small>보낼 판 고르기</small></button></div></div>';
     },
     on: {
       copy: function () { if (copyText(url, $('shU'))) toast('주소를 복사했습니다'); else toast('복사가 막혀 있습니다 — 주소를 길게 눌러 복사하세요', 3200); },
-      send: function () { shareSend(url, true); }
+      send: function () { shareSend(url, true); },
+      savesend: function () { showSaveSend(); }
     }
   }, true);
 }
@@ -1814,16 +1883,174 @@ function shareSend(url, quiet) {
     return true;
   } catch (e) { return false; }
 }
-function shareGame() {
-  var url = shareUrl();
-  if (!(navigator.share && shareSend(url, false))) showShare();
+function shareGame() { showShare(); }                          // v0.12: 늘 창을 먼저 연다(주소 · 세이브 파일 가운데 고른다)
+/* ---------- 세이브 파일 보내기 · 가져오기(v0.12) ---------- */
+function saveFileName(m) { return '천하도_' + m.f + '_' + String(m.d).replace(/\s+/g, '') + '.txt'; }
+/* 칸의 저장본 → 보낼 글(머리말 두 줄 + 저장본). 비었거나 열 수 없는 칸이면 null */
+function saveFileText(id) {
+  var sv = lsGet(slotKey(id)), m = slotInfo(id); if (!sv || !m || m.bad) return null;
+  return { name: saveFileName(m), meta: m, text: '삼국지 천하도 세이브 — ' + m.f + ' · ' + m.d + ' · ' + m.n + '성 · ' + fmt(m.tr) + '명 (' + GAME_VERSION + ')\n여는 법: ' + SHARE_URL + ' → 불러오기 → 파일에서 가져오기\n' + sv + '\n' };
+}
+function saveFileObj(p) { try { return new File([p.text], p.name, { type: 'text/plain' }); } catch (e) { return null; } }
+function canShareFile(f) { try { return !!(f && navigator.share && navigator.canShare && navigator.canShare({ files: [f] })); } catch (e) { return false; } }
+function saveDownload(p) {
+  try {
+    var url = URL.createObjectURL(new Blob([p.text], { type: 'text/plain' })), a = document.createElement('a');
+    a.href = url; a.download = p.name; a.style.display = 'none'; document.body.appendChild(a); a.click();
+    setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+    return true;
+  } catch (e) { return false; }
+}
+function copyLong(txt, okMsg) {                                 // 긴 글 복사: 새 방식 → 옛 방식(숨긴 칸을 골라 execCommand)
+  function old() {
+    var ok = false, ta = document.createElement('textarea');
+    try { ta.value = txt; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0'; document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, txt.length); ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    if (ta.parentNode) ta.parentNode.removeChild(ta);
+    toast(ok ? okMsg : '복사가 막혀 있습니다 — [파일로 저장]을 써 보세요', ok ? 2000 : 3200);
+  }
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(function () { toast(okMsg); }, old); return; } } catch (e) { /* */ }
+  old();
+}
+function saveRowHtml(id, m, btn) {
+  return '<div class="row" data-slot="' + id + '"><i class="svn' + (id.charAt(0) === 's' ? '' : ' au') + '">' + slotName(id) + '</i><span class="mid"><span class="nm"><span class="chip" style="background:' + m.c + '">' + m.f + '</span> ' + m.d + '</span>' +
+    '<span class="ds">' + m.n + '성 · ' + fmt(m.tr) + '명' + (m.t ? ' · ' + saveWhen(m.t) : '') + '</span></span>' + (btn || '') + '</div>';
+}
+function showSaveSend() {
+  if (inGame() && !UI.play) saveGame();                          // 지금 모습을 자동 저장에 먼저 적는다 — '자동' 칸이 곧 지금 하는 판이다
+  var st = { id: '' }, game = inGame();
+  showDialog({
+    render: function () {
+      var h = dlgHead('세이브 파일 보내기') + '<div class="dlg-b shr">', p = st.id ? saveFileText(st.id) : null;
+      if (!p) {
+        var ids = slotIds(), n = 0, rows = '';
+        for (var i = 0; i < ids.length; i++) { var m = slotInfo(ids[i]); if (!m || m.bad) continue; n++; rows += saveRowHtml(ids[i], m, '<button class="btn" type="button" data-a="spick" data-v="' + ids[i] + '">고르기</button>'); }
+        h += n ? '<p>보낼 판을 고르세요.' + (game ? ' <b>자동</b> = 지금 하는 판.' : '') + '</p><div class="rows svl">' + rows + '</div>' : '<p class="note">저장된 판이 없습니다 — 게임을 시작하면 턴마다 자동으로 저장됩니다.</p>';
+      } else {
+        var kb = Math.max(1, Math.round(p.text.length / 1024)), can = canShareFile(saveFileObj(p));
+        h += '<div class="rows svl">' + saveRowHtml(st.id, p.meta, '<button class="btn" type="button" data-a="sback">다른 판</button>') + '</div>' +
+          '<div class="cmds c1">' + (can ? '<button class="cmd pri" type="button" data-a="sshare"><b>보내기</b><small>앱 고르기 · 파일로 갑니다</small></button>' : '') +
+          '<button class="cmd' + (can ? '' : ' pri') + '" type="button" data-a="sdown"><b>파일로 저장</b><small>' + p.name + ' · 약 ' + kb + 'KB</small></button>' +
+          '<button class="cmd" type="button" data-a="scopy"><b>글자로 복사</b><small>붙여 넣어 보낼 때 · 글이 깁니다</small></button></div>' +
+          '<p class="note">받는 사람: 게임을 열고 <b>불러오기 → 파일에서 가져오기</b>(복사해 보냈으면 <b>붙여넣기로 가져오기</b>).' + (can ? '' : ' 이 화면에서는 공유 창에 파일을 실을 수 없어 저장 · 복사만 됩니다.') + '</p>';
+      }
+      return h + '</div>';
+    },
+    on: {
+      spick: function (el) { st.id = el.getAttribute('data-v'); refreshDialog(); },
+      sback: function () { st.id = ''; refreshDialog(); },
+      sshare: function () {
+        var p = saveFileText(st.id), f = p ? saveFileObj(p) : null; if (!canShareFile(f)) { toast('이 화면에서는 파일을 공유 창에 실을 수 없습니다 — [파일로 저장]을 쓰세요', 3200); return; }
+        try { navigator.share({ files: [f], title: '삼국지 천하도 세이브', text: '삼국지 천하도 세이브(' + p.meta.f + ' · ' + p.meta.d + ') — ' + SHARE_URL + ' 에서 불러오기 → 파일에서 가져오기' }).then(function () { /* 보냈다 */ }, function (e) { if (!(e && e.name === 'AbortError')) toast('공유 창을 열지 못했습니다 — [파일로 저장]을 쓰세요', 3200); }); }
+        catch (e) { toast('공유 창을 열지 못했습니다 — [파일로 저장]을 쓰세요', 3200); }
+      },
+      sdown: function () { var p = saveFileText(st.id); if (p && saveDownload(p)) toast('파일로 내보냈습니다 — 내려받은 파일을 보내면 됩니다', 2800); else toast('이 화면에서는 파일을 내보낼 수 없습니다 — [글자로 복사]를 쓰세요', 3200); },
+      scopy: function () { var p = saveFileText(st.id); if (p) copyLong(p.text, '세이브를 복사했습니다'); }
+    }
+  }, true);
+}
+/* 저장본의 뼈대가 이 판의 지도 · 세력 · 병과와 맞는가(deserialize 는 너그러워서 뼈대가 어긋난 글도 받아들인다 — 그런 판은 열고 나서 멈춘다) */
+function saveShapeOk(g) {
+  function num(v) { return typeof v === 'number' && isFinite(v); }
+  var i, j, nf = g.factions.length, no = g.officers.length;
+  if (!num(g.year) || !num(g.month) || !(g.xun === 0 || g.xun === 1 || g.xun === 2) || g.turn < 0 || g.player < 0 || g.player >= nf) return false;
+  if (g.bases.length !== MAPDATA.bases.length || nf !== SCENARIO.factions.length || no < 1) return false;
+  for (i = 0; i < nf; i++) { var f = g.factions[i]; if (!f || typeof f.name !== 'string' || !f.name) return false; }
+  for (i = 0; i < no; i++) { var o = g.officers[i]; if (!o || typeof o.n !== 'string' || !num(o.f) || o.f < -1 || o.f >= nf || !num(o.ldr) || !num(o.war) || !num(o.int) || !num(o.pol) || !num(o.cha)) return false; }
+  for (i = 0; i < g.bases.length; i++) {
+    var b = g.bases[i]; if (!b || b.n !== MAPDATA.bases[i].n || !num(b.owner) || b.owner < -1 || b.owner >= nf || !num(b.troops) || b.troops < 0 || !num(b.gold) || !num(b.food) || !num(b.dur) || !b.w || typeof b.w !== 'object') return false;
+    if (b.plots !== undefined && !Array.isArray(b.plots)) return false;
+    for (j = 0; b.plots && j < b.plots.length; j++) { var p = b.plots[j]; if (!p || !num(p.c) || !num(p.r) || (p.fac && !FAC[p.fac.t])) return false; }
+  }
+  for (i = 0; i < g.units.length; i++) {
+    var u = g.units[i]; if (!u || !num(u.f) || u.f < 0 || u.f >= nf || !num(u.c) || !num(u.r) || !inMap(u.c, u.r) || !UNIT_TYPES[u.type] || !num(u.troops) || !Array.isArray(u.off) || !u.off.length) return false;
+    for (j = 0; j < u.off.length; j++) if (!num(u.off[j]) || u.off[j] < 0 || u.off[j] >= no) return false;
+  }
+  return true;
+}
+/* 열어 본다(하던 판은 그대로 둔다). 열린 뒤 화면이 처음에 쓰는 것들도 한 번 불러 본다 */
+function saveProbe(sv) {
+  var g0 = G, r0 = REPORT, e0 = EVQ, j0 = JOT, ok = false;
+  try { ok = deserialize(sv); if (ok) { facBases(G.player); G.units.forEach(function (u) { uLeader(u); uName(u); }); saveMetaOf(G, sv.length); serialize(); } } catch (e) { ok = false; }
+  G = g0; REPORT = r0; EVQ = e0; JOT = j0; if (g0) reindex();
+  return ok;
+}
+/* 받은 글 → { ok, s: 저장본, meta } 또는 { ok: false, why }. 남이 보낸 파일이므로 꼼꼼히 본다(머리말은 이 파일의 p3 에) */
+function saveParse(txt) {
+  function bad(w) { return { ok: false, why: w }; }
+  if (typeof txt !== 'string' || !txt.replace(/\s+/g, '')) return bad('내용이 비어 있습니다');
+  if (txt.length > 6e6) return bad('파일이 너무 큽니다');
+  var a = txt.indexOf('{"'), z = txt.lastIndexOf('}'), g = null;
+  if (a < 0 || z < a) return bad('천하도의 세이브 파일이 아닙니다');
+  try { g = JSON.parse(txt.slice(a, z + 1)); } catch (e) { return bad('세이브가 중간에 끊겼거나 깨졌습니다'); }
+  if (!g || g.ver !== 2 || !Array.isArray(g.factions) || !Array.isArray(g.officers) || !Array.isArray(g.bases) || !Array.isArray(g.units) || !Array.isArray(g.log) || typeof g.player !== 'number' || typeof g.turn !== 'number' || !g.factions[g.player]) return bad('천하도의 세이브 파일이 아닙니다');
+  var clean = true, n = 0, i;
+  (function walk(o, d) {
+    if (!clean) return;
+    if (typeof o === 'string') { if (o.length > 600 || /[<>"]/.test(o)) clean = false; return; }
+    if (o && typeof o === 'object') { if (d > 14 || ++n > 400000) { clean = false; return; } for (var k in o) { if (/[<>"]/.test(k)) { clean = false; return; } walk(o[k], d + 1); } }
+  })(g, 0);
+  for (i = 0; clean && i < g.factions.length; i++) if (!g.factions[i] || !/^#[0-9a-fA-F]{3,8}$/.test(String(g.factions[i].color))) clean = false;
+  if (!clean) return bad('알 수 없는 내용이 들어 있어 받지 않았습니다');
+  if (!saveShapeOk(g)) return bad('이 판에서는 열 수 없는 세이브입니다');
+  var sv = JSON.stringify(g);
+  if (!saveProbe(sv)) return bad('이 판에서는 열 수 없는 세이브입니다');
+  var m = saveMetaOf(g, sv.length); m.t = Date.now();
+  return { ok: true, s: sv, meta: m };
+}
+function firstEmptySlot() { for (var i = 1; i <= SAVE_SLOTS; i++) if (!lsGet(slotKey('s' + i))) return 's' + i; return ''; }
+function saveImportTo(id, res) {
+  var ok = slotWrite(id, res.s, res.meta);
+  toast(ok ? slotLabel(id) + '에 넣었습니다 — ' + res.meta.f + ' · ' + res.meta.d : (canStore() ? '넣지 못했습니다 — 저장 공간이 모자랍니다(안 쓰는 칸을 지워 주세요)' : '이 환경에서는 저장할 수 없습니다'), ok ? 2600 : 3400);
+  titleBtns(); return ok;
+}
+/* 받은 글을 저장 칸에 넣는다: 빈 번호 칸이 있으면 거기, 없으면 덮어쓸 칸을 고르게 한다. done = 넣은 뒤 할 일 */
+function flowImport(txt, done) {
+  var res = saveParse(txt);
+  if (!res.ok) { toast(res.why, 3600); return; }
+  var id = firstEmptySlot();
+  if (id) { saveImportTo(id, res); if (done) done(); return; }
+  var arm = '';
+  showDialog({
+    render: function () {
+      var h = dlgHead('넣을 칸 고르기') + '<div class="dlg-b"><p>빈 칸이 없습니다. 받은 판(<b>' + res.meta.f + ' · ' + res.meta.d + '</b>)으로 덮어쓸 칸을 고르세요.</p><div class="rows svl">';
+      for (var i = 1; i <= SAVE_SLOTS; i++) { var sid = 's' + i, m = slotInfo(sid); if (!m) continue; h += m.bad ? '<div class="row" data-slot="' + sid + '"><i class="svn">' + i + '</i><span class="mid"><span class="nm">열 수 없는 저장</span></span><button class="btn" type="button" data-a="over" data-v="' + sid + '">덮어쓰기</button></div>' : saveRowHtml(sid, m, '<button class="btn' + (arm === sid ? ' pri' : '') + '" type="button" data-a="over" data-v="' + sid + '">' + (arm === sid ? '정말 덮어쓰기' : '덮어쓰기') + '</button>'); }
+      return h + '</div></div>';
+    },
+    on: { over: function (el) { var sid = el.getAttribute('data-v'); if (arm !== sid) { arm = sid; refreshDialog(); return; } var ok = saveImportTo(sid, res); backDialog(); if (ok && done) done(); } }
+  }, true);
+}
+function pickSaveFile(cb) {
+  var old = $('svPick'); if (old && old.parentNode) old.parentNode.removeChild(old);
+  var inp = document.createElement('input'); inp.type = 'file'; inp.id = 'svPick'; inp.accept = '.txt,.json,text/plain,application/json'; inp.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0';
+  inp.addEventListener('change', function () {
+    var f = inp.files && inp.files[0]; if (inp.parentNode) inp.parentNode.removeChild(inp);
+    if (!f) return;
+    if (f.size > 6e6) { toast('파일이 너무 큽니다'); return; }
+    var rd = new FileReader(); rd.onload = function () { cb(String(rd.result || '')); }; rd.onerror = function () { toast('파일을 읽지 못했습니다'); }; rd.readAsText(f);
+  });
+  document.body.appendChild(inp); inp.click();
+}
+function showSavePaste(done) {
+  showDialog({
+    render: function () {
+      return dlgHead('붙여넣기로 가져오기') + '<div class="dlg-b shr"><p>받은 세이브 글 전체를 아래 칸에 붙여 넣으세요.</p><textarea class="svta" id="svTa" spellcheck="false" placeholder="삼국지 천하도 세이브 — …"></textarea>' +
+        '<div class="cmds c2"><button class="cmd" type="button" data-a="clip"><b>붙여넣기</b><small>복사해 둔 글</small></button><button class="cmd pri" type="button" data-a="take"><b>가져오기</b></button></div></div>';
+    },
+    on: {
+      clip: function () {
+        var no = function () { toast('붙여넣기가 막혀 있습니다 — 칸을 길게 눌러 붙여 넣으세요', 3200); };
+        try { if (navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().then(function (t) { var ta = $('svTa'); if (ta) ta.value = t; }, no); else no(); } catch (e) { no(); }
+      },
+      take: function () { var ta = $('svTa'), t = ta ? ta.value : ''; if (!t.replace(/\s+/g, '')) { toast('붙여 넣은 글이 없습니다'); return; } backDialog(); flowImport(t, done); }
+    }
+  }, true);
 }
 function showMenu() {
   showDialog({
     render: function () {
       return dlgHead('메뉴 — ' + GAME_VERSION) + '<div class="dlg-b"><div class="cmds"><button class="cmd" type="button" data-a="save"><b>저장</b></button><button class="cmd" type="button" data-a="load"><b>불러오기</b></button>' +
         '<button class="cmd" type="button" data-a="talk"><b>대화창 ' + (UI.talk === false ? '꺼짐' : '켜짐') + '</b></button><button class="cmd" type="button" data-a="snd"><b>효과음 ' + (UI.sound ? '켜짐' : '꺼짐') + '</b></button><button class="cmd" type="button" data-a="mus"><b>음악 ' + (UI.music ? '켜짐' : '꺼짐') + '</b>' + (UI.music && BGM.mode === 'file' ? '<small>연주곡</small>' : (UI.music && BGM.mode === 'syn' ? '<small>만든 음악</small>' : '')) + '</button><button class="cmd" type="button" data-a="spd"><b>열흘 재생</b><small>' + SPEEDS[UI.pspeed][0] + '</small></button><button class="cmd" type="button" data-a="help"><b>도움말</b></button><button class="cmd" type="button" data-a="share"><b>공유</b></button>' +
-        '<button class="cmd" type="button" data-a="title"><b>처음으로</b></button></div><p class="note">턴마다 자동 저장 · 저장 칸 ' + SAVE_SLOTS + '개 · 이 기기에만 남습니다</p></div>';
+        '<button class="cmd" type="button" data-a="title"><b>처음으로</b></button></div><p class="note">턴마다 자동 저장 · 저장 칸 ' + SAVE_SLOTS + '개 · 이 기기에만 남습니다(다른 기기로는 공유 → 세이브 파일 보내기)</p></div>';
     },
     on: {
       save: function () { showSaves('save'); },
@@ -1908,9 +2135,9 @@ function keepPrev(keep) {
 /* 칸을 불러온다. 하던 판의 지금 모습(제목 화면에서는 자동 저장)은 '직전' 칸에 남고, 불러온 판이 자동 저장이 된다 */
 function loadFrom(id) {
   var s = lsGet(slotKey(id)); if (!s) return false;
-  var keep = (inGame() && !UI.play) ? serialize() : lsGet(SAVE_KEY), ok = false;
+  var keep = (inGame() && !UI.play) ? serialize() : lsGet(SAVE_KEY), ok = false, g0 = G, r0 = REPORT, e0 = EVQ, j0 = JOT;
   try { ok = deserialize(s); } catch (e) { ok = false; }
-  if (!ok) return false;
+  if (!ok) { G = g0; REPORT = r0; EVQ = e0; JOT = j0; if (g0) reindex(); return false; }      // v0.12: 열지 못했으면 하던 판을 그대로 되돌린다
   if (keep && keep !== s) keepPrev(keep);
   if (id !== 'auto') { var m = metaAll()[id], m2 = saveMetaOf(G, s.length); if (m && m.len === s.length) { m2.n = m.n; m2.tr = m.tr; } slotWrite('auto', s, m2); }
   return true;
@@ -1942,6 +2169,7 @@ function showSaves(mode) {
           '</span>' + act + del + '</div>';
       }
       if (st.mode === 'load' && !anySave()) h += '<p class="note">저장된 판이 없습니다.</p>';
+      if (st.mode === 'load') h += '</div><div class="cmds c2 svimp"><button class="cmd" type="button" data-a="simport"><b>파일에서 가져오기</b><small>받은 세이브 파일</small></button><button class="cmd" type="button" data-a="spaste"><b>붙여넣기로 가져오기</b><small>복사해 받은 글</small></button>';
       return h + '</div><p class="note">' + (st.mode === 'save' ? '자동 저장은 턴마다 따로 됩니다.' : '<b>자동</b> = 턴마다 저절로 · <b>직전</b> = 새 게임 · 불러오기 바로 앞의 판') + '</p></div>';
     },
     on: {
@@ -1962,11 +2190,13 @@ function showSaves(mode) {
         var id = el.getAttribute('data-v');
         if (st.arm !== 'd' + id) { st.arm = 'd' + id; refreshDialog(); return; }
         slotDrop(id); st.arm = ''; refreshDialog(); titleBtns();
-      }
+      },
+      simport: function () { pickSaveFile(function (t) { flowImport(t, function () { st.arm = ''; refreshDialog(); }); }); },
+      spaste: function () { showSavePaste(function () { st.arm = ''; refreshDialog(); }); }
     }
   }, true);
 }
-function titleBtns() { $('tCont').disabled = !hasSave(); $('tLoad').disabled = !anySave(); }
+function titleBtns() { $('tCont').disabled = !hasSave(); $('tLoad').disabled = false; }      // v0.12: [불러오기]는 늘 열린다 — 받은 세이브 파일을 가져올 수 있다
 
 /* ---------- 턴 종료: 지난 열흘을 차례로 보여 주기 ----------
    1) 행군 중인 내 부대가 한 구간 나아간다  2) 다른 세력이 차례로 움직인다(나와 관련된 일·가까운 일·성의 주인이 바뀐 일만 보여 줌)
@@ -2397,6 +2627,7 @@ function boot(data) {
   $('tLoad').addEventListener('click', function () { audioInit(); playBgm('title'); sfx('ui'); showSaves('load'); });
   $('tHelp').addEventListener('click', function () { audioInit(); playBgm('title'); showHelp(); });
   $('tShare').addEventListener('click', function () { audioInit(); sfx('ui'); shareGame(); });
+  moreInit();
   document.addEventListener('visibilitychange', function () { if (document.hidden) saveGame(); });
   if (data && data.save && deserialize(data.save)) startGame(); else { showTitle(); BGM.want = 'title'; }
   requestAnimationFrame(tick);

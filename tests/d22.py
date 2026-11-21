@@ -46,7 +46,7 @@ FACSET = '''(() => {
 def steps(pg):
     # ================= 1. 공유 =================
     print('1. 공유')
-    ok(pg.evaluate('!!$("tShare") && !!$("tHelp") && $("tVer").textContent.indexOf("v0.11") === 0'), '제목 화면: [공유] 단추와 판 번호 v0.11 — ' + pg.evaluate('$("tVer").textContent'))
+    ok(pg.evaluate('!!$("tShare") && !!$("tHelp") && $("tVer").textContent.indexOf("v0.12") === 0'), '제목 화면: [공유] 단추와 판 번호 v0.12 — ' + pg.evaluate('$("tVer").textContent'))
     tapsel(pg, '#tShare'); pg.wait_for_timeout(600)
     sh = pg.evaluate('({ title: MODAL ? document.querySelector("#modal .dlg-h").textContent : "", url: $("shU") ? $("shU").value : "", want: SHARE_URL, qr: !!document.querySelector("#modal svg.qr path"), send: !!document.querySelector("#modal [data-a=send]"), nat: typeof navigator.share })')
     ok(sh['title'].startswith('공유') and sh['url'] == sh['want'] == 'https://aaronkyung-a11y.github.io/chunhado/', '공유 창: 공유 창이 없는 브라우저에서는 주소가 적힌 창이 뜬다 %s' % sh)
@@ -58,25 +58,27 @@ def steps(pg):
     ok('복사' in toast(pg), '[주소 복사] → ' + toast(pg))
     B.shot(pg, 'q1_share', 200)
     pg.evaluate('closeDialog()'); pg.wait_for_timeout(200)
-    # 공유 창이 있는 기기: 그 창을 부른다 / 막혀 있으면 주소 창 / 닫으면 아무 일도 없다
+    # 공유 창이 있는 기기(v0.12: 늘 주소 창이 먼저 뜨고, [보내기]가 그 창을 부른다) / 막혀 있으면 알림 / 닫으면 아무 일도 없다
     pg.evaluate('(() => { navigator.share = function (d) { window._sh = d; return Promise.resolve(); }; })()')
     tapsel(pg, '#tShare'); pg.wait_for_timeout(400)
+    ok(head(pg).startswith('공유') and pg.evaluate('!!document.querySelector("#modal [data-a=send]") && !window._sh'), '공유 창이 있는 기기: 주소 창이 먼저 뜨고 [보내기]가 있다')
+    tapsel(pg, '#modal [data-a=send]'); pg.wait_for_timeout(400)
     s2 = pg.evaluate('({ d: window._sh || null, modal: !!MODAL })')
-    ok(s2['d'] and s2['d']['url'] == sh['want'] and '천하도' in s2['d']['title'] and not s2['modal'], '공유 창이 있는 기기: 그 창에 제목 · 글 · 주소를 넘긴다 %s' % s2)
+    ok(s2['d'] and s2['d']['url'] == sh['want'] and '천하도' in s2['d']['title'], '[보내기]: 공유 창에 제목 · 글 · 주소를 넘긴다 %s' % s2)
     pg.evaluate('(() => { navigator.share = function () { return Promise.reject(new DOMException("no", "NotAllowedError")); }; })()')
-    tapsel(pg, '#tShare'); pg.wait_for_timeout(500)
-    ok(head(pg).startswith('공유') and pg.evaluate('!!document.querySelector("#modal [data-a=send]")'), '공유 창이 막혀 있으면(아티팩트 안 등) 주소 창으로 물러난다')
+    tapsel(pg, '#modal [data-a=send]'); pg.wait_for_timeout(500)
+    ok(head(pg).startswith('공유') and '복사' in toast(pg), '공유 창이 막혀 있으면(아티팩트 안 등) 알리고 주소 창에 그대로 있다 — ' + toast(pg))
+    pg.evaluate('(() => { $("toast").textContent = ""; navigator.share = function () { return Promise.reject(new DOMException("x", "AbortError")); }; })()')
+    tapsel(pg, '#modal [data-a=send]'); pg.wait_for_timeout(500)
+    ok(head(pg).startswith('공유') and toast(pg) == '', '공유 창을 그냥 닫으면 아무 알림도 없다')
     pg.evaluate('closeDialog()'); pg.wait_for_timeout(200)
-    pg.evaluate('(() => { navigator.share = function () { return Promise.reject(new DOMException("x", "AbortError")); }; })()')
-    tapsel(pg, '#tShare'); pg.wait_for_timeout(500)
-    ok(not pg.evaluate('!!MODAL'), '공유 창을 그냥 닫으면 아무 창도 뜨지 않는다')
     pg.evaluate('(() => { delete navigator.share; })()')
 
     # ================= 2. 시설의 레벨 표시 =================
     print('2. 시설의 레벨 표시')
     fresh(pg, 13, 4242)
     pg.evaluate('showMenu()'); pg.wait_for_timeout(300)
-    ok('v0.11' in head(pg) and pg.evaluate('!!document.querySelector("#modal [data-a=share]")'), '메뉴: ' + head(pg) + ' · [공유]')
+    ok('v0.12' in head(pg) and pg.evaluate('!!document.querySelector("#modal [data-a=share]")'), '메뉴: ' + head(pg) + ' · [공유]')
     pg.evaluate('closeDialog()')
     S = pg.evaluate(FACSET); print('   ', S); pg.wait_for_timeout(600)
     pg.locator('#sheet .tabs button').nth(3).tap(); pg.wait_for_timeout(1000)
@@ -91,7 +93,7 @@ def steps(pg):
         pg.evaluate('(pi) => { closeDialog(); flowFacility(G.bases[%d], pi); }' % S['id'], pi); pg.wait_for_timeout(700)
     open_fac(S['A'])
     f1 = pg.evaluate('''(([bid, pi]) => { var b = G.bases[bid], y = facYield(b, pi), g1 = goldIncome(b), fc = b.plots[pi].fac; b.plots[pi].fac = null; var g0 = goldIncome(b); b.plots[pi].fac = fc;
-      return { head: document.querySelector("#modal .dlg-h").textContent, v: document.querySelector("#modal .fcv").textContent, n: document.querySelector("#modal .fcn").textContent, y: y.gold, real: g1 - g0, note: document.querySelector("#modal .dlg-b > .note:last-child").innerText }; })''', [S['id'], S['A']])
+      return { head: document.querySelector("#modal .dlg-h").textContent, v: document.querySelector("#modal .fcv").textContent, n: document.querySelector("#modal .fcn").textContent, y: y.gold, real: g1 - g0, note: document.querySelector("#modal .dlg-b > p.note:last-of-type").innerText }; })''', [S['id'], S['A']])
     print('    ', f1)
     ok('시장 Lv2' in f1['head'] and f1['v'] == '금 +300/월 · Lv3 +440', '시설 창의 큰 글: ' + f1['v'])
     ok(f1['y'] == f1['real'] and ('+%s' % format(f1['y'], ',')) in f1['n'] and '옆 조폐 1곳 +50%' in f1['n'] and '치안 64 → 82%' in f1['n'], '그 아래: 지금 실제로 보태는 수입과 까닭 — ' + f1['n'])
@@ -114,7 +116,7 @@ def steps(pg):
     if S['gran'] >= 0:
         open_fac(S['gran']); t2 = txt(pg, '#modal .fcn')
         ok('농장이 없어' in t2 and '보탬이 없습니다' in t2, '곡창(옆에 농장 없음): ' + t2)
-    open_fac(S['mint']); t3 = txt(pg, '#modal .dlg-b > .note:last-child')
+    open_fac(S['mint']); t3 = txt(pg, '#modal .dlg-b > p.note:last-of-type')
     ok('조폐는 레벨을 올려도 효과가 같습니다' in t3, '조폐: ' + t3)
     pg.evaluate('closeDialog()'); pg.wait_for_timeout(300)
     # 새로 지을 때의 카드는 Lv1 기준 그대로

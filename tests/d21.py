@@ -53,7 +53,7 @@ def steps(pg):
     # ================= 0. 같은 판으로 시작(왕랑 · 씨앗 4242) =================
     pg.evaluate('localStorage.clear()'); reload(pg)
     t0 = pg.evaluate('[$("tCont").disabled, $("tLoad").disabled, $("tLoad").textContent, getComputedStyle($("tLoad")).display !== "none"]')
-    ok(t0 == [True, True, '불러오기', True], '저장이 없는 제목 화면: [이어하기] · [불러오기] 둘 다 꺼져 있다 %s' % t0)
+    ok(t0 == [True, False, '불러오기', True], '저장이 없는 제목 화면: [이어하기]는 꺼져 있고 [불러오기]는 열린다(v0.12 — 받은 세이브 파일을 가져올 수 있다) %s' % t0)
     r = pg.evaluate('(() => { var a = $("tCont").getBoundingClientRect(), b = $("tLoad").getBoundingClientRect(); return [Math.round(a.top) === Math.round(b.top), Math.round(a.width), Math.round(b.width), Math.round(b.right) <= window.innerWidth]; })()')
     ok(r[0] and abs(r[1] - r[2]) <= 2 and r[3], '두 단추가 한 줄에 나란히 %s' % r)
     pg.evaluate('() => { newGame(13, 4242); saveGame(); }'); reload(pg)
@@ -61,7 +61,7 @@ def steps(pg):
     if pg.evaluate('!!MODAL'): pg.evaluate('closeDialog()')
     pg.evaluate('talkHide()')
     info = pg.evaluate('(() => { var A = facAdv(G.player); return { ver: GAME_VERSION, f: G.factions[G.player].name, adv: A.n, int: A.int }; })()')
-    ok(info['ver'] == 'v0.11', '판 번호 v0.11 [%s]' % info['ver'])
+    ok(info['ver'] == 'v0.12', '판 번호 v0.12 [%s]' % info['ver'])
     ok(info['f'] == '왕랑', '(준비) 왕랑으로 시작 — 군사 %s(지력 %d)' % (info['adv'], info['int']))
 
     # ================= 1. 군사의 적중률 = 지력 =================

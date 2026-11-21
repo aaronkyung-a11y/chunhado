@@ -632,9 +632,9 @@ function syncScene() {
     for (j = 0; j < b.plots.length; j++) {
       var pl = b.plots[j], fk = i + ':' + j, fo = R3.facs[fk], fc = pl.fac;
       if (!fc) { if (fo) { R3.objs.remove(fo.sp); fo.sp.material.dispose(); delete R3.facs[fk]; } continue;      }
-      var sk = fc.done ? '' : siteTexKey(fc.t, siteStage(fc)), fs = fc.t + fc.lv + (fc.done ? 'd' : 'c' + sk);      // 짓는 중: 공사장 그림(단계가 오르면 바뀐다)
+      var sk = fc.done ? '' : siteTexKey(fc.t, siteStage(fc)), onU = UAT[K(pl.c, pl.r)] ? 1 : 0, fs = fc.t + fc.lv + (fc.done ? 'd' : 'c' + sk) + (onU ? 'u' : '');      // 짓는 중: 공사장 그림(단계가 오르면 바뀐다)
       if (!fo) { p = hexPos(pl.c, pl.r); fo = R3.facs[fk] = { sp: spriteObj(fc.t, FAC_W, 2), sig: '' }; fo.sp.position.set(p[0], p[1], p[2]); R3.objs.add(fo.sp); }
-      if (fo.sig !== fs) { fo.sig = fs; setSprite(fo.sp, sk || fc.t, FAC_W * (0.94 + 0.10 * (fc.lv - 1))); fo.sp.material.opacity = (fc.done || sk) ? 1 : 0.5; }
+      if (fo.sig !== fs) { fo.sig = fs; setSprite(fo.sp, sk || fc.t, FAC_W * (0.94 + 0.10 * (fc.lv - 1))); fo.sp.material.opacity = ((fc.done || sk) ? 1 : 0.5) * (onU ? 0.38 : 1); }      // v0.12: 부대가 올라선 시설은 흐리게
     }
   }
   // 부대
@@ -1042,7 +1042,10 @@ var CUES = {
   step:     { s: [['stomp', 0.5, 0.08]], gap: 60, syn: 'step' },
   hit:      { s: [['slash', 0.8, 0.06]], gap: 70, syn: 'hit' },
   counter:  { s: [['slash', 0.5, 0.05]], gap: 70, syn: 'hit' },
-  arrowhit: { s: [['thud', 0.6, 0.1]], gap: 70, syn: 'hit' },
+  arrowhit: { s: [['thock', 0.75, 0.1]], gap: 70, syn: 'hit' },                                   // 화살 한 차례가 박힌다(v0.12 — 전에는 thud)
+  arrowbig: { s: [['arrowland', 0.95, 0.05]], gap: 120, syn: 'big' },                            // 쏘는 전법 · 크게 맞음: 후두둑
+  arrowgreat: { s: [['arrowland', 1.0, 0.04], ['thock', 0.6, 0.04, 0.12], ['gong', 0.3, 0, 0.1]], gap: 200, syn: 'big' },
+  arrowfail: { s: [['thock', 0.4, 0.14], ['thock', 0.3, 0.14, 0.11]], gap: 120, syn: 'fail' },      // 빗나간 살 몇 대
   siege:    { s: [['crush', 0.6, 0.05], ['thud', 0.7, 0.05, 0.03]], gap: 120, syn: 'hit' },
   big:      { s: [['crush', 0.95, 0.04], ['clang', 0.55, 0.05, 0.03]], gap: 120, syn: 'big' },
   great:    { s: [['crush', 1.0, 0.03], ['clang', 0.75, 0.04, 0.02], ['gong', 0.3, 0, 0.06]], gap: 200, syn: 'big' },
@@ -1064,7 +1067,7 @@ var CUES = {
   hammer:   { s: [['hammer', 0.8, 0.03]], gap: 300, syn: 'drum' },
   duel:     { s: [['duel', 0.95, 0.02]], gap: 800, syn: 'big' },
   shout:    { s: [['shout', 0.6, 0.05]], gap: 250, syn: '' },
-  bow:      { s: [['bow', 0.7, 0.08]], gap: 60, syn: 'ui' },
+  bow:      { s: [['bow', 0.8, 0.08]], gap: 60, syn: 'ui' },                                       // v0.12: 새로 만든 소리(시위 울림 + 바람 가르는 소리)
   arrows:   { s: [['arrows', 0.8, 0.04]], gap: 200, syn: 'step' },
   charge:   { s: [['cavalry', 0.85, 0.03]], gap: 500, syn: 'step' }
 };

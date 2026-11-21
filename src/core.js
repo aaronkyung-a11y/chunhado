@@ -318,8 +318,6 @@ function unitReach(u) {
       if (ou && ou.f !== u.f) continue;                                // 적 부대
       var bi = BAT[nk];
       if (bi !== undefined) { var b = G.bases[bi]; if (b.owner !== u.f && b.owner !== -1) continue; }
-      var pf = PAT[nk];
-      if (pf && G.bases[pf.b].plots[pf.i].fac) continue;               // 시설
       if (cost[nk] === undefined || nd < cost[nk]) {
         cost[nk] = nd; prev[nk] = k;
         if (!ou) stop[nk] = true;
@@ -360,8 +358,6 @@ function longPath(u, goalFn, maxCost, hint) {
       if (dapa && !RDB[nk] && (TCH[nk] === 102 || TCH[nk] === 104)) mc = pc;
       var bi = BAT[nk];
       if (bi !== undefined) { var b = G.bases[bi]; if (b.owner !== u.f && b.owner !== -1 && !goalFn(nk)) continue; }
-      var pf = PAT[nk];
-      if (pf && G.bases[pf.b].plots[pf.i].fac) continue;
       var ou = UAT[nk];
       if (ou) mc += (ou.f === u.f ? 3 : 25);
       if (G.fires[nk]) mc += 6;
@@ -1347,14 +1343,24 @@ function deploySpot(b, toward) {
     var c = ns[i][0], r = ns[i][1], k = K(c, r), t = terr(c, r);
     if (t === 'm' || t === 's' || t === 'x') continue;
     if (UAT[k] || BAT[k] !== undefined) continue;
-    var pf = PAT[k]; if (pf && G.bases[pf.b].plots[pf.i].fac) continue;
-    var s = (t === 'w' ? 10 : 0) + (isRoad(c, r) ? 0 : 2) + (G.fires[k] ? 20 : 0);
-    if (toward) s = hdist(c, r, toward.c, toward.r) + (t === 'w' ? 3 : 0) + (G.fires[k] ? 20 : 0);
+    var pf = PAT[k], onFac = pf && G.bases[pf.b].plots[pf.i].fac ? 1 : 0;                      // v0.12: 시설 칸으로도 나갈 수 있다(빈 땅이 먼저)
+    var s = (t === 'w' ? 10 : 0) + (isRoad(c, r) ? 0 : 2) + (G.fires[k] ? 20 : 0) + onFac * 4;
+    if (toward) s = hdist(c, r, toward.c, toward.r) + (t === 'w' ? 3 : 0) + (G.fires[k] ? 20 : 0) + onFac * 0.5;
     if (s < bs) { bs = s; best = [c, r]; }
   }
   return best;
 }
-/* spec: { type, ids, troops, food, gold, cargo, toward } */
+/* 성 밖으로 나갈 수 있는 칸들(둘레 여섯 칸 가운데 산 · 바다 · 부대가 선 칸을 뺀 것). v0.12: 출진할 때 이 가운데서 고를 수 있다 */
+function deploySpots(b) {
+  var ns = nbrs(b.c, b.r), out = [];
+  for (var i = 0; i < ns.length; i++) {
+    var c = ns[i][0], r = ns[i][1], k = K(c, r), t = terr(c, r);
+    if (t === 'm' || t === 's' || t === 'x' || UAT[k] || BAT[k] !== undefined) continue;
+    out.push([c, r]);
+  }
+  return out;
+}
+/* spec: { type, ids, troops, food, gold, cargo, toward, at }   at = [c, r] 나갈 칸을 직접 고른 것(v0.12) */
 function cmdDeploy(b, spec) {
   var T = UNIT_TYPES[spec.type];
   if (!T) return ERR('병과를 고르세요');
@@ -1371,7 +1377,12 @@ function cmdDeploy(b, spec) {
   var cargo = null, k;
   if (spec.cargo) { cargo = { spear: 0, halberd: 0, bow: 0, horse: 0, ram: 0 }; for (k in cargo) { cargo[k] = Math.floor(spec.cargo[k] || 0); if (cargo[k] > b.w[k]) return ERR(WEAPON_NAMES[k] + ' 재고가 부족합니다'); } }
   if (!needAP(b.owner, AP.deploy)) return ERR('행동력이 부족합니다');
-  var spot = deploySpot(b, spec.toward);
+  var spot = null;
+  if (spec.at) {
+    var sps = deploySpots(b);
+    for (var si = 0; si < sps.length; si++) if (sps[si][0] === spec.at[0] && sps[si][1] === spec.at[1]) spot = sps[si];
+    if (!spot) return ERR('그 칸으로는 나갈 수 없습니다');
+  } else spot = deploySpot(b, spec.toward);
   if (!spot) return ERR('성 밖에 나갈 자리가 없습니다');
   useAP(b.owner, AP.deploy);
   b.troops -= troops; b.food -= food; b.gold -= gold;
@@ -1670,7 +1681,14 @@ function attackTargets(u) {
     var pf = PAT[k];
     if (pf) { var pb = G.bases[pf.b], fc = pb.plots[pf.i].fac; if (fc && pb.owner >= 0 && pb.owner !== u.f && d === 1 && !justOut(u)) out.push({ kind: 'fac', b: pb, i: pf.i, c: c, r: r, d: d }); }
   }
+  var uf = facUnder(u); if (uf && !justOut(u)) out.push(uf);            // v0.12: 올라선 시설
   return out;
+}
+/* 부대가 올라서 있는 남의 시설(없으면 null) — v0.12 부터 시설 칸에 설 수 있다 */
+function facUnder(u) {
+  var pf = PAT[K(u.c, u.r)]; if (!pf) return null;
+  var pb = G.bases[pf.b]; if (!pb.plots[pf.i].fac || pb.owner < 0 || pb.owner === u.f) return null;
+  return { kind: 'fac', b: pb, i: pf.i, c: u.c, r: u.r, d: 0 };
 }
 function critNormal(a, d) { return (uHas(a, '비장') || uHas(a, '용장') || uHas(a, '신장')) && uWar(a) > uWar(d); }
 
@@ -1805,8 +1823,7 @@ function canPushInto(c, r, u) {
   var t = terr(c, r), k = K(c, r);
   if (t === 'm' || t === 's' || t === 'x') return false;
   if (UAT[k] || BAT[k] !== undefined) return false;
-  var pf = PAT[k]; if (pf && G.bases[pf.b].plots[pf.i].fac) return false;
-  return true;
+  return true;                                                     // v0.12: 시설 칸으로도 밀려난다
 }
 function behindHex(u, d) {
   var dist = hdist(u.c, u.r, d.c, d.r), dx = cubeX(d.c, d.r) - cubeX(u.c, u.r), dz = d.r - u.r;

@@ -30,7 +30,7 @@ def steps(pg):
     ok('194년 6월 하순까지(6개월)' in intro and not TURNS.search(intro), '시작 안내: 194년 6월 하순까지(6개월), "N턴" 없음')
     tapsel(pg, '#modal [data-a=close]'); pg.wait_for_timeout(600)
     home = pg.evaluate('''(() => { var pz = document.querySelector("#sheet .pz"); return { pz: pz ? pz.className + ":" + pz.innerText : "", all: document.querySelector("#sheet").innerText, v: GAME_VERSION, until: G.peace.until, pv: G.peace.v }; })()''')
-    ok(home['v'] == 'v0.11', '판 번호 v0.11 [%s]' % home['v'])
+    ok(home['v'] == 'v0.12', '판 번호 v0.12 [%s]' % home['v'])
     ok(home['pz'] == 'pz:6월 하순까지 보호' and home['until'] == 19 and home['pv'] == 2, 'STATUS 창 날짜 옆: [6월 하순까지 보호] (%s)' % home['pz'])
     ok('초반 보호 —' not in home['all'] and not TURNS.search(home['all']), 'STATUS 창: v0.9.2 부터 초반 보호 줄은 없고(이름 옆 표만), 창 어디에도 "N턴" 없음')
     tapsel(pg, '#sheet .pz'); pg.wait_for_timeout(400)
@@ -86,7 +86,7 @@ def steps(pg):
         ok('NaN' not in dlg and 'undefined' not in dlg and 'Infinity' not in dlg, '%s: 풀이 창에 깨진 숫자가 없다' % tag)
         return want, lines, dlg
     w1, l1, d1 = look(st['u'], '강한 쪽(관우)')
-    ok('성공해도 반격은 통상 공격만큼 받습니다' in d1 and '40%' in d1 and '1.55배' in d1, '풀이 창의 설명: 성공해도 반격은 통상 공격만큼 · 실패 피해 40% · 실패 반격 1.55배')
+    ok('성공해도 반격은 통상 공격만큼 받습니다' in d1 and '85%' in d1 and '1.55배' in d1, '풀이 창의 설명: 성공해도 반격은 통상 공격만큼 · 실패 피해 85%(v0.12 — 전에는 40%) · 실패 반격 1.55배')
     ok('× 0.8 (-30 ~ +15)' in d1, '풀이 창의 설명: 무장 항 × 0.8 (-30 ~ +15)')
     ok(any(t[0] == '갈퀴' and t[2] < w1['n'][1] for t in w1['t']), '관우의 갈퀴: 받는 반격이 보통 공격보다 적다(성공하면 반격 없음)')
     ok(any(any(m.startswith('good:−') for m in l[2]) for l in l1 if l[0] == '갈퀴'), '줄어든 반격은 좋은 쪽 빛(good)으로 적는다')

@@ -1,6 +1,6 @@
 # 삼국지 천하도 (三國志 天下圖)
 
-삼국지 11 PK식 시스템의 모바일 단일 HTML 게임. 현재 v0.11(시설의 레벨 표시 · 무장 줄의 적성 · 치안 풀이 · 출진 군량 90~360일분 · 공유 · 등용과 옛 관계 · 수송대의 보급 · 군사의 헌책과 탐색 조언 · 확대한 지도). v0.10.1(고른 시설의 표시 · 군사의 적중률 = 지력 · 공사장 그림 · 세이브 칸). v0.10(군단에 맡기기). v0.9.3(부지 번호 · 대화창). v0.9.2(화면의 글을 덜어 냄 · 건설을 고르면 지도가 어두워지고 지을 수 있는 빈 부지만 밝게 — 규칙은 0.9.1 그대로) — 변경 내역은 `CHANGELOG.md`. v0.9.1(기간을 턴 수가 아니라 날짜·날수·개월로 적는다 · 초반 보호 6·4·3개월 · 전법: 성공해도 반격은 통상 공격만큼, 무장의 차이를 더 크게, 전법 풀이에 기대값). v0.9: 군사(軍師)를 두고 등용·계략 전에 조언을 듣는다 · 이웃 거점에 있는 다른 세력의 무장을 등용한다. v0.8.1: 초반 보호 · 혼란·위보·불길 표시. v0.8: 건설 담당 묶기·성역 멈춤 없앰·돈과 병량 약 2배·전법 균형·부지 10·13·16곳·충성과 인연·지도 끝·초상 가운데 맞춤.
+삼국지 11 PK식 시스템의 모바일 단일 HTML 게임. 현재 v0.12(쏘는 소리를 새로 만듦 · 전법 실패의 피해 85% · 시설 칸을 지나가고 설 수 있음 · 세이브 파일 보내기와 가져오기 · 나갈 자리 고르기 · 아래에 더 있다는 표시). v0.11(시설의 레벨 표시 · 무장 줄의 적성 · 치안 풀이 · 출진 군량 90~360일분 · 공유 · 등용과 옛 관계 · 수송대의 보급 · 군사의 헌책과 탐색 조언 · 확대한 지도). v0.10.1(고른 시설의 표시 · 군사의 적중률 = 지력 · 공사장 그림 · 세이브 칸). v0.10(군단에 맡기기). v0.9.3(부지 번호 · 대화창). v0.9.2(화면의 글을 덜어 냄 · 건설을 고르면 지도가 어두워지고 지을 수 있는 빈 부지만 밝게 — 규칙은 0.9.1 그대로) — 변경 내역은 `CHANGELOG.md`. v0.9.1(기간을 턴 수가 아니라 날짜·날수·개월로 적는다 · 초반 보호 6·4·3개월 · 전법: 성공해도 반격은 통상 공격만큼, 무장의 차이를 더 크게, 전법 풀이에 기대값). v0.9: 군사(軍師)를 두고 등용·계략 전에 조언을 듣는다 · 이웃 거점에 있는 다른 세력의 무장을 등용한다. v0.8.1: 초반 보호 · 혼란·위보·불길 표시. v0.8: 건설 담당 묶기·성역 멈춤 없앰·돈과 병량 약 2배·전법 균형·부지 10·13·16곳·충성과 인연·지도 끝·초상 가운데 맞춤.
 
 - **바로 하기 / 앱으로 설치**: https://aaronkyung-a11y.github.io/chunhado/ — 휴대폰 크롬에서 열고 제목 화면의 **앱으로 설치**(또는 브라우저 메뉴의 *홈 화면에 추가*)를 누르면 앱처럼 전체 화면으로 열리고, 한 번 연 뒤에는 인터넷 없이도 된다.
 - 저장소에 올라 있는 것: 맨 위의 `index.html`·`manifest.webmanifest`·`sw.js`·`icons/`·`bgm/`가 게임(= `tools/build.py --pwa`의 결과), 나머지가 소스.
@@ -32,8 +32,8 @@
 - `pwa/` — 앱판에만 들어가는 것: `manifest.webmanifest`, `sw.js`(서비스 워커), `icons/`
 - `bgm/` — 음악 8곡(v0.7, HTML 옆에 두면 재생 — 없으면 코드로 만든 음악). `audio7/` — 소리 원본 기록(`jobs.tsv`). `versions/` — 버전별 스냅샷.
 
-## 소리(v0.7)
-- **효과음**: `src/sfxdata.js`의 표본 27개를 처음 누를 때 풀어 두고(`sndLoad`), 장면 이름으로 부른다 — `sfx('hit')`. 장면 → 표본·크기·음높이 흔들림·늦춤은 `src/ui3d.js`의 `CUES` 표 한 곳에서 정한다. 같은 장면은 `gap`(ms) 안에 다시 나지 않는다. 표본이 아직 안 풀렸으면 예전의 만든 소리(`sfxSyn`)가 대신 난다.
+## 소리(v0.7, 쏘는 소리는 v0.12)
+- **효과음**: `src/sfxdata.js`의 표본 29개를 처음 누를 때 풀어 두고(`sndLoad`), 장면 이름으로 부른다 — `sfx('hit')`. 장면 → 표본·크기·음높이 흔들림·늦춤은 `src/ui3d.js`의 `CUES` 표 한 곳에서 정한다. 같은 장면은 `gap`(ms) 안에 다시 나지 않는다. 표본이 아직 안 풀렸으면 예전의 만든 소리(`sfxSyn`)가 대신 난다.
   - 움직이는 동안의 소리는 `sfxMove(병과, ms)`(보병 발소리·기병 말발굽·수레), 전투 연출 도중의 소리는 `src/fx.js`의 시간표(`tracks`)에 `on: function () { sfx(...) }`로, 타격 순간의 소리는 `ui_panels.js`의 `resultFx`에서.
 - **음악**: `BGM_TRACKS`가 장면(title·field·tense·battle·victory·defeat)마다 곡을 정한다. 여러 곡이면 끝날 때마다 다음 곡으로 돌아간다. 지금의 장면은 `bgmForState()` — 싸운 지 한 턴 안이거나 적이 내 성 2칸 안이면 전투, 적 부대가 내 성 7칸·내 부대 4칸 안이거나 내 부대가 남의 성역에 있으면 긴장, 아니면 평시.
   - 곡을 바꾸려면 `bgm/<이름>.mp3`를 바꿔 넣으면 된다(앱판은 `pwa/sw.js`의 `BGM` 번호도 올린다). 곡을 늘리려면 `BGM_TRACKS`에 이름을 더한다.
@@ -56,6 +56,17 @@
 - **부지**: `mapdata.js`의 `plots`(성마다 S 10·M 13·L 16). 옛 저장은 `deserialize`가 모자란 부지를 뒤에 채운다.
 - **충성과 인연**: `data.js`의 `BONDS`(군주 이름 → { 무장: 사이 }), `core.js`의 `bondWith`·`bondOf`·`loyNat`. 분기마다 `roundEnd`에서 자리 잡는 값 쪽으로 움직인다.
 - **지도 끝**: `ui3d.js`의 `APRON`(지도 밖 띠의 폭)·`apronY`(띠의 높이)·`TERRAIN_FS`의 `edge`(거울 비춤 + 번짐 + 종이로 풀림)·`camLimits`(지도 끝이 화면에 들어오는 한도)·`settleCam`(아래 창 높이가 바뀌면 제자리로).
+
+## v0.12에서 바뀐 것의 자리
+바뀐 기록은 `build/v012/p1_tactic`(전법 실패의 피해) · `p2_fac`(시설 칸의 통행) · `p3_share`(세이브 파일 보내기 · 가져오기) · `p4_sound`(쏘는 소리의 큐) · `p5_deploy`(나갈 자리) · `p6_more`(아래에 더 있다는 표시). `bash build/v012/apply.sh`가 v0.11의 소스에서 다시 만든다. 효과음은 따로 `python3 tools/make_audio_v012.py`(바탕은 `build/sfxdata.v011.js`, ffmpeg 필요 — 다시 돌려도 바이트까지 같다).
+- **전법 실패**(`data.js`): `TACTIC_K.failDmg` 0.4 → 0.85. 실패 갈래는 `core.js`의 `unitTactic0`, AI의 기대값은 `tacticExpect`, 도움말 · 전법 풀이는 이 상수로 글을 만든다. 두 규칙을 같은 장면에 대어 보려면 `SETS='{…}' node tests/tac91.js`.
+- **시설 칸**(`core.js`): 길을 막던 세 곳(`unitReach` · `longPath` · `canPushInto`)에서 시설 검사를 뺐다. 출진 자리(`deploySpot`의 점수)는 시설 칸에 +4(가는 곳이 정해져 있으면 +0.5) — 빈 땅이 먼저다. `facUnder(u)` = 부대가 올라선 남의 시설(대상 꼴 `{ kind: 'fac', d: 0 }`), `attackTargets`의 끝에 붙는다.
+  - 화면(`ui_panels.js`): 부대 창의 `data-a="facunder"`(발밑의 시설을 대상으로) · 대상 창의 `data-a="moveon"`(그 칸으로 이동), `onTap`에서 칠 수 없는 남의 시설 칸은 이동으로. 그림(`ui3d.js`의 `syncScene`): 부대가 선 시설은 불투명도 ×0.38(`fo.sig` 끝의 `u`).
+- **세이브 파일**(`ui_panels.js`): 보내기 `showSaveSend()` — `saveFileText(칸)` → `{ name, meta, text }`(머리말 두 줄 + 저장본), `saveFileObj` · `canShareFile`(공유 창이 파일을 받는가) · `saveDownload` · `copyLong`. 받기 `flowImport(글, 넣은 뒤 할 일)` — `saveParse`(꼴 · 글자 · 색) → `saveShapeOk`(지도 · 세력 · 병과와 맞는가) → `saveProbe`(열어 보고 하던 판을 되돌린다) → `firstEmptySlot()` 또는 덮어쓸 칸 고르기. 파일 고르기 `pickSaveFile`, 붙여넣기 `showSavePaste`. `loadFrom`은 실패하면 하던 판을 되돌린다.
+- **쏘는 소리**: 표본 `bow` · `arrows` · `thock` · `arrowland` · `drum`(`tools/make_audio_v012.py`의 `make()` · `drum_fix()`), 큐 `arrowhit` · `arrowbig` · `arrowgreat` · `arrowfail`(`ui3d.js`의 `CUES`), 고르는 곳은 `ui_panels.js`의 `shot`(두 칸 밖이거나 화시 · 관시 · 난사).
+- **나갈 자리**(`core.js`): `deploySpots(b)` = 둘레의 나갈 수 있는 칸들, `cmdDeploy`의 `spec.at = [c, r]`(없으면 전처럼 `deploySpot(b, spec.toward)`). 화면은 `deployRing(b, st)`(여섯 칸 그림 — `hexCenter`의 차이로 자리를 잡으므로 지도와 방향이 같다) · `ringOn(st)`(`at` · `atauto` 두 단추) · `spotWhat(c, r)`(칸에 적는 말) · `dirName`. CSS `.dring` · `.dpat`.
+- **아래에 더 있다는 표시**(`ui_panels.js`): `moreInit()`이 `#modal` · `#sheet`의 내용이 바뀌는 것을 지켜보다가 `moreScan()`으로 굴러가는 몸통(`.dlg-b` · `.sh-body`)의 끝에 `.morehint`(높이 0 · sticky)를 붙이고, `moreSet(body)`가 남은 길이(`MORE_GAP` 10px)로 켜고 끈다. 새 굴림 몸통을 만들면 `moreScan`의 선택자에 더한다.
+- **중국어 음성**: 아직 없다. 계획과 견적은 `dev/v012_voice_plan.md`.
 
 ## v0.11에서 바뀐 것의 자리
 바뀐 기록은 `build/v011/p1_small`(시설의 레벨 표시 · 적성 줄 · 치안 풀이 · 출진 군량 · 공유) · `p2_recruit`(등용과 옛 관계) · `p3_supply`(수송대의 보급) · `p4_counsel`(군사의 헌책 · 탐색) · `p5_zoom`(확대한 지도). `bash build/v011/apply.sh`가 0.10.1의 소스에 차례로 입힌다. 규칙이 바뀐 곳은 등용 · 탐색 · 보급 · 출진 군량의 선택지다.
@@ -177,6 +188,7 @@ python3 tools/make_assets_v05.py art/raw5 art/por5_faces.tsv art/por5_out src/as
 python3 tools/facebox.py art/raw7 art/por7_faces.tsv
 FOCUS=art/por7_focus.tsv python3 tools/make_assets_v05.py art/raw7 art/por7_faces.tsv art/por7_out src/assets.js build/assets.v04.js src/roster.js 256 320 72 56
 python3 tools/make_audio_v07.py          # audio7/raw → bgm/*.mp3, src/sfxdata.js
+python3 tools/make_audio_v012.py         # v0.12: build/sfxdata.v011.js → src/sfxdata.js (쏘는 소리 넷을 새로 만들고 북에 배음)
 python3 tools/make_icons.py              # pwa/icons/
 # v0.8(부지·초상 다시 자르기)
 python3 tools/add_plots.py src/mapdata.js src/mapdata.json build/mapdata.json && cp src/mapdata.js build/mapdata.js

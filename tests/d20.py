@@ -39,7 +39,7 @@ def steps(pg):
     pg.evaluate('talkHide(); clearSel(); showHome()'); pg.wait_for_timeout(300)
     info = pg.evaluate('''(() => { var lb = G.bases[off(G.factions[G.player].lord).loc], cs = facCities(G.player); return { lord: lb.n, lordId: lb.id, others: cs.filter(function (b) { return b !== lb; }).map(function (b) { return [b.id, b.n]; }), ap: G.factions[G.player].ap, regen: apRegen(G.player), ver: GAME_VERSION }; })()''')
     print('  판:', info)
-    ok(info['ver'] == 'v0.11', '판 번호 v0.11 [%s]' % info['ver'])
+    ok(info['ver'] == 'v0.12', '판 번호 v0.12 [%s]' % info['ver'])
     st = pg.evaluate('''(() => { var s = document.querySelector("#sheet .hm-corps"); return s ? { n: s.querySelectorAll(".cpb").length, nw: s.querySelector(".cpb.new") ? s.querySelector(".cpb.new").innerText.replace(/\\n+/g, " / ") : "", before: s.previousElementSibling.className, after: s.nextElementSibling.textContent.slice(0, 5) } : null; })()''')
     ok(st and st['n'] == 1 and '+ 군단' in st['nw'] and 'hm-advp' in st['before'] and st['after'].startswith('지금 할'), 'STATUS 창: 군사의 자리 아래에 [+ 군단] 한 칸 [%s]' % (st and st['nw']))
     B.shot(pg, 'c01_home', 200)
