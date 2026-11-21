@@ -26,12 +26,12 @@ function hdist(c1, r1, c2, r2) {
 function stepDir(c, r, dx, dz) { var x = cubeX(c, r) + dx, z = r + dz; return [x + ((z - (z & 1)) >> 1), z]; }
 function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
 /* ---------- 지형 표(빠른 경로 탐색용) ---------- */
-var NHEX = W * H, NBR = new Int32Array(NHEX * 6), TCH = new Uint8Array(NHEX), RDB = new Uint8Array(NHEX);
+var NHEX = W * H, NBR = new Int32Array(NHEX * 6), TCH = new Uint8Array(NHEX), RDB = new Uint8Array(NHEX), ELV = new Uint8Array(NHEX);      // ELV: 칸의 높이 단계(v0.15)
 var MC = [new Uint8Array(NHEX), new Uint8Array(NHEX), new Uint8Array(NHEX)];
 (function () {
   for (var r = 0; r < H; r++) for (var c = 0; c < W; c++) {
     var k = r * W + c, t = MAPDATA.t.charAt(k), rd = MAPDATA.road.charAt(k) === '1', d = (r & 1) ? NB_ODD : NB_EVEN;
-    TCH[k] = t.charCodeAt(0); RDB[k] = rd ? 1 : 0;
+    TCH[k] = t.charCodeAt(0); RDB[k] = rd ? 1 : 0; ELV[k] = MAPDATA.e ? (parseInt(MAPDATA.e.charAt(k), 36) || 0) : 0;
     for (var i = 0; i < 6; i++) { var cc = c + d[i][0], rr = r + d[i][1]; NBR[k * 6 + i] = (cc >= 0 && rr >= 0 && cc < W && rr < H) ? rr * W + cc : -1; }
     for (var ci = 0; ci < 3; ci++) MC[ci][k] = (t === 'm' || t === 's' || t === 'x') ? 99 : (t === 'w' ? (rd ? 4 : 8) : (rd ? ROAD_COST[ci] : MOVE_COST[t][ci]));
   }
@@ -1763,14 +1763,47 @@ function autoTeam(b, type, want) {
 
 /* ---------- 전투 ---------- */
 /* 주사위를 뺀 피해(v0.9.1) — dmgUU 가 여기에 0.92~1.08 을 곱한다. 창의 '예상'과 전법의 기대값(tacticExpect)이 이 값을 쓴다 */
+/* ---------- 지형이 싸움에 미치는 것(v0.15) ----------
+   치는 부대 a 가 맞는 부대 d 에게 주는 피해에 곱해지는 값들. ranged = 두 칸 밖에서 쏘는가. 화면도 이것으로 내역을 적는다 */
+function elevOf(c, r) { return ELV[r * W + c]; }
+function elevDiff(a, d) { return clamp(ELV[a.r * W + a.c] - ELV[d.r * W + d.c], -ELEV_K.max, ELEV_K.max); }
+function terrMods(a, d, ranged) {
+  var out = [], td = terr(d.c, d.r), ta = terr(a.c, a.r), T = TERR_K;
+  if (td === 'f' || td === 'h') out.push({ k: TERRAIN_NAME[td] + '의 적', m: T.cover });
+  else if (td === 'w') out.push({ k: '강 위의 적', m: T.riverDef });
+  if (ranged && td === 'f') out.push({ k: '숲 속으로 쏨', m: T.forestShot });
+  if (ta === 'w') out.push({ k: '강 위에서', m: T.riverAtk });
+  if (UNIT_TYPES[a.type].cls === 'horse' && !ranged) {
+    if (ta === 'f' || ta === 'h' || td === 'f' || td === 'h') out.push({ k: '기병 · 험한 땅', m: T.cavRough });
+    else if (ta === 'p' && td === 'p') out.push({ k: '기병 · 평지', m: T.cavPlain });
+  }
+  var dh = elevDiff(a, d);
+  if (dh) out.push({ k: dh > 0 ? '높은 곳에서' : '낮은 곳에서', m: 1 + ELEV_K.step * dh, dh: dh });
+  return out;
+}
+function terrMul(a, d, ranged) { var ms = terrMods(a, d, ranged), x = 1; for (var i = 0; i < ms.length; i++) x *= ms[i].m; return x; }
+/* 옛 저장: 못 가는 칸(넓어진 산)에 서 있는 부대를 가장 가까운 갈 수 있는 빈 칸으로 옮긴다 → 옮긴 부대들 */
+function terrainFix() {
+  var moved = [];
+  for (var i = 0; i < G.units.length; i++) {
+    var u = G.units[i], k0 = u.r * W + u.c;
+    if (MC[0][k0] < 99) continue;
+    var seen = {}, q = [[u.c, u.r]], hit = null, n = 0; seen[k0] = 1;
+    while (q.length && !hit && n < 4000) {
+      var p = q.shift(), ns = nbrs(p[0], p[1]); n++;
+      for (var j = 0; j < ns.length && !hit; j++) { var nk = ns[j][1] * W + ns[j][0]; if (seen[nk]) continue; seen[nk] = 1; if (MC[0][nk] < 99 && !UAT[nk] && BAT[nk] === undefined) hit = ns[j]; else q.push(ns[j]); }
+    }
+    if (hit) { placeUnit(u, hit[0], hit[1]); moved.push(u); }
+  }
+  return moved;
+}
+
 function dmgBase(a, d, mult, ranged) {
   var x = 620 * Math.pow(uAtk(a) / Math.max(10, uDef(d)), 0.9) * troopFactor(a.troops) * mult;
   var c = (COMPAT[a.type] && COMPAT[a.type][d.type]) || 1;
   if (VS_TYPE[d.type] && (!ranged || d.type === 'trans' || d.type === 'ram')) c *= VS_TYPE[d.type];
   x *= c;
-  var td = terr(d.c, d.r), ta = terr(a.c, a.r);
-  if (td === 'f' || td === 'h') x *= 0.85; else if (td === 'w') x *= 1.2;
-  if (ta === 'w') x *= 0.7;
+  x *= terrMul(a, d, ranged);                                  // v0.15: 지형 · 높낮이 · 병과
   if (d.status === 'confuse') x *= 1.25;
   return x;
 }
@@ -1786,7 +1819,7 @@ function baseDefVal(b) {
 function dmgUB(a, b) {
   var T = UNIT_TYPES[a.type];
   var x = 620 * Math.pow(uAtk(a) / baseDefVal(b), 0.9) * troopFactor(a.troops) * T.vsBase * (0.92 + rnd() * 0.16);
-  if (terr(a.c, a.r) === 'w') x *= 0.7;
+  if (terr(a.c, a.r) === 'w') x *= TERR_K.riverAtk;
   return Math.max(20, Math.round(x));
 }
 function durDmgUB(a) {
@@ -2514,6 +2547,8 @@ function deserialize(s) {
   if (g.seed0 === undefined) g.seed0 = (g.seed ^ 0x2545F491) | 0;        // v0.9: 미리 정해 두는 결과의 고정 씨앗(옛 저장에는 없다 — 열 때 한 번 정해 저장본에 남는다)
   if (!g.corps) { g.corps = []; g.nextCorps = 1; }                         // v0.10: 군단(옛 저장에는 없다)
   G = g; reindex(); REPORT = []; EVQ = []; JOT = null;
+  var tfix = terrainFix();                                               // v0.15: 산이 넓어졌다 — 못 가는 칸에 서 있던 부대를 옮긴다
+  for (var ti = 0; ti < tfix.length; ti++) if (tfix[ti].f === G.player) logMsg(uName(tfix[ti]) + ' — 지형이 바뀌어(v0.15) 옆의 갈 수 있는 칸으로 옮겼습니다', tfix[ti].c, tfix[ti].r, G.player, 1);
   corpsFix();
   pastSweep();                                                           // v0.11: 섬겼던 세력(옛 저장에는 없다 — 시나리오의 세력으로 미루어 채운다)
   if (peaceCut) { var pcap = facCities(G.player)[0] || facBases(G.player)[0]; if (pcap) logMsg('초반 보호 기간이 짧아졌습니다(v0.9.1) — 이 판의 보호는 ' + dateOfTurn(G.peace.until - 1) + '까지입니다(전에는 ' + dateOfTurn(peaceCut - 1) + '까지)', pcap.c, pcap.r, G.player, 2); REPORT = []; }

@@ -854,7 +854,7 @@ function onTap(c, r) {
   }
   if (su || UI.sel) { clearSel(); return; }
   var tt = terr(c, r);
-  toast(TERRAIN_NAME[tt] + (isRoad(c, r) && tt !== 'w' ? ' (길)' : (isRoad(c, r) ? ' (나루)' : '')) + ' — ' + TERRAIN_DESC[tt], 1800);
+  toast(TERRAIN_NAME[tt] + (isRoad(c, r) && tt !== 'w' ? ' (길)' : (isRoad(c, r) ? ' (나루)' : '')) + (tt === 'm' || tt === 's' || tt === 'x' ? '' : ' · 높이 ' + elevOf(c, r)) + ' — ' + TERRAIN_DESC[tt], 2600);
 }
 
 /* ---------- 행군(여러 턴 걸리는 이동) ---------- */
@@ -895,6 +895,27 @@ function doMove(u, c, r) {
 function estBase(u, b) {
   var T = UNIT_TYPES[u.type];
   return { t: Math.min(b.troops, Math.round(620 * Math.pow(uAtk(u) / baseDefVal(b), 0.9) * troopFactor(u.troops) * T.vsBase)), d: durDmgUB(u) };
+}
+/* ---------- 지형 풀이(v0.15) ---------- */
+function pctTxt(m) { var p = Math.round((m - 1) * 100); return (p > 0 ? '+' : '−') + Math.abs(p) + '%'; }
+var TERRAIN_SHORT = { p: '', f: '받는 피해 −15%', h: '받는 피해 −15%', d: '', w: '공격 −30% · 받는 피해 +20%' };
+/* 부대가 선 칸: 지형 · 높이 · 그 칸의 효과 */
+function terrLine(u) {
+  var t = terr(u.c, u.r), cav = UNIT_TYPES[u.type].cls === 'horse', tx = TERRAIN_SHORT[t] || '';
+  if (cav && (t === 'f' || t === 'h')) tx += (tx ? ' · ' : '') + '기병 공격 −15%'; else if (cav && t === 'p') tx = '기병 · 평지의 적에게 +10%';
+  return '<div class="terrl"><i class="tmk">地</i><b>' + (isRoad(u.c, u.r) && t !== 'w' ? TERRAIN_NAME[t] + '(길)' : TERRAIN_NAME[t]) + '</b> · 높이 <b>' + elevOf(u.c, u.r) + '</b>' + (tx ? '<span>' + tx + '</span>' : '') + '</div>';
+}
+/* 이 싸움에 걸리는 지형의 값: a 가 d 를 칠 때(둘 다 부대) */
+function terrNote(a, d) {
+  var far = hdist(a.c, a.r, d.c, d.r) > 1, ms = terrMods(a, d, far), cs = far ? [] : terrMods(d, a, false), x = 1, y = 1, i;
+  if (!ms.length && !cs.length) return '';
+  for (i = 0; i < ms.length; i++) x *= ms[i].m;
+  for (i = 0; i < cs.length; i++) y *= cs[i].m;
+  var h = '<p class="note tnote"><b>지형</b> ';
+  if (ms.length) h += ms.map(function (m) { return m.k + ' <em class="' + (m.m >= 1 ? 'good' : 'bad') + '">' + pctTxt(m.m) + '</em>'; }).join(' · ') + (ms.length > 1 ? ' → 내 피해 <em class="' + (x >= 1 ? 'good' : 'bad') + '">' + pctTxt(x) + '</em>' : '');
+  else h += '내 피해는 그대로';
+  if (cs.length) h += '<br>반격 ' + cs.map(function (m) { return m.k + ' <em class="' + (m.m <= 1 ? 'good' : 'bad') + '">' + pctTxt(m.m) + '</em>'; }).join(' · ') + (cs.length > 1 ? ' → <em class="' + (y <= 1 ? 'good' : 'bad') + '">' + pctTxt(y) + '</em>' : '');
+  return h + '</p>';
 }
 function targetActions(u, t) {
   var out = [], d = hdist(u.c, u.r, t.c, t.r), rg = uRange(u), i;
@@ -1151,7 +1172,7 @@ function unitSheet(u) {
       var turns = unitFoodTurns(x);
       var h = '<div class="sh-head">' + porTag(ms[0], 'hd') + '<div><div class="sh-title">' + uName(x) + ' ' + facChip(x.f) + pactChip(G.player, x.f) + '</div><div class="sh-sub">' + T.name + (APT_IDX[x.type] !== undefined ? ' 적성 ' + uApt(x) : '') + (stChips(x) ? ' ' + stChips(x) : '') + '</div></div>' +
         '<button class="x" data-a="close" type="button" aria-label="닫기">×</button></div><div class="sh-body">' +
-        '<div class="stats ust"><div><span>' + ico('troops') + '병력</span><b>' + fmt(x.troops) + '</b></div><div><span>' + ico('morale') + '기력</span><b>' + x.morale + '</b></div><div><span>' + ico('food') + '군량</span><b' + (turns <= 3 ? ' class="bad"' : '') + '>' + days(turns) + '분</b></div></div>' + (x.type === 'trans' && mine ? cargoLine(x) : '') + statusBanner(x);
+        '<div class="stats ust"><div><span>' + ico('troops') + '병력</span><b>' + fmt(x.troops) + '</b></div><div><span>' + ico('morale') + '기력</span><b>' + x.morale + '</b></div><div><span>' + ico('food') + '군량</span><b' + (turns <= 3 ? ' class="bad"' : '') + '>' + days(turns) + '분</b></div></div>' + (x.type === 'trans' && mine ? cargoLine(x) : '') + terrLine(x) + statusBanner(x);
       var su = selUnit(), cpU = mine ? unitCorps(x) : null;
       if (cpU) {                                                 // 군단의 부대: 하는 일과 [군단] · [직할로]
         var Lu = corpsLead(cpU);
@@ -1171,6 +1192,7 @@ function unitSheet(u) {
           var tn = t.kind === 'unit' ? uName(t.u) + ' · ' + UNIT_TYPES[t.u.type].name + ' ' + fmt(t.u.troops) + '명 · 기력 ' + t.u.morale : (t.kind === 'base' ? t.b.n + ' · 병력 ' + fmt(t.b.troops) + ' · 내구 ' + fmt(t.b.dur) : t.b.n + '의 ' + FAC[t.b.plots[t.i].fac.t].name);
           st.acts = targetActions(x, t);
           h += '<div class="tgt">대상 — <b>' + tn + '</b>' + (t.kind === 'unit' && stChips(t.u) ? ' ' + stChips(t.u) : '') + '</div>';
+          if (t.kind === 'unit') h += terrNote(x, t.u);                                    // v0.15: 이 싸움에 걸리는 지형
           if (t.kind === 'unit' && t.u.status) h += '<p class="note stn">' + (t.u.status === 'confuse' ? '반격 없음 · 받는 피해 +25% · 전법 성공률 +10' : '반격 없음') + '</p>';
           if (t.kind !== 'unit' && peaceWouldBreak(t.b.owner)) h += '<p class="note pzw">먼저 치면 <b>' + facName(t.b.owner) + '군과의 보호가 풀립니다</b></p>';
           var adv1 = null, ys = [], ns = []; st.acts.forEach(function (a0) { if (!a0.adv) return; if (!adv1) adv1 = a0.adv; (a0.adv.says ? ys : ns).push(a0.label); });
@@ -2046,6 +2068,12 @@ var HELP_HTML = '<div class="help">' +
   '<h3>닫기(×)와 뒤로 가기</h3><p><b>×는 한 단계만 뒤로</b> 갑니다. 무장 정보를 닫으면 보던 목록으로, 무장 고르는 표를 닫으면 그 앞 창으로 돌아갑니다. 부대에서 대상이나 행군을 고르던 중이면 그것만 물립니다. 막 출진한 부대의 창을 닫으면 나온 성의 출진 탭으로 돌아갑니다.</p>' +
   '<p>목록·기록·지난 열흘의 일에서 줄을 눌러 지도로 건너뛰면 왼쪽 위에 <b>‹ 목록</b> 같은 단추가 생깁니다. 누르면 보던 자리 그대로 다시 열립니다. 그렇게 열린 거점·부대 창은 ×로도 목록에 돌아갑니다.</p>' +
   '<h3>조작</h3><p>끌어서 지도를 옮기고, 두 손가락으로 확대·축소합니다. 오른쪽 위 작은 지도를 누르면 그곳으로 건너뜁니다. 거점 이름표의 붉은 낙관 숫자는 아직 일하지 않은 무장 수입니다. 부대 이름표에는 주장의 얼굴이 붙습니다.</p>' +
+  '<h3>지형</h3><p>먹으로 짙게 그린 <b>산</b>과 바다 · 변경은 지나갈 수 없고, 그런 칸에는 <b>칸 줄이 없습니다</b>. 칸 줄이 보이는 곳은 모두 갈 수 있는 땅입니다. 빈 땅을 누르면 지형과 높이가 뜹니다.</p><ul>' +
+  '<li><b>높낮이</b> — 칸마다 높이가 있습니다. 치는 칸이 맞는 칸보다 한 단 높을 때마다 주는 피해 <b>+' + Math.round(ELEV_K.step * 100) + '%</b>, 낮을 때마다 −' + Math.round(ELEV_K.step * 100) + '% (' + ELEV_K.max + '단까지). 반격에도 같습니다 — 높은 곳을 차지하면 덜 맞고 더 세게 받아칩니다.</li>' +
+  '<li><b>숲 · 구릉</b> — 이동이 느립니다. 그 위의 부대는 받는 피해 −15%. 숲 속의 부대를 화살로 쏘면 −15% 더. 숲에서는 기병 전법을 쓸 수 없고 불이 번집니다.</li>' +
+  '<li><b>기병</b> — 평지에서 평지의 적을 치면 +10%. 숲 · 구릉에서 치거나 숲 · 구릉의 적을 치면 −15%.</li>' +
+  '<li><b>강</b> — 건너는 데 이동력이 많이 듭니다(나루는 덜). 물 위에서는 공격 −30%, 받는 피해 +20%.</li>' +
+  '<li>부대 창에 선 칸의 지형과 높이가, 적 부대를 고르면 대상 창에 <b>그 싸움에 걸리는 지형의 값</b>이 적힙니다. 예상 피해에는 이미 들어 있습니다.</li></ul>' +
   '<h3>지도</h3><p>실제 지형(고도·강·해안)과 거점의 실제 위치를 바탕으로 만들었습니다. 한 칸은 약 ' + MAPDATA.km + 'km입니다. 황하 하류는 후한 때의 물길을 따릅니다. 바탕 그림은 지도 전체가 한 장이라, 가장 크게 당기면 붓자국이 먹이 번진 듯 부드럽게 보입니다.</p>' +
   '<h3>일기토</h3><p>무력 ' + DUEL_K.minWar + ' 이상의 주장끼리 붙어 싸우면 낮은 확률로 일기토가 벌어집니다. 옆의 적 부대를 누르고 <b>일기토</b>를 눌러 직접 걸 수도 있습니다(기력 ' + DUEL_K.ask + ' · 응하지 않으면 상대 기력 -' + DUEL_K.refuse + '). 약한 상대일수록 응하지 않습니다.</p>' +
   '<p>합마다 수를 하나 고릅니다 — <b>맹공</b>은 필살을 이기고, <b>필살</b>은 방어를 부수며(피해 1.6배), <b>방어</b>는 맹공을 받아칩니다. 피해는 두 사람의 무력 차로 정해지고, 합을 이기면 기세가 올라 더 세게 칩니다. 화면의 <b>기색</b>은 상대가 낼 수의 낌새입니다(맞을 확률이 적혀 있습니다 — 지력이 높을수록 잘 읽습니다). ' + DUEL_K.rounds + '합 안에 쓰러뜨리지 못하면 남은 힘으로 판정합니다.</p>' +

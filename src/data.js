@@ -1,5 +1,5 @@
 /* ===== 천하도 — 정적 데이터 ===== */
-var GAME_VERSION = 'v0.14';
+var GAME_VERSION = 'v0.15';
 var SAVE_KEY = 'chunhado_save_v2';
 var SHARE_URL = 'https://aaronkyung-a11y.github.io/chunhado/';      // 공유(v0.11)로 보내는 주소 — 누구나 열 수 있는 곳
 /* SHARE_URL 의 QR(33×33, 줄마다 16진수 · 왼쪽이 높은 자리). 주소를 바꾸면 다시 만들어야 한다(segno 로 만들고 OpenCV 로 읽어 확인) */
@@ -36,9 +36,14 @@ var ROAD_COST = [2, 2, 3];
 var ZONE_R = 2;
 var TERRAIN_NAME = { p: '평지', f: '숲', h: '구릉', d: '황무지', w: '강', m: '산', s: '바다', x: '변경' };
 var TERRAIN_DESC = {
-  p: '이동이 쉽다.', f: '이동이 느리다. 방어 유리(피해 -15%). 기병 전법 불가.', h: '이동이 느리다. 방어 유리(피해 -15%).',
+  p: '이동이 쉽다. 기병이 평지의 적을 치면 +10%.', f: '이동이 느리다. 받는 피해 -15%(화살은 -15% 더). 기병은 -15%, 기병 전법 불가.', h: '이동이 느리다. 받는 피해 -15%. 기병은 -15%.',
   d: '조금 느리다.', w: '건너는 데 이동력이 많이 든다. 물 위에서는 공격 -30%, 받는 피해 +20%.', m: '지나갈 수 없다.', s: '지나갈 수 없다.', x: '지나갈 수 없다.'
 };
+/* 지형이 싸움에 미치는 값(v0.15)
+   ELEV_K: 높이 한 단(지도 높이 0.1) 차이에 피해 ±step, max 단까지
+   TERR_K: cover 숲 · 구릉의 적 / forestShot 숲 속의 적을 쏠 때 더 / riverDef 강 위의 적 / riverAtk 강 위에서 칠 때 / cavPlain 기병이 평지에서 평지의 적을 / cavRough 기병이 숲 · 구릉에서, 또는 숲 · 구릉의 적을 */
+var ELEV_K = { step: 0.06, max: 3 };
+var TERR_K = { cover: 0.85, forestShot: 0.85, riverDef: 1.2, riverAtk: 0.7, cavPlain: 1.10, cavRough: 0.85 };
 
 /* 다른 세력의 무장 등용(v0.9). 성공률 = base + (담당 매력−50)×cha + (담당 정치−50)×pol + (내 군주 매력 − 그쪽 군주 매력)×lord − (대상 충성−loy0)×loyK
    + 논객 talker + 대상이 내 군주와 인연이면 bond.  0~max%.  충성이 wall 이상이거나 제 주군과 인연이 있으면 0.

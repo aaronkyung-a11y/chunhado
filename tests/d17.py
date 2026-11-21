@@ -30,7 +30,7 @@ def steps(pg):
     ok('194년 6월 하순까지(6개월)' in intro and not TURNS.search(intro), '시작 안내: 194년 6월 하순까지(6개월), "N턴" 없음')
     tapsel(pg, '#modal [data-a=close]'); pg.wait_for_timeout(600)
     home = pg.evaluate('''(() => { var pz = document.querySelector("#sheet .pz"); return { pz: pz ? pz.className + ":" + pz.innerText : "", all: document.querySelector("#sheet").innerText, v: GAME_VERSION, until: G.peace.until, pv: G.peace.v }; })()''')
-    ok(home['v'] == 'v0.14', '판 번호 v0.14 [%s]' % home['v'])
+    ok(home['v'] == 'v0.15', '판 번호 v0.15 [%s]' % home['v'])
     ok(home['pz'] == 'pz:6월 하순까지 보호' and home['until'] == 19 and home['pv'] == 2, 'STATUS 창 날짜 옆: [6월 하순까지 보호] (%s)' % home['pz'])
     ok('초반 보호 —' not in home['all'] and not TURNS.search(home['all']), 'STATUS 창: v0.9.2 부터 초반 보호 줄은 없고(이름 옆 표만), 창 어디에도 "N턴" 없음')
     tapsel(pg, '#sheet .pz'); pg.wait_for_timeout(400)

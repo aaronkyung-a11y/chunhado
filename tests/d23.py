@@ -38,7 +38,7 @@ def steps(pg):
     print('1. 제목 화면')
     pg.evaluate('localStorage.clear()'); reload(pg)
     t0 = pg.evaluate('[$("tCont").disabled, $("tLoad").disabled, $("tVer").textContent]')
-    ok(t0[0] is True and t0[1] is False and t0[2].startswith('v0.14'), '저장이 없어도 [불러오기]가 열린다 · 판 번호 %s' % t0)
+    ok(t0[0] is True and t0[1] is False and t0[2].startswith('v0.15'), '저장이 없어도 [불러오기]가 열린다 · 판 번호 %s' % t0)
     tapsel(pg, '#tLoad'); pg.wait_for_timeout(400)
     v = pg.evaluate('({ t: document.querySelector("#modal").textContent, imp: !!document.querySelector("#modal [data-a=simport]"), paste: !!document.querySelector("#modal [data-a=spaste]") })')
     ok(head(pg) == '불러오기' and '저장된 판이 없습니다' in v['t'] and v['imp'] and v['paste'], '불러오기 창: 빈 알림 + [파일에서 가져오기] · [붙여넣기로 가져오기]')
@@ -71,7 +71,7 @@ def steps(pg):
     B.shot(pg, 'v2_send_nofile', 200)
     with pg.expect_download() as dl: tapsel(pg, '#modal [data-a=sdown]')
     d = dl.value; path = os.path.join(B.SHOTS, 'save_s2.txt'); d.save_as(path); text = open(path, encoding='utf-8').read(); lines = text.split('\n')
-    ok(d.suggested_filename == '천하도_왕랑_194년1월중순.txt' and lines[0].startswith('삼국지 천하도 세이브 — 왕랑 · 194년 1월 중순') and 'v0.14' in lines[0] and 'aaronkyung-a11y.github.io/chunhado' in lines[1] and '파일에서 가져오기' in lines[1], '파일 이름 · 머리말 두 줄: %s / %s' % (d.suggested_filename, lines[:2]))
+    ok(d.suggested_filename == '천하도_왕랑_194년1월중순.txt' and lines[0].startswith('삼국지 천하도 세이브 — 왕랑 · 194년 1월 중순') and 'v0.15' in lines[0] and 'aaronkyung-a11y.github.io/chunhado' in lines[1] and '파일에서 가져오기' in lines[1], '파일 이름 · 머리말 두 줄: %s / %s' % (d.suggested_filename, lines[:2]))
     ok(lines[2] == s2 and len(lines) == 4 and lines[3] == '', '셋째 줄이 저장본 그대로다(%d자)' % len(s2))
     # 글자로 복사
     pg.evaluate('(() => { window._clip = null; try { Object.defineProperty(navigator, "clipboard", { value: { writeText: function (t) { window._clip = t; return Promise.resolve(); } }, configurable: true }); } catch (e) { window._clipErr = String(e); } })()')

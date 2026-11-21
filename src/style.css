@@ -742,3 +742,10 @@ details.more .rules { margin: 6px 0 0; padding-left: 18px; font-size: 12px; line
 .stats.dipst { margin: 8px 0; }
 .cmds.two { grid-template-columns: 1fr 1fr; }
 ul.plain { margin: 6px 0 12px 18px; padding: 0; font-size: 14px; line-height: 1.6; }
+
+/* ---------- 지형 풀이(v0.15) ---------- */
+.terrl { display: flex; align-items: center; gap: 5px; margin: 6px 0 2px; font-size: 13px; color: var(--ink-2); }
+.terrl b { color: var(--ink); } .terrl .tmk { font: 900 11.5px var(--font-display); font-style: normal; color: var(--ink-2); border: 1px solid #1b1a1855; padding: 0 3px; line-height: 1.35; }
+.terrl span { margin-left: auto; font-size: 12px; color: var(--ink-2); }
+.note.tnote { margin: 6px 0; padding: 5px 8px; border-left: 3px solid #6a645a; background: #1b1a180a; line-height: 1.5; }
+.note.tnote em { font-style: normal; font-weight: 700; } .note.tnote em.good { color: #2f6f4f; } .note.tnote em.bad { color: var(--seal); }
