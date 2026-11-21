@@ -1,7 +1,7 @@
 #!/bin/bash
-# 전체 회귀: bash tests/regress.sh [로그 폴더=build/logs/v012/reg]     (먼저 tools/build.py, --embed, --pwa 로 세 판을 모두 만든 뒤)
+# 전체 회귀: bash tests/regress.sh [로그 폴더=build/logs/v0121/reg]     (먼저 tools/build.py, --embed, --pwa 로 세 판을 모두 만든 뒤)
 # 끝나면 <로그 폴더>/_summary.txt 에 시험마다 종료 코드가 한 줄씩, 마지막 줄에 DONE.
-cd "$(dirname "$0")/.."; L=${1:-build/logs/v012/reg}; mkdir -p $L; : > $L/_summary.txt
+cd "$(dirname "$0")/.."; L=${1:-build/logs/v0121/reg}; mkdir -p $L; : > $L/_summary.txt
 run() { name=$1; shift; ( "$@" > $L/$name.log 2>&1 ); echo "$name exit $?" >> $L/_summary.txt; }
 sha256sum dist/index.html dist/offline.html dist/pwa/index.html > $L/_build.sha
 # 규칙 시험(node). NODE_FROM=<폴더> 를 주면, 그 폴더의 _rules.sha(규칙 소스 core · ai · data 의 지문)가 지금과 같을 때 그때의 결과(_node.txt)를 그대로 쓴다 — 화면 쪽만 고쳐 다시 돌릴 때
@@ -43,5 +43,5 @@ run d12_nomusic timeout 1500 python3 tests/d12.py
 PAGE=pwa/index.html run d12_music timeout 1500 python3 tests/d12.py
 run d13 timeout 1500 python3 tests/d13.py
 run text92 timeout 900 python3 tests/text92.py
-for v in 0.11 0.10.1 0.10 0.9.3 0.9.2 0.9.1 0.9 0.8.1 0.8 0.7 0.6 0.5 0.4 0.3 0.2; do run d8_v$v timeout 900 python3 tests/d8.py chunhado-v$v-offline.html; done
+for v in 0.12 0.11 0.10.1 0.10 0.9.3 0.9.2 0.9.1 0.9 0.8.1 0.8 0.7 0.6 0.5 0.4 0.3 0.2; do run d8_v$v timeout 900 python3 tests/d8.py chunhado-v$v-offline.html; done
 echo DONE >> $L/_summary.txt

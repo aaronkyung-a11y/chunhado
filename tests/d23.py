@@ -283,6 +283,42 @@ def steps(pg):
     pg.evaluate('selectBase(facCities(G.player)[0])'); pg.wait_for_timeout(600)
     sh = pg.evaluate("""(() => { var body = document.querySelector('#sheet .sh-body'), h = body && body.querySelector(':scope > .morehint'); return { has: !!h, more: body ? body.scrollHeight - body.clientHeight : -1, on: !!h && h.classList.contains('on') }; })()""")
     ok(sh['has'] and (sh['on'] == (sh['more'] > 10)), '아래 판에도 붙는다(더 있을 때만 켜진다) %s' % sh)
+
+    # ================= 8. Claude 앱 안(아티팩트)에서 파일 내보내기 (v0.12.1) =================
+    print('8. 아티팩트 안')
+    pg.evaluate('closeDialog(); saveTo("s1")')
+    SEND = """({ share: !!document.querySelector('#modal [data-a=sshare]'), down: (document.querySelector('#modal [data-a=sdown]') || { innerText: '' }).innerText.replace(/\\n+/g, ' | '), wait: Array.prototype.some.call(document.querySelectorAll('#modal .cmd[disabled]'), function (e) { return e.textContent.indexOf('준비') >= 0; }), note: document.querySelector('#modal .note').textContent })"""
+    # (가) downloads 기능이 있는 화면
+    pg.evaluate("""(() => { DLCAP = undefined; window._dl = null; window._useN = 0;
+      window.claude = { use: function (name) { window._useN++; return new Promise(function (res) { setTimeout(function () { res(name === 'downloads' ? { save: function (req) { window._dl = req; return window._dlFail ? Promise.reject({ code: window._dlFail, message: 'x' }) : Promise.resolve({ status: 'saved' }); } } : null); }, 250); }); } };
+      navigator.canShare = function () { return true; }; navigator.share = function () { window._webshare = 1; return Promise.resolve(); }; })()""")
+    pg.evaluate('showShare()'); pg.wait_for_timeout(300)
+    ok(not pg.evaluate('!!document.querySelector("#modal [data-a=send]")'), '아티팩트 안: 주소의 [보내기](공유 창)는 내지 않는다')
+    tapsel(pg, '#modal [data-a=savesend]'); pg.wait_for_timeout(100); tapsel(pg, '#modal [data-slot=s1] [data-a=spick]'); pg.wait_for_timeout(50)
+    w = pg.evaluate(SEND)
+    pg.wait_for_timeout(500); r = pg.evaluate(SEND)
+    ok(not r['share'] and r['down'].startswith('파일로 내보내기') and not r['wait'] and '내보낼 수 없습니다' not in r['note'], '기능이 준비되면 [파일로 내보내기] — 공유 창 단추는 없다 %s (준비 중 표시: %s)' % (r['down'], w['wait']))
+    B.shot(pg, 'v8_claude', 200)
+    want = pg.evaluate('saveFileText("s1").text')
+    tapsel(pg, '#modal [data-a=sdown]'); pg.wait_for_timeout(400)
+    dl = pg.evaluate('window._dl')
+    ok(dl and dl['filename'].endswith('.txt') and dl['filename'].startswith('천하도_') and dl['data'] == want and '내보냈습니다' in toast(pg) and not pg.evaluate('!!window._webshare'), '[파일로 내보내기]: downloads.save 에 파일 이름과 세이브 글이 간다 — ' + toast(pg))
+    pg.evaluate('(() => { window._dlFail = "declined"; $("toast").textContent = ""; })()'); tapsel(pg, '#modal [data-a=sdown]'); pg.wait_for_timeout(400)
+    ok(toast(pg) == '', '보는 사람이 거절하면 아무 알림도 없다(내보냈다고 하지 않는다)')
+    pg.evaluate('(() => { window._dlFail = "unavailable"; })()'); tapsel(pg, '#modal [data-a=sdown]'); pg.wait_for_timeout(400)
+    ok('내보내지 못했습니다' in toast(pg), '그 밖의 실패는 알린다 — ' + toast(pg))
+    ok(pg.evaluate('window._useN') == 1, '기능은 한 번만 묻는다')
+    pg.evaluate('closeDialog()')
+    # (나) 기능이 없는 화면
+    pg.evaluate("""(() => { DLCAP = undefined; window.claude = { use: function () { return Promise.resolve(null); } }; })()""")
+    pg.evaluate('showSaveSend()'); pg.wait_for_timeout(200); tapsel(pg, '#modal [data-slot=s1] [data-a=spick]'); pg.wait_for_timeout(300)
+    r2 = pg.evaluate(SEND)
+    ok(not r2['share'] and r2['down'] == '' and '이 화면에서는 파일로 내보낼 수 없습니다' in r2['note'] and pg.evaluate('!!document.querySelector("#modal [data-a=scopy]")'), '기능이 없으면 파일 단추를 내지 않고 그렇다고 적는다 · [글자로 복사]는 남는다')
+    pg.evaluate('(() => { closeDialog(); delete window.claude; DLCAP = undefined; delete navigator.share; delete navigator.canShare; })()')
+    # (다) 밖(브라우저)에서는 전과 같다
+    pg.evaluate('showSaveSend()'); pg.wait_for_timeout(200); tapsel(pg, '#modal [data-slot=s1] [data-a=spick]'); pg.wait_for_timeout(300)
+    r3 = pg.evaluate(SEND); ok(r3['down'].startswith('파일로 저장') and '.txt' in r3['down'], '아티팩트 밖에서는 전과 같이 [파일로 저장] — ' + r3['down'])
+    pg.evaluate('closeDialog()')
 B.run(steps, 390, 844, 2)
 errs = [e for e in B.errors if 'GPU stall' not in e and 'GL Driver' not in e and 'ERR_FILE_NOT_FOUND' not in e and 'willReadFrequently' not in e]
 print('console errors:', errs[:6])

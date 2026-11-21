@@ -1862,7 +1862,7 @@ function showShare() {
     render: function () {
       return dlgHead('공유') + '<div class="dlg-b shr"><p>이 주소를 보내면 누구나 바로 할 수 있습니다 — 설치 없이 브라우저에서 열리고, 휴대폰이면 앱으로 설치할 수도 있습니다.</p>' +
         '<input class="shurl" id="shU" type="text" readonly value="' + url + '">' +
-        '<div class="cmds ' + (navigator.share ? 'c2' : 'c1') + '"><button class="cmd pri" type="button" data-a="copy"><b>주소 복사</b></button>' + (navigator.share ? '<button class="cmd" type="button" data-a="send"><b>보내기</b><small>앱 고르기</small></button>' : '') + '</div>' +
+        '<div class="cmds ' + (navigator.share && !inClaude() ? 'c2' : 'c1') + '"><button class="cmd pri" type="button" data-a="copy"><b>주소 복사</b></button>' + (navigator.share && !inClaude() ? '<button class="cmd" type="button" data-a="send"><b>보내기</b><small>앱 고르기</small></button>' : '') + '</div>' +
         (url === SHARE_URL ? '<div class="qrw">' + qrSvg(SHARE_QR) + '<small>옆 사람은 카메라로 QR을 비추면 됩니다</small></div>' : '') +
         '<h3 class="shh">하던 판 보내기</h3><p>주소만 보내면 받는 사람은 새 게임으로 시작합니다. 하던 판을 이어서 하게 하려면 세이브 파일을 함께 보내세요.</p>' +
         '<div class="cmds c1"><button class="cmd" type="button" data-a="savesend"><b>세이브 파일 보내기</b><small>보낼 판 고르기</small></button></div></div>';
@@ -1891,6 +1891,17 @@ function saveFileText(id) {
   var sv = lsGet(slotKey(id)), m = slotInfo(id); if (!sv || !m || m.bad) return null;
   return { name: saveFileName(m), meta: m, text: '삼국지 천하도 세이브 — ' + m.f + ' · ' + m.d + ' · ' + m.n + '성 · ' + fmt(m.tr) + '명 (' + GAME_VERSION + ')\n여는 법: ' + SHARE_URL + ' → 불러오기 → 파일에서 가져오기\n' + sv + '\n' };
 }
+/* Claude 아티팩트 안인가(v0.12.1). 그곳에서는 공유 창과 페이지가 시작하는 내려받기가 막혀 있고, 파일은 downloads 기능으로만 내보낼 수 있다.
+   DLCAP: undefined = 아직 묻지 않음 · 0 = 묻는 중 · null = 쓸 수 없음 · 객체 = downloads(그 save 를 부른다) */
+var DLCAP;
+function inClaude() { try { return !!(window.claude && typeof window.claude.use === 'function'); } catch (e) { return false; } }
+function dlCapAsk(cb) {
+  if (DLCAP !== undefined) return;
+  if (!inClaude()) { DLCAP = null; return; }
+  DLCAP = 0;
+  var done = function (ns) { DLCAP = ns && typeof ns.save === 'function' ? ns : null; if (cb) cb(); };
+  try { window.claude.use('downloads').then(done, function () { done(null); }); } catch (e) { done(null); }
+}
 function saveFileObj(p) { try { return new File([p.text], p.name, { type: 'text/plain' }); } catch (e) { return null; } }
 function canShareFile(f) { try { return !!(f && navigator.share && navigator.canShare && navigator.canShare({ files: [f] })); } catch (e) { return false; } }
 function saveDownload(p) {
@@ -1917,8 +1928,9 @@ function saveRowHtml(id, m, btn) {
 }
 function showSaveSend() {
   if (inGame() && !UI.play) saveGame();                          // 지금 모습을 자동 저장에 먼저 적는다 — '자동' 칸이 곧 지금 하는 판이다
-  var st = { id: '' }, game = inGame();
-  showDialog({
+  var st = { id: '' }, game = inGame(), dlg;
+  dlCapAsk(function () { if (MODAL === dlg) refreshDialog(); });
+  showDialog(dlg = {
     render: function () {
       var h = dlgHead('세이브 파일 보내기') + '<div class="dlg-b shr">', p = st.id ? saveFileText(st.id) : null;
       if (!p) {
@@ -1926,12 +1938,15 @@ function showSaveSend() {
         for (var i = 0; i < ids.length; i++) { var m = slotInfo(ids[i]); if (!m || m.bad) continue; n++; rows += saveRowHtml(ids[i], m, '<button class="btn" type="button" data-a="spick" data-v="' + ids[i] + '">고르기</button>'); }
         h += n ? '<p>보낼 판을 고르세요.' + (game ? ' <b>자동</b> = 지금 하는 판.' : '') + '</p><div class="rows svl">' + rows + '</div>' : '<p class="note">저장된 판이 없습니다 — 게임을 시작하면 턴마다 자동으로 저장됩니다.</p>';
       } else {
-        var kb = Math.max(1, Math.round(p.text.length / 1024)), can = canShareFile(saveFileObj(p));
+        var kb = Math.max(1, Math.round(p.text.length / 1024)), inC = inClaude(), can = !inC && canShareFile(saveFileObj(p)), fileBtn;
+        if (!inC) fileBtn = '<button class="cmd' + (can ? '' : ' pri') + '" type="button" data-a="sdown"><b>파일로 저장</b><small>' + p.name + ' · 약 ' + kb + 'KB</small></button>';
+        else if (DLCAP) fileBtn = '<button class="cmd pri" type="button" data-a="sdown"><b>파일로 내보내기</b><small>저장하거나 다른 앱으로 보냅니다 · 약 ' + kb + 'KB</small></button>';
+        else fileBtn = DLCAP === 0 ? '<button class="cmd" type="button" disabled><b>파일로 내보내기</b><small>준비하는 중…</small></button>' : '';
         h += '<div class="rows svl">' + saveRowHtml(st.id, p.meta, '<button class="btn" type="button" data-a="sback">다른 판</button>') + '</div>' +
           '<div class="cmds c1">' + (can ? '<button class="cmd pri" type="button" data-a="sshare"><b>보내기</b><small>앱 고르기 · 파일로 갑니다</small></button>' : '') +
-          '<button class="cmd' + (can ? '' : ' pri') + '" type="button" data-a="sdown"><b>파일로 저장</b><small>' + p.name + ' · 약 ' + kb + 'KB</small></button>' +
+          fileBtn +
           '<button class="cmd" type="button" data-a="scopy"><b>글자로 복사</b><small>붙여 넣어 보낼 때 · 글이 깁니다</small></button></div>' +
-          '<p class="note">받는 사람: 게임을 열고 <b>불러오기 → 파일에서 가져오기</b>(복사해 보냈으면 <b>붙여넣기로 가져오기</b>).' + (can ? '' : ' 이 화면에서는 공유 창에 파일을 실을 수 없어 저장 · 복사만 됩니다.') + '</p>';
+          '<p class="note">받는 사람: 게임을 열고 <b>불러오기 → 파일에서 가져오기</b>(복사해 보냈으면 <b>붙여넣기로 가져오기</b>).' + (inC ? (DLCAP === null ? ' <b class="bad">이 화면에서는 파일로 내보낼 수 없습니다</b> — [글자로 복사]를 쓰거나 앱 주소(' + SHARE_URL + ')에서 여세요.' : '') : (can ? '' : ' 이 화면에서는 공유 창에 파일을 실을 수 없어 저장 · 복사만 됩니다.')) + '</p>';
       }
       return h + '</div>';
     },
@@ -1943,7 +1958,16 @@ function showSaveSend() {
         try { navigator.share({ files: [f], title: '삼국지 천하도 세이브', text: '삼국지 천하도 세이브(' + p.meta.f + ' · ' + p.meta.d + ') — ' + SHARE_URL + ' 에서 불러오기 → 파일에서 가져오기' }).then(function () { /* 보냈다 */ }, function (e) { if (!(e && e.name === 'AbortError')) toast('공유 창을 열지 못했습니다 — [파일로 저장]을 쓰세요', 3200); }); }
         catch (e) { toast('공유 창을 열지 못했습니다 — [파일로 저장]을 쓰세요', 3200); }
       },
-      sdown: function () { var p = saveFileText(st.id); if (p && saveDownload(p)) toast('파일로 내보냈습니다 — 내려받은 파일을 보내면 됩니다', 2800); else toast('이 화면에서는 파일을 내보낼 수 없습니다 — [글자로 복사]를 쓰세요', 3200); },
+      sdown: function () {
+        var p = saveFileText(st.id); if (!p) return;
+        if (inClaude()) {                                           // 아티팩트 안: downloads 기능으로(보는 사람이 확인해야 저장된다)
+          var no = function () { toast('파일을 내보내지 못했습니다 — [글자로 복사]를 쓰세요', 3200); };
+          if (!DLCAP) return no();
+          try { DLCAP.save({ filename: p.name, data: p.text }).then(function () { toast('파일을 내보냈습니다', 2400); }, function (e) { var c = e && e.code; if (c === 'declined') return; if (c === 'rate_limited') toast('잠시 뒤에 다시 눌러 주세요', 2400); else no(); }); } catch (e) { no(); }
+          return;
+        }
+        if (saveDownload(p)) toast('파일로 내보냈습니다 — 내려받은 파일을 보내면 됩니다', 2800); else toast('이 화면에서는 파일을 내보낼 수 없습니다 — [글자로 복사]를 쓰세요', 3200);
+      },
       scopy: function () { var p = saveFileText(st.id); if (p) copyLong(p.text, '세이브를 복사했습니다'); }
     }
   }, true);

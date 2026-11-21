@@ -16,6 +16,7 @@ build/v010/p1_core.py build/v010/p2_ai.py build/v010/p3_ui.py build/v010/apply.s
 build/v0101/p1_adv.py build/v0101/p2_fsel_site.py build/v0101/p3_saves.py build/v0101/apply.sh
 build/v011/p1_small.py build/v011/p2_recruit.py build/v011/p3_supply.py build/v011/p4_counsel.py build/v011/p5_zoom.py build/v011/apply.sh
     build/v012/p1_tactic.py build/v012/p2_fac.py build/v012/p3_share.py build/v012/p4_sound.py build/v012/p5_deploy.py build/v012/p6_more.py build/v012/apply.sh dev/v012_voice_plan.md
+build/v0121/p1_dlcap.py build/v0121/apply.sh
 pwa/manifest.webmanifest pwa/sw.js
 tools/geo.py tools/mapgen2.py tools/bake3d.py tools/bake3d_ink.py tools/make_sprites.py tools/make_sprites_ink.py tools/make_roster.py tools/make_portraits.py tools/make_assets_ink.py
 tools/build.py tools/pack_sources.py tools/fetch_art.py tools/contact.py tools/dl_por2.py tools/dl_por3.py
