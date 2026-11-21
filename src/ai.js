@@ -184,7 +184,7 @@ function aiReport(u, res, tg) {
     if (res.kind === 'ploy') txt += '의 ' + res.ploy + (res.success ? ' 성공' : ' 실패') + ' → ' + (uLeaderSafe(tg)) + (res.dmg ? ' (-' + nf(res.dmg) + ')' : '') + (res.success && res.st ? ' — ' + statusName(res.st) + ' ' + res.stN * 10 + '일' : '');
     else if (res.kind === 'tactic') txt += '의 ' + res.tac + (res.fail ? ' 실패' : (res.crit ? ' 대성공' : '')) + ' → ' + uLeaderSafe(tg) + ' (-' + nf(res.dmg) + ')' + (res.confused ? ' — 혼란 ' + res.stN * 10 + '일' : '');
     else txt += '의 공격 → ' + uLeaderSafe(tg) + ' (-' + nf(res.dmg) + ')';
-    if (res.duel) txt += ' · 일기토 ' + (res.duel.win ? res.duel.a : res.duel.d) + ' 승';
+    if (res.duel) txt += ' · 일기토 ' + (res.duel.draw ? '비김' : (res.duel.win ? res.duel.a : res.duel.d) + ' 승');
     if (res.killed) txt += ' 궤멸';
     logMsg(txt, res.c, res.r, G.player, 1);
   }

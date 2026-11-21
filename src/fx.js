@@ -188,6 +188,7 @@ function animAct(res, done, onImpact) {
   var ranged = hdist(res.ac0, res.ar0, res.c, res.r) > 1, tracks = [], hit = 170, end = 0, i;
   var ang = fxAngle(pa, pt), big = res.kind === 'tactic' && !res.fail, crit = !!res.crit;
   var touched = [];
+  var voiced = typeof voiceAct === 'function' ? voiceAct(res, 0) : false;      // v0.13: 치는 쪽의 한마디(중국어 음성)
   function hold(o, p) { if (!o) return; o.anim = true; o.gone = false; fxPut(o, p); o.g.visible = true; if (o.ring) o.ring.visible = true; touched.push(o); }
   hold(A, pa); hold(T, pt);
   if (A) fxFace(A, pa, pt);
@@ -229,7 +230,7 @@ function animAct(res, done, onImpact) {
     if (res.kind === 'tactic') {                             // 전법: 먼저 기합(인주빛 고리)
       fxMark(tracks, 0, 420, 'enso', FX_SEAL, pa, 0.9, 2.3, Math.random() * 6.28, { dy: 0.35, spin: 1.6, fade: 1.2 });
       if (A) tracks.push({ a: 0, b: 240, step: function (u) { var s = 1 + 0.16 * Math.sin(Math.PI * u); A.sp.scale.set(A.sp.userData.w * s, A.sp.userData.h * s, 1); } });
-      tracks.push({ a: 0, b: 0, on: function () { sfx('shout'); } });
+      tracks.push({ a: 0, b: 0, on: function () { if (!voiced) sfx('shout'); } });      // 음성이 나가면 기합 효과음은 겹치지 않게 뺀다
       pre = 230;
     }
     var bowLike = ranged || tac === '화시' || tac === '관시' || tac === '난사';

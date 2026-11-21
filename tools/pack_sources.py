@@ -4,7 +4,7 @@ import os, sys
 root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 ver, out = sys.argv[1], sys.argv[2]
 FILES = '''README.md CHANGELOG.md
-src/index.html src/style.css src/data.js src/core.js src/ai.js src/ui3d.js src/fx.js src/ui_panels.js
+src/index.html src/style.css src/data.js src/core.js src/ai.js src/ui3d.js src/fx.js src/voice.js src/duel.js src/ui_panels.js
 build/patch_v04_ui3d.py build/patch_v04_panels.py build/v07/p1_core.py build/v07/p2_audio.py build/v07/p3_fx.py build/v07/p4_ui.py
 build/v071/p1_job.py build/v071/p2_job_ui.py build/v071/p3_trans.py build/v071/p4_edge.py build/v071/p5_zone.py build/v071/p5b_zone_ui.py build/v071/p5c_fac.py build/v071/p6_econ.py build/v071/p7_tactic.py build/v071/p7b_tactic_ui.py build/v071/p8_plots.py build/v071/p8b_plots_ui.py build/v071/p9_loyalty.py
 build/v081/p1_peace.py build/v081/p1b_peace_hook.py build/v081/p2_peace_ramp.py build/v081/p3_peace_ui.py build/v081/p4_status_core.py build/v081/p5_status_map.py build/v081/p6_status_ui.py build/v081/p7_touchup.py build/v081/p8_migrate.py
@@ -17,6 +17,7 @@ build/v0101/p1_adv.py build/v0101/p2_fsel_site.py build/v0101/p3_saves.py build/
 build/v011/p1_small.py build/v011/p2_recruit.py build/v011/p3_supply.py build/v011/p4_counsel.py build/v011/p5_zoom.py build/v011/apply.sh
     build/v012/p1_tactic.py build/v012/p2_fac.py build/v012/p3_share.py build/v012/p4_sound.py build/v012/p5_deploy.py build/v012/p6_more.py build/v012/apply.sh dev/v012_voice_plan.md
 build/v0121/p1_dlcap.py build/v0121/apply.sh
+build/v013/p1_duel_core.py build/v013/p2_duel_ui.py build/v013/p3_voice.py build/v013/apply.sh tools/make_voice_v013.py voice13/lines.py voice13/jobs.tsv voice13/qa.py voice13/voiceqa.py tests/duel13.js tests/d24.py tests/d25.py
 pwa/manifest.webmanifest pwa/sw.js
 tools/geo.py tools/mapgen2.py tools/bake3d.py tools/bake3d_ink.py tools/make_sprites.py tools/make_sprites_ink.py tools/make_roster.py tools/make_portraits.py tools/make_assets_ink.py
 tools/build.py tools/pack_sources.py tools/fetch_art.py tools/contact.py tools/dl_por2.py tools/dl_por3.py
@@ -30,7 +31,7 @@ art/por5_ids.tsv art/por5_scenes.tsv art/por5_scenes_f.tsv art/por5_scenes_pilot
 art/por7_ids.tsv art/por7_scenes.tsv art/por7_focus.tsv art/por7_ab.tsv art/por7_submit.tsv art/prompts-v0.7.txt audio7/jobs.tsv
 art/por8_out/crops.tsv art/por93_ids.tsv art/por93_submit.tsv art/por93_faces_all.tsv art/por93_out/crops.tsv'''.split()
 BAD = ('X-Amz-', 'Signature=', 'AWSAccessKeyId', 'Bearer ', 'cloudfront.net', 'api_key', 'secret')
-parts = ['삼국지 천하도 %s — 소스 묶음. 각 파일은 "=====8<===== 경로" 줄로 시작한다. 생성물(src/assets.js, mapdata.js, map3d.js, sprites.js, roster.js, sfxdata.js)은 index.html 안에 들어 있다. 음악(bgm/*.mp3)과 아이콘(pwa/icons/)은 따로 올린 파일 그대로다. 이전 판의 그림 기록(art/manifest.tsv, spr_jobs.tsv, por2_jobs.tsv)은 dev/sources-v0.3.txt 에 있다.\n' % ver]
+parts = ['삼국지 천하도 %s — 소스 묶음. 각 파일은 "=====8<===== 경로" 줄로 시작한다. 생성물(src/assets.js, mapdata.js, map3d.js, sprites.js, roster.js, sfxdata.js, voicedata.js)은 index.html 안에 들어 있다. 음악(bgm/*.mp3)과 아이콘(pwa/icons/)은 따로 올린 파일 그대로다. 이전 판의 그림 기록(art/manifest.tsv, spr_jobs.tsv, por2_jobs.tsv)은 dev/sources-v0.3.txt 에 있다.\n' % ver]
 for f in FILES:
     s = open(os.path.join(root, f), encoding='utf-8').read()
     for b in BAD:

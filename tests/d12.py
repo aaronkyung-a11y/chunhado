@@ -141,7 +141,7 @@ def steps(pg):
     k = pg.evaluate('() => ({ modal: !!MODAL, target: !!UI.target, sel: UI.sel ? UI.sel.kind : null })')
     check('전법 풀이를 닫으면 대상을 고른 그 자리로', (not k['modal']) and k['target'] and k['sel'] == 'unit', k)
     # ---------- 5. 전법의 세 결과: 글씨·소리 ----------
-    pg.evaluate('UI.pspeed = 1')
+    pg.evaluate('(() => { UI.pspeed = 1; UI.voice = false; })()')      # v0.13: 음성이 나가면 기합 효과음(shout)을 빼므로, 효과음의 표를 보는 이 대목은 음성을 끄고 본다(음성 쪽은 d25)
     r = tactic(pg, 0, 0, 'TACTICS.spear[0]', 0.999, 'd12_05_fail')
     print('  실패:', r['fl'], '|', r['toast'], '|', r['snd'])
     check('실패: "돌출 실패" 글씨와 성공률', any('돌출 실패' in x for x in r['fl']) and ('성공률 %d%%' % r['odds']['ok']) in r['toast'] and not any('밀어냄' in x for x in r['fl']), r)

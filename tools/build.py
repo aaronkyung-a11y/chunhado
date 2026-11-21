@@ -12,8 +12,8 @@ embed = '--embed' in sys.argv or pwa
 def rd(n): return open(os.path.join(src, n), encoding='utf-8').read()
 THREE_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js'
 terrain = "var TERRAIN_B64='" + base64.b64encode(open(os.path.join(root, 'build', 'terrain.jpg'), 'rb').read()).decode('ascii') + "';\n"
-CODE = ['mapdata.js', 'roster.js', 'data.js', 'core.js', 'ai.js', 'ui3d.js', 'fx.js', 'ui_panels.js']
-parts = [('assets.js', rd('assets.js')), ('terrain', terrain), ('sprites.js', rd('sprites.js')), ('map3d.js', rd('map3d.js')), ('sfxdata.js', rd('sfxdata.js'))] + [(n, rd(n)) for n in CODE]
+CODE = ['mapdata.js', 'roster.js', 'data.js', 'core.js', 'ai.js', 'ui3d.js', 'fx.js', 'voice.js', 'duel.js', 'ui_panels.js']
+parts = [('assets.js', rd('assets.js')), ('terrain', terrain), ('sprites.js', rd('sprites.js')), ('map3d.js', rd('map3d.js')), ('sfxdata.js', rd('sfxdata.js')), ('voicedata.js', rd('voicedata.js'))] + [(n, rd(n)) for n in CODE]
 js = '\n'.join('/* ==== file: ' + n + ' ==== */\n' + t for n, t in parts)
 assert '</script' not in js.lower()
 if embed:

@@ -10,7 +10,7 @@ ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 dst = os.path.abspath(sys.argv[1])
 assert os.path.isdir(os.path.join(dst, '.git')), dst + ' 는 git 저장소가 아님'
 BAD = ('X-Amz-', 'Signature=', 'AWSAccessKeyId', 'Bearer ', 'cloudfront.net', 'api_key', 'secret', 'ghp_', 'github_pat_')
-GENERATED = ('src/assets.js', 'src/sprites.js', 'src/map3d.js', 'src/sfxdata.js', 'build/sfxdata.v011.js', 'build/sfxdata.v012.js', 'index.html')      # base64 가 든 큰 파일: 글자 검사에서 뺀다(사람이 쓴 글이 아님)
+GENERATED = ('src/assets.js', 'src/sprites.js', 'src/map3d.js', 'src/sfxdata.js', 'build/sfxdata.v011.js', 'build/sfxdata.v012.js', 'src/voicedata.js', 'index.html')      # base64 가 든 큰 파일: 글자 검사에서 뺀다(사람이 쓴 글이 아님)
 files = []                                            # (원본 경로, 저장소 안 경로)
 def add(src_rel, dst_rel=None):
     p = os.path.join(ROOT, src_rel); assert os.path.isfile(p), src_rel
@@ -30,7 +30,10 @@ add_glob('pwa/*'); add_glob('pwa/icons/*')
 add_glob('tools/*.py')
 add_glob('tests/*.js'); add_glob('tests/*.py'); add_glob('tests/*.sh')
 for f in ('build/terrain.jpg', 'build/patch_v04_ui3d.py', 'build/patch_v04_panels.py'): add(f)
-add_glob('build/v07/*.py'); add_glob('build/v071/*.py'); add_glob('build/v081/*.py'); add_glob('build/v09/*.py'); add_glob('build/v091/*.py'); add_glob('build/v092/*.py'); add_glob('build/v093/*.py'); add('build/v093/apply.sh'); add_glob('build/v010/*.py'); add('build/v010/apply.sh'); add_glob('build/v0101/*.py'); add('build/v0101/apply.sh'); add_glob('build/v011/*.py'); add('build/v011/apply.sh'); add_glob('build/v012/*.py'); add('build/v012/apply.sh'); add_glob('build/v0121/*.py'); add('build/v0121/apply.sh'); add('build/sfxdata.v012.js'); add('build/sfxdata.v011.js'); add('dev/v012_voice_plan.md')      # v0.12: 소리를 다시 만드는 바탕(tools/make_audio_v012.py) · 중국어 음성 계획
+add_glob('build/v07/*.py'); add_glob('build/v071/*.py'); add_glob('build/v081/*.py'); add_glob('build/v09/*.py'); add_glob('build/v091/*.py'); add_glob('build/v092/*.py'); add_glob('build/v093/*.py'); add('build/v093/apply.sh'); add_glob('build/v010/*.py'); add('build/v010/apply.sh'); add_glob('build/v0101/*.py'); add('build/v0101/apply.sh'); add_glob('build/v011/*.py'); add('build/v011/apply.sh'); add_glob('build/v012/*.py'); add('build/v012/apply.sh'); add_glob('build/v0121/*.py'); add('build/v0121/apply.sh'); add('build/sfxdata.v012.js'); add('build/sfxdata.v011.js'); add('dev/v012_voice_plan.md'); add_glob('build/v013/*.py'); add('build/v013/apply.sh'); add('voice13/lines.py'); add('voice13/jobs.tsv'); add('voice13/qa.py'); add('voice13/voiceqa.py'); add_glob('voice13/raw/*.mp3')
+# 옛 판의 보관(v0.13~): 아티팩트 한 판에 담을 수 있는 크기(256MiB)가 차서, 오래된 스냅샷과 소스 묶음은 여기에 둔다
+ARCHIVE = ['0.1', '0.2', '0.3', '0.4', '0.5', '0.6']
+for _v in ARCHIVE: add('versions/chunhado-v%s.html' % _v); add('dev/sources-v%s.txt' % _v)      # v0.12: 소리를 다시 만드는 바탕(tools/make_audio_v012.py) · 중국어 음성 계획
 add('vendor/package/build/three.min.js')
 def clean(rel):                                       # 그림 기록 가운데 내려받은 주소가 적힌 것(로컬 전용)은 빼고 올린다
     s = open(os.path.join(ROOT, rel), encoding='utf-8').read()
@@ -46,6 +49,9 @@ for p, rel in files:
     if rel in GENERATED or rel.split('.')[-1] in ('png', 'jpg', 'mp3', 'webmanifest') or rel == '.nojekyll': continue
     try: s = open(p, encoding='utf-8').read()
     except UnicodeDecodeError: bad.append((rel, '글이 아닌 파일')); continue
+    if rel.startswith('versions/'): s = ''.join(l for l in s.split('\n') if len(l) < 4000)      # 스냅샷: base64 가 든 긴 줄은 빼고 본다
+    if rel.startswith('dev/sources-v'):                                                           # 소스 묶음: 그 안에 든 pack_sources.py(검사할 낱말의 표가 적혀 있다)는 빼고 본다
+        parts = s.split('\n=====8<===== '); s = '\n'.join(q for q in parts if not q.startswith('tools/pack_sources.py'))
     for b in BAD:
         if b in s and rel not in ('tools/pack_sources.py', 'tools/deploy_repo.py'): bad.append((rel, b))
 if bad:

@@ -1273,15 +1273,17 @@ function recruitTerms(b, o, t) {
   return { p: p, why: why, tie: tie };
 }
 function recruitChance(b, o, t) { return recruitTerms(b, o, t).p; }
-function cmdRecruit(b, id, tid) {
+function cmdRecruit(b, id, tid, S) {
   var os = getIdle(b, [id]); if (!os) return ERR('담당 무장을 고르세요');
   var t = off(tid), far = canPoach(b, t);
   if (!t || !(far || (t.loc === b.id && ((t.st === 'free') || (t.st === 'captive' && t.capF === b.owner))))) return ERR('등용할 수 없는 대상입니다');
   if (askWait(t)) return ERR(far ? '이번 달에는 이미 권했습니다 — 다음 달에 다시 권할 수 있습니다' : '이번 턴에는 이미 권했습니다 — 다음 턴에 다시');
+  if (S && (S.kind !== 'talk' || !S.over || S.used || S.rb !== b.id || S.ro !== id || S.rt !== tid)) return ERR('설전의 결과가 맞지 않습니다');
   if (!needAP(b.owner, AP.recruit)) return ERR('행동력이 부족합니다');
   useAP(b.owner, AP.recruit);
   var o = os[0]; markActed(os, 15);
-  var p = recruitChance(b, o, t), okR = recruitRoll(t) < p;             // 미리 정해 둔 결과(군사가 미리 말해 줄 수 있다)
+  var p = recruitChance(b, o, t), okR = S ? S.win === 'a' : recruitRoll(t) < p;      // 미리 정해 둔 결과(군사가 미리 말해 줄 수 있다). 설전을 벌였으면 그 승패(v0.13)
+  if (S) S.used = true;
   t.ask = G.turn + (far ? 3 - G.xun : 1);                               // 다른 세력의 무장: 다음 달 상순부터 다시
   if (okR) {
     var from = far ? t.f : -1, fb = far ? G.bases[t.loc] : null;
@@ -1655,17 +1657,156 @@ function setFire(c, r, turns) {
 }
 
 /* 일기토: 근접전에서 낮은 확률로 벌어지는 자동 판정 */
+/* ====================== 대결(v0.13): 일기토 · 설전 ======================
+   판 S = { kind, a, d(두 사람: id · n · st 능력 · rd 읽는 능력 · hp · max · mom 기세 · last 지난 수), round, max, over, win('a' | 'd' | 'draw'), ko, log[합의 기록], plan, hint }
+   규칙은 여기서 끝난다 — 화면(src/duel.js)은 수를 고르게 하고 결과를 그려 보일 뿐이다. 숫자는 data.js 의 DUEL_K · DUEL_KIND */
+var DUEL_DEFER = false;                                            // 켜져 있으면 싸움터의 일기토를 여기서 끝내지 않고 판만 만들어 돌려준다(res.duelS) — 사람이 수를 고른다
+function duelSide(o, K, hp) { return { id: o.id, n: o.n, st: Math.max(1, o[K.stat]), rd: o[K.read], hp: hp, max: hp, mom: 0, last: null }; }
+function duelNew(kind, A, D, opt) {
+  var K = DUEL_KIND[kind], o = opt || {};
+  return { kind: kind, a: duelSide(A, K, o.hpA || DUEL_K.hp), d: duelSide(D, K, o.hpD || DUEL_K.hp), round: 0, max: o.rounds || DUEL_K.rounds, over: false, win: null, ko: false, log: [], plan: null, hint: null };
+}
+function duelOther(side) { return side === 'a' ? 'd' : 'a'; }
+/* AI 가 수를 고를 때의 무게. 일기토는 성미(무력이 지력보다 높을수록 거칠다)와 형세, 설전은 고르게 — 둘 다 상대가 지난 합에 낸 수를 이기는 수에 조금 더 건다 */
+function duelWeights(S, side) {
+  var K = DUEL_KIND[S.kind], me = S[side], op = S[duelOther(side)], o = off(me.id), w = {}, i, ids = K.order;
+  if (S.kind === 'duel') {
+    var bold = clamp((o.war - o.int) / 40, -1, 1);
+    w.atk = 40 + 10 * bold; w.sp = 30 + 10 * bold; w.def = 30 - 20 * bold;
+    if (me.hp < me.max * 0.35) w.sp += 20;                           // 몰리면 크게 건다
+    if (me.mom >= 2) w.atk += 10;                                   // 기세를 탔으면 몰아친다
+  } else for (i = 0; i < ids.length; i++) w[ids[i]] = 34;
+  for (i = 0; i < ids.length; i++) {
+    if (op.last && K.moves[ids[i]].beats === op.last) w[ids[i]] += 15;
+    if (me.last === ids[i]) w[ids[i]] -= 8;                          // 같은 수를 거듭 내지는 않으려 한다
+    if (w[ids[i]] < 5) w[ids[i]] = 5;
+  }
+  return w;
+}
+function duelPick(S, side) {
+  var w = duelWeights(S, side), ids = DUEL_KIND[S.kind].order, tot = 0, i;
+  for (i = 0; i < ids.length; i++) tot += w[ids[i]];
+  var x = rnd() * tot;
+  for (i = 0; i < ids.length; i++) { x -= w[ids[i]]; if (x < 0) return ids[i]; }
+  return ids[ids.length - 1];
+}
+/* side 가 상대의 기색을 맞게 읽을 확률(%) */
+function duelRead(S, side) { var me = S[side], op = S[duelOther(side)]; return Math.round(clamp(DUEL_K.readBase + (me.rd - op.rd) * DUEL_K.readK, DUEL_K.readLo, DUEL_K.readHi)); }
+/* 다음 합을 준비한다: 사람이 두지 않는 쪽의 수를 미리 정하고(S.plan), 사람(human = 'a' | 'd' | null)에게 보일 기색(S.hint = { move, p })을 만든다 */
+function duelPlan(S, human) {
+  if (S.over) return null;
+  S.plan = { a: human === 'a' ? null : duelPick(S, 'a'), d: human === 'd' ? null : duelPick(S, 'd') };
+  S.hint = null;
+  if (human) {
+    var real = S.plan[duelOther(human)], p = duelRead(S, human), show = real;
+    if (!(rnd() * 100 < p)) { var others = DUEL_KIND[S.kind].order.filter(function (m) { return m !== real; }); show = others[Math.floor(rnd() * others.length)]; }
+    S.hint = { move: show, p: p };
+  }
+  return S.plan;
+}
+function duelDmg(from, to, mult) { return Math.max(1, Math.round(DUEL_K.base * Math.pow(from.st / to.st, DUEL_K.pow) * mult * (1 + DUEL_K.mom * from.mom) * (0.88 + rnd() * 0.24))); }
+/* 한 합을 치른다. ma · md = 두 사람의 수. 돌려주는 값 = 그 합의 기록 { n, ma, md, win('a' | 'd' | null), how, toA, toD(받은 피해), heal, hpA, hpD } */
+function duelStep(S, ma, md) {
+  if (S.over) return null;
+  var K = DUEL_KIND[S.kind], A = S.a, D = S.d, MA = K.moves[ma], MD = K.moves[md];
+  if (!MA || !MD) return null;
+  var R = { n: S.round + 1, ma: ma, md: md, win: null, how: '', toA: 0, toD: 0, heal: 0 };
+  if (ma === md) {
+    var T = MA.tie; R.how = T[0];
+    if (T[0] === 'both') { R.toD = duelDmg(A, D, T[1]); R.toA = duelDmg(D, A, T[1]); }
+    else if (T[0] === 'rest') { R.heal = T[1]; A.hp = Math.min(A.max, A.hp + T[1]); D.hp = Math.min(D.max, D.hp + T[1]); }
+    else { var pa = Math.pow(A.st, 3) / (Math.pow(A.st, 3) + Math.pow(D.st, 3)); if (rnd() < pa) { R.win = 'a'; R.toD = duelDmg(A, D, T[1]); } else { R.win = 'd'; R.toA = duelDmg(D, A, T[1]); } }
+  } else if (MA.beats === md) { R.win = 'a'; R.how = 'beat'; R.toD = duelDmg(A, D, MA.mult * (MD.lose || 1)); }
+  else { R.win = 'd'; R.how = 'beat'; R.toA = duelDmg(D, A, MD.mult * (MA.lose || 1)); }
+  A.hp -= R.toA; D.hp -= R.toD;
+  if (R.win === 'a') { A.mom = Math.min(DUEL_K.momMax, A.mom + 1); D.mom = 0; } else if (R.win === 'd') { D.mom = Math.min(DUEL_K.momMax, D.mom + 1); A.mom = 0; }
+  A.last = ma; D.last = md; S.round++; S.plan = null; S.hint = null;
+  if (A.hp <= 0 || D.hp <= 0) {                                      // 쓰러졌다. 둘 다 쓰러지면 덜 깎인 쪽이 이긴다
+    S.over = true; S.ko = true;
+    S.win = A.hp <= 0 && D.hp <= 0 ? (A.hp === D.hp ? 'draw' : (A.hp > D.hp ? 'a' : 'd')) : (A.hp <= 0 ? 'd' : 'a');
+    if (S.win === 'draw') S.ko = false;
+    if (A.hp < 0) A.hp = 0; if (D.hp < 0) D.hp = 0;
+  } else if (S.round >= S.max) {                                     // 판정: 남은 힘의 비율
+    var ra = A.hp / A.max * 100, rd = D.hp / D.max * 100;
+    S.over = true; S.win = Math.abs(ra - rd) < DUEL_K.drawGap ? 'draw' : (ra > rd ? 'a' : 'd');
+  }
+  R.hpA = A.hp; R.hpD = D.hp; S.log.push(R);
+  return R;
+}
+function duelAuto(S) { var n = 0; while (!S.over && n++ < 99) { var p = duelPlan(S, null); duelStep(S, p.a, p.d); } return S; }
+
+/* ---------- 싸움터의 일기토 ---------- */
+function duelBattleOk(a, d) { return alive(a) && alive(d) && hdist(a.c, a.r, d.c, d.r) === 1 && a.f !== d.f; }
 function tryDuel(a, d, res) {
-  if (!alive(a) || !alive(d) || hdist(a.c, a.r, d.c, d.r) !== 1) return;
+  if (!duelBattleOk(a, d)) return;
   var la = uLeader(a), ld = uLeader(d);
-  if (la.war < 75 || ld.war < 75 || !chance(7)) return;
-  var win = chance(100 / (1 + Math.exp(-(la.war - ld.war) / 6)));
-  var Wn = win ? a : d, Ls = win ? d : a, loss = Math.round(Ls.troops * 0.08);
-  Ls.morale = Math.max(0, Ls.morale - 25); Wn.morale = Math.min(100, Wn.morale + 10);
-  off(Wn.off[0]).merit += 100;
-  res.duel = { a: la.n, d: ld.n, win: win, loss: loss };
-  logMsg('일기토! ' + la.n + ' 대 ' + ld.n + ' — ' + (win ? la.n : ld.n) + ' 승', d.c, d.r, -1, (a.f === G.player || d.f === G.player) ? 2 : 0);
-  if (hurtUnit(Ls, loss, Wn.f, Wn)) { if (Ls === a) res.selfDead = true; else res.killed = true; }
+  if (la.war < DUEL_K.minWar || ld.war < DUEL_K.minWar || !chance(DUEL_K.rate)) return;
+  duelBattle(a, d, res);
+}
+/* 두 부대의 주장이 일기토를 벌인다. DUEL_DEFER 가 켜져 있으면 판만 만들어 res.duelS 로 돌려준다(끝나면 화면이 duelFinish 를 부른다) */
+function duelBattle(a, d, res) {
+  var S = duelNew('duel', uLeader(a), uLeader(d));
+  S.ua = a.id; S.ud = d.id;
+  if (DUEL_DEFER) { res.duelS = S; return S; }
+  duelAuto(S); duelFinish(S, res);
+  res.duelRec = duelRecOf(S);                                        // 화면이 처음부터 다시 그려 보일 수 있게(저장되지 않는다)
+  return S;
+}
+function duelRecOf(S) { return { kind: S.kind, a: { id: S.a.id, st: S.a.st, max: S.a.max }, d: { id: S.d.id, st: S.d.st, max: S.d.max }, log: S.log, win: S.win, ko: S.ko, max: S.max }; }
+/* 끝난 일기토의 결과를 부대에 입힌다(한 번만). res 가 있으면 res.duel 에 요약을 붙이고, 부대가 무너졌으면 res.killed · res.selfDead 도 */
+function duelFinish(S, res) {
+  if (!S || !S.over || S.done || S.kind !== 'duel') return null;
+  S.done = true;
+  var a = UMAP[S.ua], d = UMAP[S.ud], la = off(S.a.id), ld = off(S.d.id), out = { a: la.n, d: ld.n, win: S.win === 'a', draw: S.win === 'draw', ko: S.ko, rounds: S.round, loss: 0 };
+  if (res) res.duel = out;
+  if (!a || !d) return out;                                          // 그사이 부대가 사라졌다(일어나지 않아야 하지만 멈추지는 않는다)
+  if (S.win === 'draw') {
+    la.merit += DUEL_K.drawMerit; ld.merit += DUEL_K.drawMerit;
+    logMsg('일기토! ' + la.n + ' 대 ' + ld.n + ' — ' + S.round + '합을 겨루고 비김', d.c, d.r, -1, (a.f === G.player || d.f === G.player) ? 2 : 0);
+    return out;
+  }
+  var Wn = S.win === 'a' ? a : d, Ls = S.win === 'a' ? d : a, wl = S.win === 'a' ? la : ld;
+  out.loss = Math.round(Ls.troops * (S.ko ? DUEL_K.koLoss : DUEL_K.loss));
+  Ls.morale = Math.max(0, Ls.morale - (S.ko ? DUEL_K.koMor : DUEL_K.morLose)); Wn.morale = Math.min(100, Wn.morale + DUEL_K.morWin);
+  wl.merit += DUEL_K.merit;
+  logMsg('일기토! ' + la.n + ' 대 ' + ld.n + ' — ' + wl.n + (S.ko ? ' 승(' + S.round + '합 만에 쓰러뜨림)' : ' 승'), d.c, d.r, -1, (a.f === G.player || d.f === G.player) ? 2 : 0);
+  var dead = hurtUnit(Ls, out.loss, Wn.f, Wn);
+  if (dead) { if (res) { if (Ls === a) res.selfDead = true; else res.killed = true; } }
+  else if (S.ko && !uHas(Ls, '통찰') && !uHas(Ls, '명경')) { setStatus(Ls, 'confuse', DUEL_K.koTurns); out.confused = true; }
+  return out;
+}
+/* ---------- 일기토 신청(v0.13) ---------- */
+function challengeTargets(u) {
+  var out = [], ns = nbrs(u.c, u.r);
+  for (var i = 0; i < ns.length; i++) { var o = UAT[K(ns[i][0], ns[i][1])]; if (o && o.f !== u.f && !o.status) out.push({ kind: 'unit', u: o, c: o.c, r: o.r }); }
+  return out;
+}
+function challengeChance(u, d) {                                    // 상대가 응할 확률(%)
+  var la = uLeader(u), ld = uLeader(d), bold = ld.war >= 85 && ld.int < 70;
+  return Math.round(clamp(DUEL_K.accBase + (ld.war - la.war) * DUEL_K.accK + (bold ? DUEL_K.accBold : 0), 5, 95));
+}
+function challengeRoll(u, d) { return omenRoll('duel|' + u.id + '|' + d.id); }      // 미리 정해 둔 결과(턴마다): 같은 턴에 다시 물어도 같다
+function unitChallenge0(u, t) {
+  if (u.done) return ERR('이미 행동을 마쳤습니다');
+  if (u.status) return ERR('명령을 내릴 수 없는 부대입니다');
+  var d = t && t.u;
+  if (!d || !duelBattleOk(u, d)) return ERR('옆에 붙은 적 부대에만 걸 수 있습니다');
+  if (d.status) return ERR('어지러운 부대는 응할 수 없습니다');
+  if (u.morale < DUEL_K.ask) return ERR('기력이 부족합니다 (' + DUEL_K.ask + ' 필요)');
+  var p = challengeChance(u, d), yes = challengeRoll(u, d) < p;
+  u.morale -= DUEL_K.ask; u.done = true; u.ox = -1;
+  var res = { ok: true, kind: 'challenge', c: d.c, r: d.r, ac: u.c, ar: u.r, tname: uName(d), p: p, accepted: yes };
+  if (!yes) { d.morale = Math.max(0, d.morale - DUEL_K.refuse); res.mor = DUEL_K.refuse; logMsg(uLeader(u).n + '의 일기토 신청을 ' + josa(uLeader(d).n, '이가') + ' 받지 않음', d.c, d.r, -1, 0); return res; }
+  duelBattle(u, d, res);
+  return res;
+}
+function unitChallenge(u, t) { var f = u.f, n = uName(u), ac = u.c, ar = u.r, tf = actTargetF(t); return actEv(u, t, unitChallenge0(u, t), f, n, ac, ar, tf, -1); }
+/* ---------- 설전으로 등용(v0.13) ---------- */
+function talkRecruitOk(b, o, t) { var p = recruitChance(b, o, t); return p >= DUEL_K.talkMin && p < 100; }
+function talkRecruitNew(b, o, t) {
+  var p = recruitChance(b, o, t), S = duelNew('talk', o, t, { hpD: Math.round(DUEL_K.hp * (1 + (DUEL_K.talkHp - p) / 100)) });
+  S.rb = b.id; S.ro = o.id; S.rt = t.id; S.rp = p;
+  return S;
 }
 
 /* 공격 가능한 대상 (현재 위치 기준) */
@@ -2049,6 +2190,7 @@ function actEv(u, t, res, f, name, ac, ar, tf, hf) {
   if (res && res.ok) {
     // 화면 연출에 쓰는 정보: 공격한 부대·맞은 부대의 번호와 병과, 행동 뒤의 자리
     res.aid = u.id; res.atype = u.type; res.af = f; res.ac0 = ac; res.ar0 = ar;
+    res.alead = u.off[0]; res.tlead = t && t.u ? t.u.off[0] : -1;      // v0.13: 두 부대의 대장(화면의 음성이 쓴다)
     res.ac1 = u.c; res.ar1 = u.r; res.aAlive = !!UMAP[u.id];
     res.tk = t ? t.kind : ''; res.tid = t && t.u ? t.u.id : -1; res.tbase = t && t.b ? t.b.id : -1; res.tf = tf;
     if (t && t.u) { res.tc1 = t.u.c; res.tr1 = t.u.r; res.tAlive = !!UMAP[t.u.id]; res.ttype = t.u.type; }

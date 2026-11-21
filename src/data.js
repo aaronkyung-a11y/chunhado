@@ -1,5 +1,5 @@
 /* ===== 천하도 — 정적 데이터 ===== */
-var GAME_VERSION = 'v0.12.1';
+var GAME_VERSION = 'v0.13';
 var SAVE_KEY = 'chunhado_save_v2';
 var SHARE_URL = 'https://aaronkyung-a11y.github.io/chunhado/';      // 공유(v0.11)로 보내는 주소 — 누구나 열 수 있는 곳
 /* SHARE_URL 의 QR(33×33, 줄마다 16진수 · 왼쪽이 높은 자리). 주소를 바꾸면 다시 만들어야 한다(segno 로 만들고 OpenCV 로 읽어 확인) */
@@ -134,6 +134,27 @@ var TACTIC_RATE = { C: 55, B: 63, A: 71, S: 80 };   // 전법 성공률의 바�
    v0.9.1~0.11: 0.55 / 0.4 / 0.85 — 성공해도 반격은 보통 공격만큼, 실패는 더 아프게, 무장의 차이는 더 크게.   v0.8~0.9: 0.4 / 0.5 / 0.7 / 1.3(1.43) / 0.6 [−24~+12]   v0.7: 0.25 / 0.6 / 0.4 */
 var TACTIC_K = { okCounter: 0.55, failDmg: 0.85, failCounter: 0.85, crit: 1.25, critGod: 1.375, stat: 0.8, statLo: -30, statHi: 15 };
 
+/* 대결(v0.13): 일기토 · 설전의 숫자
+   hp 버티는 힘 · rounds 합의 수 · base 한 번의 피해(능력이 같을 때) · pow 능력 비의 지수 · mom 기세 하나의 피해 덧셈 · drawGap 판정에서 비김으로 보는 차(%p)
+   read* 기색을 맞게 읽을 확률 = readBase + (내 읽는 능력 − 상대) × readK, readLo~readHi
+   싸움터: rate 저절로 벌어질 확률(%) · minWar 그때 두 주장의 무력 하한 · loss/koLoss 진 부대의 병력 손실 · morLose/koMor 기력 손실 · morWin 이긴 쪽 기력 · merit 공적 · koTurns 쓰러졌을 때 혼란(턴)
+   신청: ask 드는 기력 · refuse 응하지 않은 부대의 기력 손실 · accBase/accK/accBold 응할 확률 = accBase + (상대 무력 − 내 무력) × accK (+accBold: 맹장)
+   설전 등용: talkMin 이 확률(%)부터 걸 수 있다 · talkHp 대상의 버티는 힘 = hp × (1 + (talkHp − 확률) ÷ 100) */
+var DUEL_K = { hp: 100, rounds: 5, base: 24, pow: 2.5, mom: 0.12, momMax: 3, drawGap: 6, readBase: 55, readK: 0.5, readLo: 35, readHi: 85,
+  rate: 7, minWar: 75, loss: 0.08, koLoss: 0.12, morLose: 25, koMor: 35, morWin: 10, merit: 100, drawMerit: 30, koTurns: 1,
+  ask: 10, refuse: 5, accBase: 50, accK: 4, accBold: 20, talkMin: 10, talkHp: 60 };
+/* 수: beats = 이기는 상대 수 · mult = 이겼을 때의 피해 배수 · lose = 졌을 때 맞는 배수(없으면 1) · tie = 같은 수가 만났을 때 [방식, 값]
+   방식: both = 서로 값(배수)만큼 친다 · rest = 둘 다 값만큼 회복한다 · clash = 능력으로 겨뤄 이긴 쪽이 값(배수)으로 친다 */
+var DUEL_KIND = {
+  duel: { name: '일기토', stat: 'war', statName: '무력', read: 'int', unit: '합', order: ['atk', 'def', 'sp'],
+    moves: { atk: { name: '맹공', han: '攻', beats: 'sp', mult: 1.0, tie: ['both', 0.6], desc: '필살을 이긴다' },
+             def: { name: '방어', han: '守', beats: 'atk', mult: 0.7, tie: ['rest', 6], desc: '맹공을 받아친다' },
+             sp:  { name: '필살', han: '必', beats: 'def', mult: 1.6, lose: 1.3, tie: ['clash', 1.2], desc: '방어를 부순다 · 맹공에 약하다' } } },
+  talk: { name: '설전', stat: 'int', statName: '지력', read: 'cha', unit: '논', order: ['ri', 'gain', 'tide'],
+    moves: { ri:   { name: '도리', han: '理', beats: 'gain', mult: 1.0, tie: ['both', 0.5], desc: '이해를 이긴다' },
+             gain: { name: '이해', han: '利', beats: 'tide', mult: 1.0, tie: ['both', 0.5], desc: '시세를 이긴다' },
+             tide: { name: '시세', han: '勢', beats: 'ri', mult: 1.0, tie: ['both', 0.5], desc: '도리를 이긴다' } } }
+};
 /* 계략 */
 var PLOYS = [
   { id: 'fire',    name: '화계', cost: 10, desc: '인접한 칸에 불을 지른다. 불 위의 부대는 매 턴 피해를 입는다.' },

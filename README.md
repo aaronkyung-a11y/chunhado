@@ -9,6 +9,7 @@
 - `src/` — 손으로 쓰는 소스
   - `data.js` 정적 수치, `core.js` 규칙 엔진(DOM 없음), `ai.js` AI
   - `ui3d.js` 3D 지도(three.js)·입력·효과음·음악, `fx.js` 이동·공격·전법·계략 연출(v0.4)과 그 순간의 소리(v0.7), `ui_panels.js` 패널·대화상자·조작 흐름
+  - `voice.js` 중국어 음성 엔진(v0.13), `duel.js` 일기토 · 설전 화면(v0.13) — 둘은 패치가 아니라 그대로 두는 새 소스다(`build/v013/apply.sh` 참고). `voicedata.js`는 생성물
   - v0.5부터 `src/`의 파일은 모두 직접 고침. `build/patch_v04_ui3d.py`·`build/patch_v04_panels.py`는 v0.3 → v0.4 작업 기록(다시 돌리면 v0.5 변경이 사라지니 돌리지 않음). 판별 원본은 `build/*.v03.js`·`build/*.v04.js`·`build/*.v05.js`·`build/*.v06.*`. v0.6 → v0.7에서 고친 자리는 `build/v07/p1~p4_*.py`에, v0.7 → v0.8에서 고친 자리는 `build/v071/p1~p9_*.py`에 기록(역시 다시 돌리지 않음 — 순서대로 p1 건설 담당 묶기, p2 그 화면, p3 수송, p4 지도 끝, p5·p5b·p5c 성역 멈춤 없애기, p6 돈과 병량, p7·p7b 전법, p8·p8b 부지, p9 충성과 인연), v0.8 → v0.8.1에서 고친 자리는 `build/v081/p1~p8_*.py`에(p1·p1b·p2 초반 보호의 규칙과 AI, p3 그 화면, p4 상태 이상의 규칙 쪽 준비, p5 지도의 딱지·소용돌이, p6 창과 글, p7 손질, p8 옛 저장), v0.8.1 → v0.9에서 고친 자리는 `build/v09/p1~p7_*.py`에(p1 규칙 — 미리 정해 둔 결과·군사·다른 세력 무장 등용, p2 AI, p3 화면, p4 달 단위와 단속, p5·p6 화면 손질, p7 작은 세력은 건드리지 않기). 판별 원본에 `build/*.v07.*`·`build/*.v08.*`·`build/*.v081.*` 추가
   - `style.css`, `index.html`(틀)
   - 생성물: `mapdata.js`(지형·거점·도로), `map3d.js`(높이맵·도로 선·미니맵), `sprites.js`(지도 그림), `assets.js`(초상 `PORTRAITS` = 얼굴 중심 정사각 흉상, `SCENES` = 3:4 장면, 타이틀, 한지 무늬), `roster.js`(세력·무장), `sfxdata.js`(효과음 27개 — mp3를 base64로, v0.7)
@@ -30,13 +31,27 @@
 - `tests/` — **`regress.sh [로그 폴더]`(전체 회귀: 세 판을 모두 빌드한 뒤 돌린다. 끝나면 `<로그 폴더>/_summary.txt`에 시험마다 종료 코드)**, v0.9.2 화면 `d18.py`(글 덜어내기: STATUS 창의 구조·한 줄씩인지·글자 수 한도·접힌 도움말 / 건설 자리: 덮개가 켜지고 꺼지는지, 밝은 칸만 뚫려 있는지 — 덮개 캔버스의 점을 읽어 본다 —, 창과 지도의 번호, 고른 칸이 창 위로 보이는지, 카드의 수입이 수입 셈과 같은지, 고른 그 칸에 지어지는지, 못 짓는 네 경우. 그림은 `tests/shots18/`)·`text92.py`(화면마다 보이는 글자 수를 잰다. `PAGE=../chunhado-v0.9.1-offline.html`처럼 옛 판을 주면 그 판을 잰다), v0.9.1 `tac91.js [턴=144] [씨앗=1]`(전법이 보통 공격보다 얼마나 이득인지 재기: AI 대전의 싸움 장면마다 전법의 기대 피해·기대 반격을 식으로 셈해, 같은 장면 위에서 규칙 묶음끼리 견준다. `SETS='{…}'`로 다른 숫자를 넣어 볼 수 있다)·`exp91.js [시행 수]`(그 식 `tacticExpect`·`attackExpect`가 실제 판정의 평균과 맞는지 — 맞붙음·뒤가 막힘·옆에 적·혼란 중·원거리, 강 위)·`peace91.js`(보호 기간과 옛 저장 옮기기)·화면 `d17.py`(날짜·날수 표기, 전법 풀이의 기대값, 0.9에서 하던 판 이어 하기 — 그림은 `tests/shots17/`), v0.9 `adv9.js`(미리 정해 둔 결과의 고름·되풀이, 군사의 적중률, 다른 세력 무장 등용의 대상·성공률·넘어옴·거절, AI가 보호 중에는 권하지 않음, 옛 저장)·`poach9.js ai|player …`(등용이 얼마나 자주 일어나는지 재기)·화면 `d16.py`(군사 임명, 조언의 ○·×, 이웃 무장 등용, 데려갈 위험 알림 — 그림은 `tests/shots16/`), v0.8.1 `rush8.js [턴=72] [씨앗 수=5]`(초반 압박 재기: 약한 일곱 세력을 플레이어 자리에 두고 첫 피격·첫 함락·멸망 턴을 셈. `PASSIVE=1`이면 그 세력은 손을 놓음, `SRC=<폴더>`로 다른 판과 견줌, `PEACE=a,b,c`·`RAMP=n`으로 보호 기간을 바꿔 가며 잼. 보호가 어겨지면 종료 코드 1)·화면 `d15.py`(초반 보호의 표시·경고·풀림, 상태 이상의 딱지·소용돌이·풀이 띠·남은 날수 — 그림은 `tests/shots15/`), `sim.js`(AI 대 AI + 불변식), `fuzz.js`(무작위 명령 — v0.8.1부터 보호 어김도 셈), 행군 규칙 `floor.js`(빈 지도 전수 탐색: 출진한 턴에 거점·시설을 칠 수 있는 길이 없는가)·`zonecheck.js`(AI 대전에서 규칙 위반 감시) — v0.7까지는 성역 멈춤 규칙을 봤고 `dist.js`는 그때의 것, v0.8 규칙 `job8.js`(건설 담당 묶기)·`loy8.js`(충성·인연·부지 채우기)·`tac7.js`(전법 — v0.8 항목 포함)·`bal8.js <턴> <씨앗>`(균형 재기: 돈·병량·병력·시설·전투 집계, `SRC=<폴더>`로 다른 판과 견줌), 화면 `d14.py`(지도 끝 — `PAGE=../chunhado-v0.7-offline.html python3 tests/d14.py old`로 예전 판의 수치를 잼), `browser.py`와 v0.4 화면 `d1.py`(둘러보기)·`d2.py`/`d2b.py`(전투 연출: 장면 찍기 / 전법·계략 전부)·`d3.py`(회귀)·`d4.py`/`d5.py`(적 턴 재생·시간)·`d6.py`(모든 창)·`d7.py`(v0.8: 성역에서 멈추지 않음·출진한 턴에는 거점을 못 침)·`d8.py <옛 판.html>`(옛 저장 호환), `d9.py`(여는 시간 비교), `b9.py`(CDN), v0.6 뒤로 가기 `d10.py`(경로마다 눌러서 확인 — `PAGE=../chunhado-v0.5-offline.html`로 예전 판과 견줌)·`d11.py <걸음> <씨앗> <세력>`(마구 눌러 보기), v0.7 `tac7.js [횟수]`(전법의 성공·대성공 확률과 효과를 되풀이해 확인)·`d12.py`(소리·음악·전법 표시·부대 목록 — `PAGE=pwa/index.html`로 돌려야 음악 파일까지 봄)·`d13.py`(앱판을 내 컴퓨터의 http 서버로 띄워 서비스 워커·오프라인을 확인)·`d11.py <걸음> <씨앗> <세력>`(마구 눌러 보기: 상태 어긋남·오류·×만으로 STATUS 창까지). 헤드리스 Chrome, 기본은 `dist/offline.html`. `c1~c7.py`는 v0.3, `b1~b6.py`는 v0.2 화면 기준이라 지금은 맞지 않음(기록용)
 - `build/` — 중간 산출물과 판별 백업(`*.v03.js`, `*.v04.js`, `*.v05.js` 등). `patch_v04_*.py`는 v0.3 → v0.4 패치 기록. `patch_c.py`·`v03_home.js`·`v03_play.js`는 v0.2 → v0.3 작업 기록(다시 돌리지 않음)
 - `pwa/` — 앱판에만 들어가는 것: `manifest.webmanifest`, `sw.js`(서비스 워커), `icons/`
-- `bgm/` — 음악 8곡(v0.7, HTML 옆에 두면 재생 — 없으면 코드로 만든 음악). `audio7/` — 소리 원본 기록(`jobs.tsv`). `versions/` — 버전별 스냅샷.
+- `bgm/` — 음악 8곡(v0.7, HTML 옆에 두면 재생 — 없으면 코드로 만든 음악). `audio7/` — 소리 원본 기록(`jobs.tsv`). `versions/` — 버전별 스냅샷(아티팩트에는 v0.7부터, v0.1~v0.6은 깃허브 저장소의 `versions/`에 — 아티팩트 한 판의 크기 한도 256MiB 때문에 v0.13에서 옮겼다. 옛 소스 묶음 `dev/sources-v0.1~0.6.txt`도 저장소에).
 
 ## 소리(v0.7, 쏘는 소리는 v0.12)
 - **효과음**: `src/sfxdata.js`의 표본 29개를 처음 누를 때 풀어 두고(`sndLoad`), 장면 이름으로 부른다 — `sfx('hit')`. 장면 → 표본·크기·음높이 흔들림·늦춤은 `src/ui3d.js`의 `CUES` 표 한 곳에서 정한다. 같은 장면은 `gap`(ms) 안에 다시 나지 않는다. 표본이 아직 안 풀렸으면 예전의 만든 소리(`sfxSyn`)가 대신 난다.
   - 움직이는 동안의 소리는 `sfxMove(병과, ms)`(보병 발소리·기병 말발굽·수레), 전투 연출 도중의 소리는 `src/fx.js`의 시간표(`tracks`)에 `on: function () { sfx(...) }`로, 타격 순간의 소리는 `ui_panels.js`의 `resultFx`에서.
 - **음악**: `BGM_TRACKS`가 장면(title·field·tense·battle·victory·defeat)마다 곡을 정한다. 여러 곡이면 끝날 때마다 다음 곡으로 돌아간다. 지금의 장면은 `bgmForState()` — 싸운 지 한 턴 안이거나 적이 내 성 2칸 안이면 전투, 적 부대가 내 성 7칸·내 부대 4칸 안이거나 내 부대가 남의 성역에 있으면 긴장, 아니면 평시.
   - 곡을 바꾸려면 `bgm/<이름>.mp3`를 바꿔 넣으면 된다(앱판은 `pwa/sw.js`의 `BGM` 번호도 올린다). 곡을 늘리려면 `BGM_TRACKS`에 이름을 더한다.
+
+## 음성(v0.13)
+- **소리**: `src/voicedata.js`(생성물) — `VOICE_DATA['<갈래>_<상황>_<1|2>']` = mp3(base64) 120개, `VOICE_TEXT` = [中文, 뜻]. 만드는 법: `voice13/raw/NNN.mp3`(뽑은 원본, 순서는 `voice13/lines.py`의 `all_lines()`) → `python3 tools/make_voice_v013.py`.
+- **엔진**: `src/voice.js`. `voiceKind(o)`가 목소리 갈래를 고르고, `voiceSay(o, 상황, opt)`가 말한다(확률 `p` · 늦춤 `delay` · 뜻풀이 자리 `at`/`cap`). 겹칠 때의 차례는 `VOICE_PRI`. 효과음과 같은 길(`sndBus`)로 나간다.
+- **부르는 곳**: 대화창 — `sayLine`이 고른 말의 열쇠를 `SAYV`에 적고 `talk`가 `voiceTalk`를 부른다(열쇠 → 상황은 `VOICE_KEY`). 싸움 — `fx.js`의 `animAct` 시작에서 `voiceAct(res, 0)`, `ui_panels.js`의 `resultFx` 끝에서 `voiceAct(res, 1)`. 대결 화면 — `duel.js`의 `duelOpen` · `duEnd`.
+- 대사를 바꾸거나 늘리려면: `voice13/lines.py`를 고치고 그 줄만 다시 뽑아 `voice13/raw/`에 넣은 뒤 도구를 돌린다. 상황을 늘리려면 `VOICE_PRI`에도 더한다.
+- 시험: `python3 tests/d25.py`. 받아쓰기 점검에 쓴 것: `voice13/qa.py`(길이 · 크기 · 음색).
+
+## 일기토 · 설전(v0.13)
+- **규칙**(`src/core.js`, 숫자는 `src/data.js`의 `DUEL_K` · `DUEL_KIND`): `duelNew(kind, A, D, opt)` → 합마다 `duelPlan` · `duelStep(S, ma, md)` → `duelFinish(S, res)`가 결과를 부대에 입힌다. 저절로 겨루는 것은 `duelAuto`, 끝난 판의 기록은 `duelRecOf`.
+  - 싸움에서 벌어지는 일기토: `duelBattle(a, d, res)`. 화면이 `DUEL_DEFER`를 켜 두면 판만 만들어 `res.duelS`로 넘기고(내가 수를 고른다), 아니면 그 자리에서 판정하고 `res.duelRec`를 남긴다.
+  - 신청: `unitChallenge(u, t)`(응할 확률 `challengeChance`). 설전으로 등용: `talkRecruitNew` → 끝난 판을 `cmdRecruit(b, id, tid, S)`에 넘긴다.
+- **화면**(`src/duel.js`): `duelOpen(S, human, opt, done)` — 수 고르기 · 한 합의 연출(`duAnim`) · 결과. `duelReplay(rec, opt, done)`는 적힌 합을 그대로 그린다(지난 열흘의 재생에서).
+- 시험: `node tests/duel13.js`(규칙 · 승률) · `python3 tests/d24.py`(화면).
 
 ## 전법(v0.7 세 결과 → v0.8 양쪽을 다 보는 판정 → v0.9.1 성공해도 반격은 통상 공격만큼)
 - 판정은 `src/core.js`의 `tacticOdds(u, d)` 한 곳. 성공률의 조각은 `tacticParts`가 돌려준다(화면의 "성공률 72% = 적성 80 · 무장 +4 · …"가 이것).
@@ -190,6 +205,7 @@ python3 tools/facebox.py art/raw7 art/por7_faces.tsv
 FOCUS=art/por7_focus.tsv python3 tools/make_assets_v05.py art/raw7 art/por7_faces.tsv art/por7_out src/assets.js build/assets.v04.js src/roster.js 256 320 72 56
 python3 tools/make_audio_v07.py          # audio7/raw → bgm/*.mp3, src/sfxdata.js
 python3 tools/make_audio_v012.py         # v0.12: build/sfxdata.v011.js → src/sfxdata.js (쏘는 소리 넷을 새로 만들고 북에 배음)
+python3 tools/make_voice_v013.py         # v0.13: voice13/raw/*.mp3 → voice13/out/*.mp3, src/voicedata.js (중국어 음성 120개)
 python3 tools/make_icons.py              # pwa/icons/
 # v0.8(부지·초상 다시 자르기)
 python3 tools/add_plots.py src/mapdata.js src/mapdata.json build/mapdata.json && cp src/mapdata.js build/mapdata.js

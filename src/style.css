@@ -32,6 +32,7 @@ button:focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; }
 #fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 3; }
 .flt { position: absolute; left: 0; top: 0; font: 900 18px var(--font-display); white-space: nowrap; text-shadow: 0 0 2px #f4efe3, 0 0 3px #f4efe3, 0 0 5px #f4efe3, 0 1px 0 #f4efe3; will-change: transform; }
 .flt.big { font-size: 25px; letter-spacing: .04em; }
+.flt.vsay { font: 700 14px var(--font-body); color: #2a2620; letter-spacing: 0; }      /* 음성의 뜻풀이(v0.13) */
 .ring { position: absolute; left: 0; top: 0; border: 3px solid var(--ink); border-radius: 50%; will-change: transform; }
 /* 화면에 찍히는 낙관(함락·점령·궤멸 등) */
 .stamp { position: absolute; left: 0; top: 0; padding: 7px 9px 6px; background: var(--seal); color: var(--seal-ink); font: 900 22px/1.05 var(--font-display); letter-spacing: .08em; border-radius: 3px; box-shadow: inset 0 0 0 2px #fbf3e455, 0 2px 0 #1b1a1826; white-space: nowrap; will-change: transform; }
@@ -591,6 +592,86 @@ details.more .rules { margin: 6px 0 0; padding-left: 18px; font-size: 12px; line
 .cmds.c2 { grid-template-columns: 1fr 1fr; } .cmds.c1 { grid-template-columns: 1fr; }
 .qrw { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 14px 0 2px; }
 .qrw small { color: var(--dim); font-size: 12px; }
+/* ---------- 대결 화면(v0.13): 일기토 · 설전 ---------- */
+#duel { position: absolute; inset: 0; z-index: 40; display: none; background: #f4efe3; }
+#duel.on { display: flex; justify-content: center; }
+#duel::before { content: ''; position: absolute; inset: 0; background: radial-gradient(120% 60% at 50% 0%, #1b1a1826, transparent 60%), radial-gradient(90% 40% at 50% 100%, #1b1a181a, transparent 70%); pointer-events: none; }
+.du-in { position: relative; width: 100%; max-width: 560px; display: flex; flex-direction: column; padding: max(14px, env(safe-area-inset-top)) 14px max(12px, env(safe-area-inset-bottom)); }
+.du-top { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+.du-seal { font: 900 19px var(--font-display); color: var(--seal-ink); background: var(--seal); padding: 3px 11px 4px; border-radius: 2px; letter-spacing: .12em; box-shadow: 2px 2px 0 #1b1a1826; }
+#duel.talk .du-seal { background: #2f4f6f; }
+.du-top b { font: 900 17px var(--font-display); font-variant-numeric: tabular-nums; }
+.du-top small { margin-left: auto; color: var(--dim); font-size: 12.5px; text-align: right; }
+.du-stage { position: relative; display: grid; grid-template-columns: 1fr 30px 1fr; gap: 2px; align-items: start; margin-top: 12px; }
+.du-stage.shake { animation: duShake .32s; }
+.du-mid { align-self: center; text-align: center; padding-bottom: 90px; }
+.du-vs { font: 900 24px var(--font-display); color: var(--dim); }
+.du-f { position: relative; text-align: center; min-width: 0; transition: filter .35s, opacity .35s; }
+.du-por { display: block; margin: 0 auto; height: min(33vh, 56vw); max-width: 100%; aspect-ratio: 3 / 4; background-color: #e9e2d0; background-size: cover; background-position: 50% 12%; border: 1.5px solid var(--ink); box-shadow: 3px 4px 0 #1b1a1826; }
+.du-por:not(.sc) { background-position: 50% 30%; }
+.du-f.me .du-por { border-color: var(--seal-2); box-shadow: 3px 4px 0 #b3261e40; }
+.du-nm { margin-top: 7px; font: 900 18px var(--font-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.du-nm em { font: 800 10.5px var(--font-body); font-style: normal; color: var(--seal-ink); background: var(--seal); padding: 1px 5px; border-radius: 2px; margin-left: 5px; vertical-align: 3px; }
+.du-st { font-size: 12.5px; color: var(--dim); } .du-st b { color: var(--ink); font-size: 15px; font-variant-numeric: tabular-nums; }
+.du-bar { height: 9px; border: 1px solid var(--ink); background: #fffdf6; margin: 5px 4px 3px; }
+.du-bar i { display: block; height: 100%; background: var(--ink); transition: width .5s cubic-bezier(.2, .8, .3, 1), background .3s; }
+.du-bar i.low { background: var(--seal); }
+.du-hp { display: flex; align-items: baseline; justify-content: center; gap: 4px; font-variant-numeric: tabular-nums; }
+.du-hp b { font: 900 17px var(--font-display); } .du-hp small { color: var(--dim); font-size: 11.5px; }
+.du-mom { display: inline-flex; gap: 3px; margin-left: 6px; }
+.du-mom i { width: 7px; height: 7px; border: 1px solid var(--ink); border-radius: 50%; } .du-mom i.on { background: var(--seal); border-color: var(--seal-2); }
+.du-glyph { position: absolute; top: -9px; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; font: 900 27px var(--font-display); color: var(--paper); background: var(--ink); border-radius: 3px; opacity: 0; transform: scale(.4) rotate(-12deg); box-shadow: 2px 3px 0 #1b1a1833; z-index: 3; }
+.du-f.a .du-glyph { left: -4px; } .du-f.d .du-glyph { right: -4px; }
+.du-glyph.on { opacity: 1; transform: none; transition: transform .22s cubic-bezier(.2, 1.4, .4, 1), opacity .12s; }
+.du-glyph.sp, .du-glyph.tide { background: var(--seal); color: var(--seal-ink); } .du-glyph.def, .du-glyph.gain { background: #2f4f6f; }
+.du-say { min-height: 34px; margin: 4px 2px 0; font: 700 12.5px/1.3 var(--font-body); color: var(--ink); opacity: 0; transform: translateY(4px); }
+.du-say.on { opacity: 1; transform: none; transition: opacity .2s, transform .2s; } .du-say.lose { color: var(--dim); font-weight: 500; }
+.du-f.a.lunge { animation: duLungeA .5s cubic-bezier(.2, .9, .3, 1); } .du-f.d.lunge { animation: duLungeD .5s cubic-bezier(.2, .9, .3, 1); }
+#duel.talk .du-f.a.lunge { animation-name: duLeanA; } #duel.talk .du-f.d.lunge { animation-name: duLeanD; }
+.du-f.hit .du-por { animation: duHit .5s; } .du-f.rest .du-por { animation: duRest .9s; }
+.du-f.victor .du-por { border-color: var(--seal-2); box-shadow: 0 0 0 3px #b3261e33, 3px 4px 0 #1b1a1826; }
+.du-f.loser { filter: grayscale(.7); opacity: .82; }
+.du-f.ko { filter: grayscale(1) brightness(.8); opacity: .7; } .du-f.a.ko .du-por { transform: rotate(-9deg) translateY(7%); transition: transform .5s cubic-bezier(.4, 0, .6, 1.4); } .du-f.d.ko .du-por { transform: rotate(9deg) translateY(7%); transition: transform .5s cubic-bezier(.4, 0, .6, 1.4); }
+.du-fx { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+.du-slash { position: absolute; top: 24%; width: 44%; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #b3261e00, var(--seal) 18%, var(--ink) 82%, #1b1a1800); transform: rotate(-32deg) scaleX(0); opacity: .95; animation: duSlash .55s ease-out forwards; }
+.du-slash.a { left: 1%; } .du-slash.d { right: 1%; transform: rotate(32deg) scaleX(0); animation-name: duSlashD; } .du-slash.big { height: 11px; top: 21%; }
+.du-float { position: absolute; left: 50%; top: 26%; font: 900 26px var(--font-display); color: var(--seal); text-shadow: 0 0 6px var(--paper), 0 0 2px var(--paper); pointer-events: none; z-index: 5; animation: duFloat 1.2s ease-out forwards; white-space: nowrap; }
+.du-float.big { font-size: 36px; } .du-float.heal { color: #2f4f6f; }
+/* 대결 화면에 뜨는 음성의 뜻풀이: 초상 위쪽의 말풍선. 길면 줄을 바꾸고, 화면 밖으로 나가지 않게 제 쪽 가장자리에 붙인다 */
+.du-float.vsay { left: 2px; right: auto; top: 3%; width: max-content; max-width: min(47vw, 200px); white-space: normal; text-align: left; font: 700 13.5px/1.35 var(--font-body); color: var(--ink); text-shadow: none; padding: 5px 8px; background: var(--paper); border: 1px solid #1b1a1855; box-shadow: 2px 3px 0 #1b1a1820; animation: duSay 2s ease-out forwards; }
+.du-f.d .du-float.vsay { left: auto; right: 2px; }
+@keyframes duSay { 0% { opacity: 0; transform: translateY(6px); } 10% { opacity: 1; transform: none; } 82% { opacity: 1; } 100% { opacity: 0; } }
+.du-hint { min-height: 46px; margin-top: 8px; padding: 8px 11px; border: 1px dashed var(--line-2); border-radius: 3px; font-size: 14px; line-height: 1.4; }
+.du-hint:empty { visibility: hidden; }
+.du-hint b { font: 900 14px var(--font-display); margin-right: 4px; } .du-hint em { font-style: normal; font-weight: 800; color: var(--seal); margin-left: 2px; } .du-hint small { float: right; color: var(--dim); font-size: 12px; margin-top: 1px; }
+.du-moves { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 9px; } .du-moves.off { opacity: .4; pointer-events: none; }
+.du-mv { display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 86px; padding: 8px 4px 9px; border: 1.5px solid var(--ink); border-radius: 3px; background: #fffdf6; color: var(--ink); touch-action: manipulation; }
+.du-mv:active { background: var(--ink); color: var(--paper); } .du-mv:active small { color: #d9d3c4; }
+.du-mv i { font: 900 26px var(--font-display); font-style: normal; line-height: 1.1; color: var(--seal); } .du-mv:active i { color: var(--paper); }
+.du-mv b { font: 900 16px var(--font-display); } .du-mv small { font-size: 11px; line-height: 1.25; color: var(--dim); text-align: center; text-wrap: balance; }
+.du-foot { display: flex; align-items: center; gap: 10px; margin-top: 9px; min-height: 40px; } .du-foot .btn { height: 38px; padding: 0 14px; } .du-tip { margin-left: auto; color: var(--dim); font-size: 12px; }
+.du-res { position: absolute; left: 14px; right: 14px; bottom: max(12px, env(safe-area-inset-bottom)); display: none; z-index: 6; }
+.du-res.on { display: block; animation: duRise .35s cubic-bezier(.2, .9, .3, 1); }
+.du-resin { position: relative; background: #fffdf6; border: 1.5px solid var(--ink); border-radius: 3px; padding: 14px 16px 14px; box-shadow: 4px 5px 0 #1b1a1826; }
+.du-resin h3 { margin: 0; font: 900 24px var(--font-display); } .du-resin > p { margin: 3px 0 0; color: var(--dim); font-size: 14px; }
+.du-out { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line-2); font-size: 14px; } .du-out p { margin: 2px 0; }
+.du-resin .btn { width: 100%; height: 46px; margin-top: 12px; }
+.du-stamp { position: absolute; right: 14px; top: 10px; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; font: 900 32px var(--font-display); font-style: normal; color: var(--seal); border: 3px solid var(--seal); border-radius: 5px; transform: rotate(8deg); animation: duStamp .4s cubic-bezier(.3, 1.6, .5, 1) .15s backwards; }
+.du-resin.lost .du-stamp { color: var(--dim); border-color: var(--dim); }
+@keyframes duLungeA { 0% { transform: none; } 38% { transform: translateX(24%) scale(1.07) rotate(3deg); } 100% { transform: translateX(5%); } }
+@keyframes duLungeD { 0% { transform: none; } 38% { transform: translateX(-24%) scale(1.07) rotate(-3deg); } 100% { transform: translateX(-5%); } }
+@keyframes duLeanA { 0% { transform: none; } 40% { transform: translateX(9%) scale(1.04); } 100% { transform: translateX(3%); } }
+@keyframes duLeanD { 0% { transform: none; } 40% { transform: translateX(-9%) scale(1.04); } 100% { transform: translateX(-3%); } }
+@keyframes duHit { 0% { transform: none; filter: none; } 15% { transform: translate(-5px, 2px) rotate(-2deg); filter: sepia(1) saturate(5) hue-rotate(-30deg) brightness(1.1); } 35% { transform: translate(5px, -2px) rotate(2deg); } 55% { transform: translate(-3px, 1px); filter: none; } 100% { transform: none; } }
+@keyframes duRest { 0%, 100% { transform: none; } 50% { transform: scale(.975) translateY(2px); } }
+@keyframes duShake { 0%, 100% { transform: none; } 25% { transform: translate(-4px, 2px); } 50% { transform: translate(4px, -2px); } 75% { transform: translate(-2px, 1px); } }
+@keyframes duSlash { 0% { transform: rotate(-32deg) scaleX(0); opacity: 1; } 45% { transform: rotate(-32deg) scaleX(1.25); opacity: 1; } 100% { transform: rotate(-32deg) scaleX(1.3); opacity: 0; } }
+@keyframes duSlashD { 0% { transform: rotate(32deg) scaleX(0); opacity: 1; } 45% { transform: rotate(32deg) scaleX(1.25); opacity: 1; } 100% { transform: rotate(32deg) scaleX(1.3); opacity: 0; } }
+@keyframes duFloat { 0% { transform: translate(-50%, 0) scale(.6); opacity: 0; } 15% { transform: translate(-50%, -8px) scale(1.15); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(-50%, -46px) scale(1); opacity: 0; } }
+@keyframes duRise { 0% { transform: translateY(24px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes duStamp { 0% { transform: rotate(8deg) scale(2.2); opacity: 0; } 100% { transform: rotate(8deg) scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .du-f.lunge, .du-f.hit .du-por, .du-stage.shake, .du-stamp { animation: none !important; } }
+.btn.alt.off { opacity: .45; }
 /* 아래에 더 있다는 표시(v0.12) */
 .dlg-b { --mhx: 14px; --mhb: 12px; } .sh-body { --mhx: 12px; --mhb: 13px; }
 .morehint { position: sticky; bottom: calc(-1 * var(--mhb, 12px)); height: 0; z-index: 6; pointer-events: none; opacity: 0; transition: opacity .16s; }

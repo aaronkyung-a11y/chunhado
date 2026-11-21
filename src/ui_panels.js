@@ -34,6 +34,7 @@ var talkT = 0, TALK = null;
 function roleOf(o) { return isLord(o) ? '군주' : (o.f >= 0 && facAdv(o.f) === o ? '군사' : ''); }
 function talkHide() { clearTimeout(talkT); TALK = null; var t = $('talk'); if (t) t.classList.remove('on'); }
 function talk(o, say, sub, ms) {
+  voiceTalk(o);                                             // v0.13: 방금 고른 말이면 갈래에 맞는 음성을 붙인다(대화창을 꺼 두어도)
   if (!o || UI.talk === false) { var m0 = String(sub || say || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(); if (m0) toast(m0, ms); return; }      // 꺼 두었으면 결과 한 줄만 알림 줄로
   var t = $('talk'), rl = roleOf(o);
   t.innerHTML = porTag(o, 'md') + '<div class="tk-tx"><div class="tk-who"><b>' + o.n + '</b>' + (rl ? '<em>' + rl + '</em>' : '') + (o.f >= 0 ? facChip(o.f) : '') + '</div><div class="tk-say">' + say + '</div>' + (sub ? '<div class="tk-sub">' + sub + '</div>' : '') + '</div>';
@@ -80,6 +81,7 @@ var SAY_OWN = {                                   // 이름난 무장의 제 말
   '초선': { reward: ['과분한 은혜이옵니다.'] }
 };
 function sayLine(o, key, x) {
+  SAYV = { o: o.id, key: key, t: performance.now() };
   var own = SAY_OWN[o.n] && SAY_OWN[o.n][key], L = own || (SAY[key] && (SAY[key][toneOf(o)] || SAY[key].C)) || ['…'];
   var t = L[Math.floor(Math.random() * L.length)];                                   // 화면의 말뿐이라 판의 주사위(rnd)는 쓰지 않는다
   if (x !== undefined) t = t.replace(/\{x\}\{으로\}/g, euro(String(x))).replace(/\{x\}\{을\}/g, josa(String(x), '을를')).replace(/\{x\}\{이라\}/g, x + (hasBatchim(String(x)) ? '이라' : '라')).replace(/\{x\}/g, x);
@@ -223,6 +225,7 @@ function pickOfficers(opts, cb) {
       if (os.length) { strip = '<div class="selstrip">'; for (i = 0; i < os.length; i++) strip += '<span>' + porTag(os[i], 'md') + '<b>' + (max > 1 ? (i + 1) + '. ' : '') + os[i].n + '</b></span>'; strip += '</div>'; }
       h += '</div>' + strip + (opts.say && os.length ? '<div class="pksay">' + opts.say(os) + '</div>' : '') + '<div class="dlg-f"><div class="pv">' + (os.length ? (opts.preview ? opts.preview(os) : os.length + '명 선택') : (max > 1 ? '무장을 고르세요 (최대 ' + max + '명)' : '무장을 고르세요')) + '</div>' +
         (opts.auto ? '<button class="btn auto" type="button" data-a="auto">자동</button>' : '') +
+        (opts.alt ? '<button class="btn alt' + (os.length >= min && opts.alt.can(os) ? '' : ' off') + '" type="button" data-a="alt">' + opts.alt.label + '</button>' : '') +
         '<button class="btn pri" type="button" data-a="ok"' + (os.length < min ? ' disabled' : '') + '>' + (opts.ok || '실행') + '</button></div>';
       return h;
     },
@@ -238,6 +241,12 @@ function pickOfficers(opts, cb) {
         sel = opts.auto(n);
         toast(max === 1 ? '자동 선택' : (n > 1 ? '자동 ' + sel.length + '명 — 다시 누르면 1명' : '자동 1명'), 1800);
         refreshDialog();
+      },
+      alt: function () {                                           // 덧붙는 단추(등용의 [설전] 등): 표를 닫고 그 일을 한다
+        if (sel.length < min) return toast('무장을 먼저 고르세요');
+        var os = sel.map(off);
+        if (!opts.alt.can(os)) return toast(opts.alt.why(os), 3000);
+        closeDialog(); opts.alt.go(os);
       },
       ok: function () {
         if (sel.length < min) return;
@@ -888,6 +897,8 @@ function targetActions(u, t) {
       var sub = !have ? '적성 ' + tac.need + ' 필요' : (u.morale < tac.cost ? '기력 부족' : (!inT ? (d > rg ? '사거리 밖' : '숲에서는 불가') : '<em class="pc">' + od.ok + '%</em> · 기력 ' + tac.cost));
       out.push({ kind: 'tactic', tac: tac, label: tac.name, sub: sub, ok: inT });
     }
+    var chOk = challengeTargets(u).some(function (x) { return x.u === t.u; }), chW = uLeader(u).war + ' : ' + uLeader(t.u).war;      // 일기토 신청(v0.13)
+    out.push({ kind: 'challenge', label: '일기토', sub: !chOk ? (d > 1 ? '옆 칸에서만' : '응할 수 없는 상대') : (u.morale < DUEL_K.ask ? '기력 부족' : '응할 확률 <em class="pc">' + challengeChance(u, t.u) + '%</em> · 무력 ' + chW), ok: chOk && u.morale >= DUEL_K.ask });
     for (i = 0; i < 3; i++) {
       var pl = PLOYS[i], inP = ployTargets(u, pl).some(function (x) { return x.u === t.u; });
       out.push({ kind: 'ploy', ploy: pl, label: pl.name, adv: inP ? ployAdvice(u, pl, t) : null, sub: inP ? '<em class="pc">' + ployChance(u, pl, t.u) + '%</em>' + advMark(ployAdvice(u, pl, t)) + ' · 기력 ' + pl.cost : (u.morale < pl.cost ? '기력 부족' : (t.u.status && i > 0 ? '이미 걸림' : '사거리 밖')), ok: inP });
@@ -958,7 +969,7 @@ function resultMsg(name, res) {
     if (res.confused) msg += ' · 혼란 ' + days(res.stN || 1);
   }
   if (res.counter) msg += ' (반격 -' + fmt(res.counter) + ')';
-  if (res.duel) msg += ' · 일기토! ' + res.duel.a + ' 대 ' + res.duel.d + ' — ' + (res.duel.win ? res.duel.a : res.duel.d) + ' 승';
+  if (res.duel) msg += duelTxt(res.duel);
   if (res.killed) msg += ' · 궤멸!';
   if (res.destroyed) msg += ' · 파괴!';
   if (res.selfDead) msg += ' · 아군 부대 궤멸…';
@@ -1002,19 +1013,49 @@ function resultFx(res) {
     else sfx(res.fail ? 'fail' : (res.kind === 'tactic' ? (res.crit ? 'great' : 'big') : (res.crit ? 'big' : (res.tk === 'base' || res.tk === 'fac' ? 'siege' : 'hit'))));
   }
   if (res.counter) floatText(ac, ar, '-' + fmt(res.counter), C_CNT, 520);
-  if (res.duel) floatText(res.duel.win ? tc : ac, res.duel.win ? tr : ar, '일기토 패 -' + fmt(res.duel.loss), C_INK, 1150, true, -8);   // 소리는 연출(fx.js) 쪽에서 엇갈리는 순간에
+  if (res.duel && !res.duel.draw) floatText(res.duel.win ? tc : ac, res.duel.win ? tr : ar, '일기토 패 -' + fmt(res.duel.loss), C_INK, 1150, true, -8);   // 소리는 연출(fx.js) 쪽에서 엇갈리는 순간에
   if (res.selfDmg) floatText(res.ac, res.ar, '-' + fmt(res.selfDmg), C_CNT, 500);
   if (res.fell) { sfx('fall'); if (res.af === G.player) sfx('cheerlate'); }
+  voiceAct(res, 1);                                         // v0.13: 결과에 따른 한마디
+}
+function duelTxt(d) { return ' · 일기토! ' + d.a + ' 대 ' + d.d + ' — ' + (d.draw ? '비김' : (d.win ? d.a : d.d) + ' 승' + (d.ko ? '(쓰러뜨림)' : '')); }
+/* 일기토가 끝난 뒤 화면에 적는 것: 두 부대가 얻고 잃은 것 */
+function duelOutHtml(S, o, an, dn) {
+  if (!o) return '';
+  if (o.draw) return '<p>두 주장 모두 공적 +' + DUEL_K.drawMerit + '</p>';
+  var wn = o.win ? an : dn, ln = o.win ? dn : an;
+  return '<p><b>' + ln + '</b> 기력 -' + (o.ko ? DUEL_K.koMor : DUEL_K.morLose) + ' · 병력 -' + fmt(o.loss) + (o.confused ? ' · 혼란 ' + days(DUEL_K.koTurns) : '') + '</p><p><b>' + wn + '</b> 기력 +' + DUEL_K.morWin + ' · 주장 공적 +' + DUEL_K.merit + '</p>';
 }
 function presentResult(name, res, quiet) { var msg = resultMsg(name, res); resultFx(res); if (!quiet) toast(msg, 3200); return msg; }
+var C_DIM0 = '#6a645a', C_PLOY0 = '#2f4f6f';
 function doAct(a) {
   var u = selUnit(), t = UI.target;
   if (!u || !t || UI.busy) return;
   var name = uName(u), res, pa = a.kind === 'ploy' ? (a.adv || null) : null;
-  if (a.kind === 'attack') res = unitAttack(u, t);
-  else if (a.kind === 'tactic') res = unitTactic(u, a.tac, t);
-  else res = unitPloy(u, a.ploy, t);
+  var an = uName(u), dn = t.u ? uName(t.u) : '';
+  DUEL_DEFER = a.kind !== 'ploy';                                  // 내가 직접 건 싸움에서 벌어진 일기토는 여기서 끝내지 않고 화면에서 수를 고른다(v0.13)
+  try {
+    if (a.kind === 'attack') res = unitAttack(u, t);
+    else if (a.kind === 'tactic') res = unitTactic(u, a.tac, t);
+    else if (a.kind === 'challenge') res = unitChallenge(u, t);
+    else res = unitPloy(u, a.ploy, t);
+  } finally { DUEL_DEFER = false; }
   if (!res.ok) { toast(res.msg); return; }
+  function duelThen(next) {                                        // 일기토가 벌어졌으면: 화면 → 결과를 부대에 입힌다 → next
+    var S = res.duelS; if (!S) return next();
+    duelOpen(S, 'a', { sub: an + ' 대 ' + dn, onEnd: function () { return duelOutHtml(S, duelFinish(S, res), an, dn); } }, function () { syncScene(); next(); });
+  }
+  if (a.kind === 'challenge') {                                    // 일기토 신청: 공격 연출 없이 곧바로
+    UI.battleTurn = G.turn; playBgm('battle'); UI.rc = null; UI.atk = null; UI.target = null; requestDraw();
+    if (!res.accepted) {
+      floatText(t.c, t.r, '일기토 거절', C_DIM0, 0, true, -20); floatText(t.c, t.r, '기력 -' + res.mor, C_PLOY0, 320, false, 22); sfx('miss');
+      talk(uLeader(t.u), '…상대할 까닭이 없다.', josa(dn, '이가') + ' 일기토를 받지 않았습니다 — 기력 -' + res.mor + ' (응할 확률 ' + res.p + '%)', 3400);
+      clearSel(); afterAction(); return;
+    }
+    UI.busy = true;
+    duelThen(function () { UI.busy = false; toast(name + duelTxt(res.duel).replace(' · ', ' — '), 3200); clearSel(); afterAction(); });
+    return;
+  }
   var miss = pa ? advAfter(pa, !!res.success) : '';
   UI.battleTurn = G.turn; playBgm('battle');
   var msg = resultMsg(name, res), fellB = res.fell && t.kind === 'base' ? t.b : null;
@@ -1023,13 +1064,16 @@ function doAct(a) {
   requestDraw();
   actZoom(res.ac0, res.ar0, t.c, t.r, function (back) {      // 싸우는 곳을 가까이 당겨서 보여 준다
     animAct(res, function () {
-      UI.busy = false;
-      if (fellB) fxFall(fellB, fellB.kind === 'gate' ? '점령' : '함락');
-      if (miss) talk(pa.adv, miss, msg, 3600); else toast(msg, 3200);
-      clearSel();
-      if (fellB && fellB.owner === G.player) selectBase(fellB);
-      back();
-      afterAction();
+      duelThen(function () {
+        UI.busy = false;
+        if (res.duelS && res.duel) msg += duelTxt(res.duel) + (res.duelS.done && (res.killed || res.selfDead) ? ' · 궤멸!' : '');
+        if (fellB) fxFall(fellB, fellB.kind === 'gate' ? '점령' : '함락');
+        if (miss) talk(pa.adv, miss, msg, 3600); else toast(msg, 3200);
+        clearSel();
+        if (fellB && fellB.owner === G.player) selectBase(fellB);
+        back();
+        afterAction();
+      });
     }, function () { resultFx(res); });
   });
 }
@@ -1392,6 +1436,20 @@ function flowSearch(b) {
       else done(r, '아무것도 찾지 못했습니다' + tail, '', os[0], 'nothing');
     });
 }
+/* 설전으로 등용(v0.13): 주사위 대신 설전의 승패로 정한다. 이기면 합류, 지거나 비기면 거절(주사위로 실패한 것과 같은 뒷일) */
+function flowTalkRecruit(b, o, t) {
+  var S = talkRecruitNew(b, o, t), farT = t.st === 'active', r = null;
+  duelOpen(S, 'a', { sub: t.n + ' 등용 · 그냥 권하면 ' + S.rp + '%',
+    onEnd: function () {
+      r = cmdRecruit(b, o.id, t.id, S);
+      if (!r.ok) return '<p class="bad">' + r.msg + '</p>';
+      return r.joined ? '<p><b>' + josa(t.n, '이가') + (r.far ? ' ' + facName(r.from) + '군을 떠나' : '') + ' 합류했습니다</b></p>' : '<p><b>' + josa(t.n, '은는') + ' 뜻을 굽히지 않았습니다</b>' + (r.far ? ' — 충성 +' + POACH.up + ' · 다음 달에 다시 권할 수 있습니다' : ' — 다음 턴에 다시 권할 수 있습니다') + '</p>';
+    } },
+    function () {
+      if (r && r.ok && r.joined) { sfx('cheer'); talk(t, sayLine(t, 'joined', G.factions[G.player].name), josa(t.n, '이가') + ' 합류했습니다!', 3000); }
+      refreshSheet(); afterAction();
+    });
+}
 function flowRecruit(b) {
   var here = freeOfficers(b).concat(baseCaptives(b).filter(function (o) { return o.capF === b.owner; })), far = poachTargets(b);
   if (!here.length && !far.length) return toast('등용할 대상이 없습니다');
@@ -1431,7 +1489,11 @@ function flowRecruit(b) {
       pickOfficers({ push: true, title: t.n + ' 등용 — 누구를 보낼까요', list: idleOfficers(b), max: 1, hi: 'cha', key: function (o) { return recruitChance(b, o, t); },
         rt: function (o) { var x = recruitTerms(b, o, t); return advMark(recruitAdvice(b, o, t)) + '<b>' + x.p + '%</b>' + (x.tie ? '<small class="tie">' + x.tie.short + '</small>' : ''); }, rtHead: '성공률', auto: function () { return autoPick('recruit', b, { target: t }, 1); },
         preview: function (os) { var x = recruitTerms(b, os[0], t); return '성공률 <b>' + x.p + '%</b>' + (farT ? ' · 충성 ' + t.loy : '') + (x.no ? ' · <span class="bad">' + x.no + '</span>' : '') + (x.why.length ? '<br><small>' + whyTxt(x) + '</small>' : ''); },
-        say: function (os) { return advSay(recruitAdvice(b, os[0], t), josa(t.n, '은는'), '응할 것입니다.', '응하지 않을 것입니다.'); } },
+        say: function (os) { return advSay(recruitAdvice(b, os[0], t), josa(t.n, '은는'), '응할 것입니다.', '응하지 않을 것입니다.'); },
+        alt: { label: '설전',
+          can: function (os) { return talkRecruitOk(b, os[0], t) && G.factions[b.owner].ap >= AP.recruit; },
+          why: function (os) { var p0 = recruitChance(b, os[0], t); return G.factions[b.owner].ap < AP.recruit ? '행동력이 부족합니다' : (p0 >= 100 ? '설전이 필요 없습니다 — 그냥 권하면 응합니다' : '말이 통할 상대가 아닙니다 — 등용 확률이 ' + DUEL_K.talkMin + '% 이상일 때만 설전을 걸 수 있습니다'); },
+          go: function (os) { flowTalkRecruit(b, os[0], t); } } },
         function (os) {
           var a0 = recruitAdvice(b, os[0], t), r = cmdRecruit(b, os[0].id, t.id); if (r.ok && r.joined) sfx('cheer');
           var miss = r.ok ? advAfter(a0, !!r.joined) : '';
@@ -1824,13 +1886,16 @@ var HELP_HTML = '<div class="help">' +
   '<p>목록·기록·지난 열흘의 일에서 줄을 눌러 지도로 건너뛰면 왼쪽 위에 <b>‹ 목록</b> 같은 단추가 생깁니다. 누르면 보던 자리 그대로 다시 열립니다. 그렇게 열린 거점·부대 창은 ×로도 목록에 돌아갑니다.</p>' +
   '<h3>조작</h3><p>끌어서 지도를 옮기고, 두 손가락으로 확대·축소합니다. 오른쪽 위 작은 지도를 누르면 그곳으로 건너뜁니다. 거점 이름표의 붉은 낙관 숫자는 아직 일하지 않은 무장 수입니다. 부대 이름표에는 주장의 얼굴이 붙습니다.</p>' +
   '<h3>지도</h3><p>실제 지형(고도·강·해안)과 거점의 실제 위치를 바탕으로 만들었습니다. 한 칸은 약 ' + MAPDATA.km + 'km입니다. 황하 하류는 후한 때의 물길을 따릅니다. 바탕 그림은 지도 전체가 한 장이라, 가장 크게 당기면 붓자국이 먹이 번진 듯 부드럽게 보입니다.</p>' +
-  '<h3>일기토</h3><p>무력 75 이상의 주장끼리 붙어 싸우면 낮은 확률로 일기토가 벌어집니다. 지금은 자동으로 판정되며, 진 쪽은 병력과 기력을 잃습니다.</p>' +
-  '<h3>소리</h3><p>효과음과 음악은 메뉴에서 따로 끌 수 있습니다. 음악은 형편에 따라 바뀝니다 — 평시에는 두 곡이 번갈아 나오고, 다른 세력의 부대가 가까이 오면 긴장된 곡으로, 싸움이 벌어지면 전투 곡으로 넘어갑니다.</p>' +
+  '<h3>일기토</h3><p>무력 ' + DUEL_K.minWar + ' 이상의 주장끼리 붙어 싸우면 낮은 확률로 일기토가 벌어집니다. 옆의 적 부대를 누르고 <b>일기토</b>를 눌러 직접 걸 수도 있습니다(기력 ' + DUEL_K.ask + ' · 응하지 않으면 상대 기력 -' + DUEL_K.refuse + '). 약한 상대일수록 응하지 않습니다.</p>' +
+  '<p>합마다 수를 하나 고릅니다 — <b>맹공</b>은 필살을 이기고, <b>필살</b>은 방어를 부수며(피해 1.6배), <b>방어</b>는 맹공을 받아칩니다. 피해는 두 사람의 무력 차로 정해지고, 합을 이기면 기세가 올라 더 세게 칩니다. 화면의 <b>기색</b>은 상대가 낼 수의 낌새입니다(맞을 확률이 적혀 있습니다 — 지력이 높을수록 잘 읽습니다). ' + DUEL_K.rounds + '합 안에 쓰러뜨리지 못하면 남은 힘으로 판정합니다.</p>' +
+  '<p>진 부대는 기력 -' + DUEL_K.morLose + ' · 병력 -' + Math.round(DUEL_K.loss * 100) + '%, 쓰러졌으면 기력 -' + DUEL_K.koMor + ' · 병력 -' + Math.round(DUEL_K.koLoss * 100) + '% · 혼란. AI끼리의 일기토와 내 군단의 일기토는 같은 규칙으로 저절로 판정됩니다.</p>' +
+  '<h3>설전</h3><p>등용할 때 보낼 무장을 고르고 <b>설전</b>을 누르면 주사위 대신 말로 겨룹니다(등용 확률 ' + DUEL_K.talkMin + '% 이상일 때). <b>도리</b>는 이해를, <b>이해</b>는 시세를, <b>시세</b>는 도리를 이깁니다. 피해는 지력 차로 정해지고, 응할 마음이 적은 상대일수록 오래 버팁니다. 이기면 합류하고, 지거나 비기면 거절한 것과 같습니다.</p>' +
+  '<h3>소리</h3><p><b>음성</b> — 무장이 중국어로 한마디 합니다(출진 · 공격 · 전법 · 대성공 · 실패 · 적 부대 궤멸 · 함락 · 퇴각 · 일기토 · 계략 · 명령 · 등용). 목소리는 다섯 갈래입니다: 맹장(무력 88 이상 · 지력 72 미만) · 군주 · 지장(무력 70 미만) · 무장 · 여장. 싸움에서는 내가 낀 싸움에만 나오고, 칸 위에 뜻이 잠깐 뜹니다. 메뉴의 [음성]으로 끌 수 있고, 효과음을 끄면 함께 꺼집니다.</p><p>효과음과 음악은 메뉴에서 따로 끌 수 있습니다. 음악은 형편에 따라 바뀝니다 — 평시에는 두 곡이 번갈아 나오고, 다른 세력의 부대가 가까이 오면 긴장된 곡으로, 싸움이 벌어지면 전투 곡으로 넘어갑니다.</p>' +
   '<h3>저장</h3><p>턴이 끝날 때와 화면을 떠날 때 저절로 저장됩니다(<b>자동</b>) — 제목 화면의 <b>이어하기</b>가 이것을 엽니다. 메뉴의 <b>저장</b>에서 번호 칸 ' + SAVE_SLOTS + '개에 따로 남길 수 있고(찬 칸은 한 번 더 눌러 덮어씁니다), <b>불러오기</b>에서 골라 엽니다. 새 게임을 시작하거나 다른 칸을 불러오면 하던 판은 <b>직전</b> 칸에 한 번 남습니다. 저장은 이 기기의 이 주소에만 남습니다.</p>' +
   '<h3>긴 창</h3><p>창이나 아래 판의 내용이 화면보다 길면 아래 끝에 <b>▼ 아래에 더 있습니다</b>가 뜹니다. 밀어 올리거나 그 딱지를 누르면 내려갑니다.</p><h3>공유</h3><p>제목 화면과 메뉴의 <b>공유</b>를 누르면 주소와 QR이 적힌 창이 열립니다(<b>보내기</b>로 휴대폰의 공유 창). 주소만 보내면 받는 사람은 새 게임으로 시작합니다.</p><p><b>하던 판을 보내려면</b> 같은 창의 <b>세이브 파일 보내기</b>에서 판을 고르세요 — 공유 창에 파일로 싣거나, 파일로 저장하거나, 글자로 복사할 수 있습니다. 받는 사람은 <b>불러오기 → 파일에서 가져오기</b>(복사해 받았으면 <b>붙여넣기로 가져오기</b>)로 빈 저장 칸에 넣고 불러옵니다.</p>' +
   '<h3>앱으로 설치</h3><p>휴대폰 브라우저에서 <b>aaronkyung-a11y.github.io/chunhado</b> 를 열면 제목 화면에 <b>앱으로 설치</b> 단추가 나옵니다(안 나오면 브라우저 메뉴의 <b>홈 화면에 추가</b>). 설치하면 앱처럼 전체 화면으로 열리고, 한 번 연 뒤에는 인터넷이 없어도 됩니다. 저장은 여는 곳마다 따로라서, 다른 주소에서 하던 판은 넘어오지 않습니다.</p>' +
   '<h3>무장이 묶이는 일</h3><p>대부분의 명령은 그 턴에 끝나서, 맡은 무장은 다음 턴에 다시 쓸 수 있습니다. <b>시설 건설</b>만은 여러 턴이 걸리고, 맡은 무장은 <b>완공될 때까지</b> 다른 명령도 출진도 이동도 못 합니다(무장 목록에 "○○ 건설 중"). 급하면 그 시설을 눌러 <b>공사 중단</b>을 하면 풀려납니다 — 들인 금은 돌아오지 않습니다. 성이 함락되면 짓다 만 시설은 버려집니다.</p>' +
-  '<h3>이번 판에 아직 없는 것</h3><p>직접 조작하는 일기토·설전, 외교, 기교·능력 연구, 진·요새 같은 야전 시설, 항구와 수군은 다음 판에서 넣습니다.</p></div>';
+  '<h3>이번 판에 아직 없는 것</h3><p>외교, 기교·능력 연구, 진·요새 같은 야전 시설, 항구와 수군은 다음 판에서 넣습니다.</p></div>';
 /* 도움말은 제목만 보이게 접어 둔다(v0.9.2) — 누른 토막만 펼쳐진다 */
 function helpSections() {
   var body = HELP_HTML.replace(/^<div class="help">/, '').replace(/<\/div>$/, ''), parts = body.split('<h3>'), h = '<div class="help acc">';
@@ -2073,14 +2138,15 @@ function showMenu() {
   showDialog({
     render: function () {
       return dlgHead('메뉴 — ' + GAME_VERSION) + '<div class="dlg-b"><div class="cmds"><button class="cmd" type="button" data-a="save"><b>저장</b></button><button class="cmd" type="button" data-a="load"><b>불러오기</b></button>' +
-        '<button class="cmd" type="button" data-a="talk"><b>대화창 ' + (UI.talk === false ? '꺼짐' : '켜짐') + '</b></button><button class="cmd" type="button" data-a="snd"><b>효과음 ' + (UI.sound ? '켜짐' : '꺼짐') + '</b></button><button class="cmd" type="button" data-a="mus"><b>음악 ' + (UI.music ? '켜짐' : '꺼짐') + '</b>' + (UI.music && BGM.mode === 'file' ? '<small>연주곡</small>' : (UI.music && BGM.mode === 'syn' ? '<small>만든 음악</small>' : '')) + '</button><button class="cmd" type="button" data-a="spd"><b>열흘 재생</b><small>' + SPEEDS[UI.pspeed][0] + '</small></button><button class="cmd" type="button" data-a="help"><b>도움말</b></button><button class="cmd" type="button" data-a="share"><b>공유</b></button>' +
+        '<button class="cmd" type="button" data-a="talk"><b>대화창 ' + (UI.talk === false ? '꺼짐' : '켜짐') + '</b></button><button class="cmd" type="button" data-a="snd"><b>효과음 ' + (UI.sound ? '켜짐' : '꺼짐') + '</b></button><button class="cmd" type="button" data-a="voi"><b>음성 ' + (UI.voice === false ? '꺼짐' : '켜짐') + '</b><small>' + (UI.sound ? '중국어' : '효과음이 꺼져 있음') + '</small></button><button class="cmd" type="button" data-a="mus"><b>음악 ' + (UI.music ? '켜짐' : '꺼짐') + '</b>' + (UI.music && BGM.mode === 'file' ? '<small>연주곡</small>' : (UI.music && BGM.mode === 'syn' ? '<small>만든 음악</small>' : '')) + '</button><button class="cmd" type="button" data-a="spd"><b>열흘 재생</b><small>' + SPEEDS[UI.pspeed][0] + '</small></button><button class="cmd" type="button" data-a="help"><b>도움말</b></button><button class="cmd" type="button" data-a="share"><b>공유</b></button>' +
         '<button class="cmd" type="button" data-a="title"><b>처음으로</b></button></div><p class="note">턴마다 자동 저장 · 저장 칸 ' + SAVE_SLOTS + '개 · 이 기기에만 남습니다(다른 기기로는 공유 → 세이브 파일 보내기)</p></div>';
     },
     on: {
       save: function () { showSaves('save'); },
       load: function () { showSaves('load'); },
       talk: function () { UI.talk = UI.talk === false; if (UI.talk === false) talkHide(); saveOpts(); toast(UI.talk ? '대화창 켬 — 맡은 무장이 한마디 합니다' : '대화창 끔 — 결과만 알림 줄로', 2000); refreshDialog(); },
-      snd: function () { UI.sound = !UI.sound; if (UI.sound) audioInit(); saveOpts(); refreshDialog(); },
+      snd: function () { UI.sound = !UI.sound; if (UI.sound) audioInit(); else voiceStop(true); saveOpts(); refreshDialog(); },
+      voi: function () { UI.voice = UI.voice === false; if (UI.voice === false) voiceStop(true); saveOpts(); toast(UI.voice ? '음성 켬 — 무장이 중국어로 한마디 합니다' : '음성 끔', 2000); refreshDialog(); },
       mus: function () { UI.music = !UI.music; saveOpts(); if (UI.music) playBgm(bgmForState()); else stopBgm(); refreshDialog(); },
       spd: function () { UI.pspeed = (UI.pspeed + 1) % 4; saveOpts(); toast(UI.pspeed ? '열흘 재생: ' + SPEEDS[UI.pspeed][0] : '열흘 재생 끔 — 요약만', 2000); refreshDialog(); },
       help: function () { showHelp(); },
@@ -2091,7 +2157,7 @@ function showMenu() {
 }
 
 /* ---------- 저장 ---------- */
-function saveOpts() { try { localStorage.setItem('chunhado_opts', JSON.stringify({ sound: UI.sound, music: UI.music, pspeed: UI.pspeed, home: HOME.open, talk: UI.talk !== false })); } catch (e) { /* */ } }
+function saveOpts() { try { localStorage.setItem('chunhado_opts', JSON.stringify({ sound: UI.sound, music: UI.music, pspeed: UI.pspeed, home: HOME.open, talk: UI.talk !== false, voice: UI.voice !== false })); } catch (e) { /* */ } }
 function loadOpts() {
   try {
     var o = JSON.parse(localStorage.getItem('chunhado_opts') || '{}');
@@ -2099,6 +2165,7 @@ function loadOpts() {
     if (o.pspeed >= 0 && o.pspeed <= 3) UI.pspeed = o.pspeed | 0;
     if (o.home === false) HOME.open = false;
     if (o.talk === false) UI.talk = false;
+    if (o.voice === false) UI.voice = false;
   } catch (e) { /* */ }
 }
 /* 지금 틀 음악의 장면: 싸운 지 한 턴 안이거나 적이 내 성 코앞이면 전투, 적이 가까이 있으면 긴장, 아니면 평시 */
@@ -2258,6 +2325,7 @@ function playNudge() {
 function playSkip() {
   var P = UI.play; if (!P || P.skip) return;
   P.skip = true; $('veil').classList.add('on');
+  if (typeof DU !== 'undefined' && DU && DU.rec) duClose();              // 일기토를 다시 보던 중이면 닫고 넘어간다
   playNudge();
 }
 function setCaption(f, html, cls) {
@@ -2449,7 +2517,15 @@ function presentEvent(e, cb) {
     focusNear(e.tc, e.tr, pg(function () {
       setCaption(e.f, resultMsg(e.name, e.res), e.tf === G.player ? 'hit' : '');
       var n0 = UI.anims.length;
-      animAct(e.res, pg(function () { P.ans = []; requestDraw(); pwait((e.res.fell ? 200 : 700) * k, cb); }), function () { resultFx(e.res); });   // 함락이면 바로 뒤에 함락 장면이 따로 나온다
+      animAct(e.res, pg(function () {
+        P.ans = []; requestDraw();
+        var rec = e.res.duelRec;
+        if (rec && e.res.duel && !P.skip && (e.f === G.player || e.tf === G.player)) {      // v0.13: 내 부대가 얽힌 일기토는 처음부터 다시 그려 보인다
+          duelReplay(rec, { sub: e.name + ' 대 ' + (e.res.tname || ''), out: duelOutHtml(null, e.res.duel, e.name, e.res.tname || '') }, pg(function () { pwait(300 * k, cb); }));
+          return;
+        }
+        pwait((e.res.fell ? 200 : 700) * k, cb);
+      }), function () { resultFx(e.res); });   // 함락이면 바로 뒤에 함락 장면이 따로 나온다
       P.ans = UI.anims.slice(n0);
     }));
   } else if (e.t === 'fall') {

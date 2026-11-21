@@ -61,7 +61,7 @@ def steps(pg):
     if pg.evaluate('!!MODAL'): pg.evaluate('closeDialog()')
     pg.evaluate('talkHide()')
     info = pg.evaluate('(() => { var A = facAdv(G.player); return { ver: GAME_VERSION, f: G.factions[G.player].name, adv: A.n, int: A.int }; })()')
-    ok(info['ver'] == 'v0.12.1', '판 번호 v0.12.1 [%s]' % info['ver'])
+    ok(info['ver'] == 'v0.13', '판 번호 v0.13 [%s]' % info['ver'])
     ok(info['f'] == '왕랑', '(준비) 왕랑으로 시작 — 군사 %s(지력 %d)' % (info['adv'], info['int']))
 
     # ================= 1. 군사의 적중률 = 지력 =================
