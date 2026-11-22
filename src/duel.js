@@ -41,12 +41,13 @@ function duMovesHtml() {
 function duelOpen(S, human, opt, done) {
   var K = DUEL_KIND[S.kind], e = duEl();
   DU = { S: S, human: human, opt: opt || {}, done: done, busy: false, auto: !human, ended: false, busy0: UI.busy, rec: (opt && opt.rec) || null, q: opt && opt.rec ? opt.rec.log.slice() : null };
-  e.className = 'on ' + S.kind;
+  e.className = 'on ' + S.kind + (human ? '' : ' watch');      // v0.20: 지켜보는 판(.watch)
   e.innerHTML = '<div class="du-in"><div class="du-top"><span class="du-seal">' + K.name + '</span><b id="duR"></b><small>' + (DU.opt.sub || '') + '</small></div>' +
     '<div class="du-stage">' + duSide('a') + '<div class="du-mid"><span class="du-vs">對</span></div>' + duSide('d') + '<div class="du-fx" id="duFx"></div></div>' +
     '<div class="du-hint" id="duHint"></div>' +
     '<div class="du-moves" id="duMoves">' + (human ? duMovesHtml() : '') + '</div>' +
     '<div class="du-foot" id="duFoot">' + (human ? '<button class="btn" type="button" data-x="auto">맡기기</button><span class="du-tip">' + (S.kind === 'duel' ? '맹공 › 필살 › 방어 › 맹공' : '도리 › 이해 › 시세 › 도리') + '</span>' : '') + '</div>' +
+    '<div class="du-log" id="duLog"><div class="du-logh"><span>' + off(S.a.id).n + '</span><b>합별 기록</b><span>' + off(S.d.id).n + '</span></div><ol id="duLogL"></ol><i class="du-wm" aria-hidden="true">' + (S.kind === 'duel' ? '一騎討' : '舌戰') + '</i></div>' +
     '<div class="du-res" id="duRes"></div></div>';
   UI.busy = true;
   sfx(S.kind === 'duel' ? 'duel' : 'gong');
@@ -110,6 +111,18 @@ function duSlash(side, big) {
   var s = document.createElement('i'); s.className = 'du-slash ' + side + (big ? ' big' : ''); fx.appendChild(s);
   setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 700);
 }
+/* v0.20 합별 기록 한 줄: 두 사람의 수와 결과(새 합이 위에 쌓인다) */
+function duLogRow(R) {
+  var L = $('duLogL'); if (!L || !DU) return;
+  var S = DU.S, K = DUEL_KIND[S.kind], w = R.win, mid;
+  function mv(m, side) { var g = '<i class="g ' + m + '">' + K.moves[m].han + '</i>', nm = '<em>' + K.moves[m].name + '</em>'; return '<span class="' + side + (w === side ? ' win' : '') + '">' + (side === 'a' ? g + nm : nm + g) + '</span>'; }
+  if (R.how === 'rest') mid = '<b class="heal">숨 고름 +' + R.heal + '</b>';
+  else if (R.how === 'both') mid = '<b>-' + R.toA + ' · -' + R.toD + '</b>';
+  else mid = w === 'a' ? '<b class="hit">▶ -' + R.toD + '</b>' : '<b class="hit">-' + R.toA + ' ◀</b>';
+  var li = document.createElement('li'); li.className = 'w' + (w || 'x');
+  li.innerHTML = '<span class="n">' + R.n + K.unit + '</span>' + mv(R.ma, 'a') + '<span class="m">' + mid + '</span>' + mv(R.md, 'd');
+  L.insertBefore(li, L.firstChild);
+}
 function duBars() {
   var S = DU.S;
   ['a', 'd'].forEach(function (s) { var P = S[s]; $('duB' + s).style.width = Math.max(0, Math.round(P.hp / P.max * 100)) + '%'; $('duH' + s).textContent = P.hp; $('duM' + s).innerHTML = duPips(P.mom); $('duB' + s).classList.toggle('low', P.hp < P.max * 0.35); });
@@ -139,6 +152,7 @@ function duAnim(R, cb) {
     }
   });
   at(620, duBars);
+  at(640, function () { duLogRow(R); });
   at(fast ? 1250 : 1500, cb);
 }
 function duEnd() {

@@ -146,6 +146,7 @@ def steps(pg):
     print('4. 출진 군량')
     tapsel(pg, '#modal [data-a=type][data-v=spear]'); pg.wait_for_timeout(300)
     tapsel(pg, '#modal [data-a=auto]'); pg.wait_for_timeout(500)
+    tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(700)      # v0.20: 군량은 ②단계
     o4 = pg.evaluate('({ opts: Array.from(document.querySelectorAll("#modal [data-a=turns]")).map(function (x) { return [x.getAttribute("data-v"), x.querySelector("b").textContent, x.querySelector("small").textContent, x.classList.contains("on")]; }), troops: +$("dpR").value, note: $("dpN").innerText, pv: $("dpP").innerText })')
     print('    ', o4)
     ok([x[1] for x in o4['opts']] == ['90일분', '180일분', '270일분', '360일분'] and [x[3] for x in o4['opts']] == [False, True, False, False], '군량 칸: 90 · 180 · 270 · 360일분, 처음 값 180일분')

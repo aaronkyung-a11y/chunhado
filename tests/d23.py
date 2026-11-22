@@ -217,52 +217,61 @@ def steps(pg):
     ok(cues['miss'] == [] and cues['n'] == 29, '큐가 가리키는 소리가 모두 있다(소리 %d개)' % cues['n'])
     ok(cues['hit'] == ['thock'] and cues['big'] == ['arrowland'] and 'thud' not in cues['fail'] + cues['great'] and 'crush' not in cues['great'], '쏘는 공격이 맞는 소리는 화살 소리뿐이다 %s' % {k: cues[k] for k in ('hit', 'big', 'great', 'fail')})
 
-    # ================= 6. 나갈 자리 =================
+    # ================= 6. 나갈 자리 (v0.20: 지도에서 고른다) =================
     print('6. 나갈 자리')
     fresh(pg, 0, 1)
     pg.evaluate('(() => { var b = facCities(G.player)[0]; jumpTo(b.c, b.r, 1.6); flowDeploy(b); })()'); pg.wait_for_timeout(400)
-    ok(not pg.evaluate('!!document.querySelector("#modal .dring")'), '무장을 고르기 전에는 나갈 자리 그림이 없다')
+    ok(pg.evaluate('document.querySelectorAll("#fx .mk").length') == 0 and '1/2' in pg.evaluate('document.querySelector("#modal .dlg-h").innerText') and not pg.evaluate('!!document.querySelector("#modal [data-a=ok]")'), '①단계(병과 · 무장)에는 나갈 자리 표시도 [출진]도 없다')
+    ok(pg.evaluate('document.querySelector("#modal [data-a=next]").disabled'), '무장을 고르기 전에는 [다음]이 잠겨 있다')
     tapsel(pg, '#modal [data-a=auto]'); pg.wait_for_timeout(300)
-    RING = """(() => { var b = facCities(G.player)[0], ps = document.querySelectorAll('#modal .dring polygon[data-a=at]'), ts = document.querySelectorAll('#modal .dring text'), auto = deploySpot(b);
-      return { n: ps.length, cells: Array.prototype.map.call(ps, function (p, i) { return [p.getAttribute('data-v'), p.getAttribute('class'), ts[i + 1].textContent]; }), city: ts[0].textContent, auto: auto.join(','),
-        txt: document.querySelector('#dpAt').innerText.replace(/\\n+/g, ' | '), btn: !!document.querySelector('#modal [data-a=atauto]') }; })()"""
+    tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(900)
+    RING = """(() => { var b = facCities(G.player)[0], ms = document.querySelectorAll('#fx .mk.ex'), auto = deploySpot(b), ns = nbrs(b.c, b.r), rc = cv.getBoundingClientRect(), p0 = w2s.apply(null, hexPos(b.c, b.r));
+      return { n: ms.length, cells: Array.prototype.map.call(ms, function (m, i) { var r = m.getBoundingClientRect(); return [ns[i].join(','), m.className, m.querySelector('small').textContent, m.querySelector('b').textContent, Math.round(r.left + r.width / 2 - rc.left - p0[0]), Math.round(r.top + r.height / 2 - rc.top - p0[1])]; }), auto: auto.join(','),
+        list: MODAL.pick.list().map(function (x) { return [x.c + ',' + x.r, x.on]; }), see: $('modal').classList.contains('see'), picking: $('app').classList.contains('picking'), head: document.querySelector('#modal .dlg-h').innerText,
+        txt: document.querySelector('#dpAt').innerText.replace(/\\n+/g, ' | '), btn: !!document.querySelector('#modal [data-a=atauto]'), dlgTop: Math.round(document.querySelector('#modal .dlg').getBoundingClientRect().top), vis: Array.prototype.every.call(ms, function (m) { var r = m.getBoundingClientRect(); return r.top > 60 && r.bottom < document.querySelector('#modal .dlg').getBoundingClientRect().top && r.left >= 0 && r.right <= innerWidth; }) }; })()"""
     r0 = pg.evaluate(RING); print('     ', r0)
-    au = [c for c in r0['cells'] if ' au' in c[1]]
-    ok(r0['n'] == 6 and r0['city'] == '진류' and len(au) == 1 and au[0][0] == r0['auto'] and '자동' in r0['txt'] and not r0['btn'], '성 둘레 여섯 칸 · 고르지 않으면 게임이 고를 칸이 점선 — ' + r0['txt'])
+    on0 = [c for c in r0['cells'] if ' on' in c[1]]
+    ok(r0['n'] == 6 and '2/2' in r0['head'] and r0['see'] and r0['picking'] and len(on0) == 1 and on0[0][0] == r0['auto'] and '자동' in r0['txt'] and not r0['btn'], '②단계: 지도 위 성 둘레 여섯 칸에 딱지 · 고르지 않으면 게임이 고를 칸이 붉다 — ' + r0['txt'])
+    ok(r0['vis'], '여섯 딱지가 모두 창 위(지도)에 보인다 — 창 위 끝 %d' % r0['dlgTop'])
     ok(all(c[2] for c in r0['cells']) and any(c[2] in ('시장', '농장', '병영', '대장간', '마구간') for c in r0['cells']) and any(c[2] in ('길', '평지') for c in r0['cells']), '칸마다 무엇이 있는지 적혀 있다 %s' % [c[2] for c in r0['cells']])
-    geo = pg.evaluate("""(() => { var b = facCities(G.player)[0], p0 = hexCenter(b.c, b.r), svg = document.querySelector('#modal .dring').getBoundingClientRect(), out = [];
-      Array.prototype.forEach.call(document.querySelectorAll('#modal .dring polygon[data-a=at]'), function (p) { var v = p.getAttribute('data-v').split(','), q = hexCenter(+v[0], +v[1]), r = p.getBoundingClientRect();
-        out.push([Math.sign(Math.round((q[0] - p0[0]) * 10)), Math.sign(Math.round((q[1] - p0[1]) * 10)), Math.sign(Math.round(r.left + r.width / 2 - svg.left - svg.width / 2)), Math.sign(Math.round(r.top + r.height / 2 - svg.top - svg.height / 2))]); });
-      return out; })()""")
-    ok(all(g[0] == g[2] and g[1] == g[3] for g in geo), '그림의 방향이 지도와 같다(동서 · 남북) %s' % geo)
-    pick = [c for c in r0['cells'] if 'ok' in c[1] and ' au' not in c[1] and c[2] in ('시장', '농장', '병영', '대장간', '마구간')][0]
-    pg.locator('#modal .dring polygon[data-v="%s"]' % pick[0]).tap(); pg.wait_for_timeout(300)
+    ok(all((('동' in c[3]) == (c[4] > 0)) and (('서' in c[3]) == (c[4] < 0)) and (('북' in c[3]) == (c[5] < -12)) and (('남' in c[3]) == (c[5] > 12)) for c in r0['cells']), '딱지의 방향 글씨가 지도에서의 자리와 같다 %s' % [(c[3], c[4], c[5]) for c in r0['cells']])
+    ok(sorted(x[0] for x in r0['list']) == sorted(pg.evaluate('deploySpots(facCities(G.player)[0]).map(function (q) { return q.join(","); })')) and [x[0] for x in r0['list'] if x[1]] == [r0['auto']], '빛나는 칸 = 나갈 수 있는 칸, 붉은 칸 = 지금 고른 칸')
+    pick = [c for c in r0['cells'] if ' no' not in c[1] and ' on' not in c[1] and c[2] in ('시장', '농장', '병영', '대장간', '마구간')][0]
+    def taphexs(key):
+        c, r = [int(v) for v in key.split(',')]; x, y = B.hexpos(pg, c, r); pg.touchscreen.tap(x, y); pg.wait_for_timeout(450)
+    taphexs(pick[0])
     r1 = pg.evaluate(RING)
     on = [c for c in r1['cells'] if ' on' in c[1]]
-    ok(len(on) == 1 and on[0][0] == pick[0] and '고른 자리' in r1['txt'] and pick[2] in r1['txt'] and r1['btn'] and not any(' au' in c[1] for c in r1['cells']), '칸을 누르면 그 칸이 고른 자리 — ' + r1['txt'])
+    ok(len(on) == 1 and on[0][0] == pick[0] and '고른 자리' in r1['txt'] and pick[2] in r1['txt'] and r1['btn'] and [x[0] for x in r1['list'] if x[1]] == [pick[0]], '지도의 칸을 누르면 그 칸이 고른 자리 — ' + r1['txt'])
     B.shot(pg, 'v6_ring', 200)
     tapsel(pg, '#modal [data-a=atauto]'); pg.wait_for_timeout(200)
-    r2 = pg.evaluate(RING); ok(not any(' on' in c[1] for c in r2['cells']) and '자동' in r2['txt'], '[자동]으로 되돌린다')
-    pg.locator('#modal .dring polygon[data-v="%s"]' % pick[0]).tap(); pg.wait_for_timeout(300)
+    r2 = pg.evaluate(RING); ok([c[0] for c in r2['cells'] if ' on' in c[1]] == [r0['auto']] and '자동' in r2['txt'] and not r2['btn'], '[자동]으로 되돌린다')
+    tapsel(pg, '#modal [data-a=prev]'); pg.wait_for_timeout(400)
+    ok(pg.evaluate('document.querySelectorAll("#fx .mk").length') == 0 and not pg.evaluate('$("modal").classList.contains("see")') and '1/2' in pg.evaluate('document.querySelector("#modal .dlg-h").innerText') and pg.evaluate('document.querySelectorAll("#modal .row.sel").length') >= 1, '[‹ 무장]으로 ①단계에 돌아가면 딱지가 걷히고 고른 무장은 그대로')
+    tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(800)
+    taphexs(pick[0])
     tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(2600)
     u = pg.evaluate('(() => { var u = G.units.filter(function (x) { return x.f === G.player; }).pop(); return u ? u.c + "," + u.r : ""; })()')
-    ok(u == pick[0], '고른 칸으로 나간다: %s (게임이 골랐을 칸 %s)' % (u, r0['auto']))
+    ok(u == pick[0] and pg.evaluate('document.querySelectorAll("#fx .mk").length') == 0 and not pg.evaluate('$("app").classList.contains("picking")'), '고른 칸으로 나간다: %s (게임이 골랐을 칸 %s) · 딱지는 걷힌다' % (u, r0['auto']))
     pg.evaluate('talkHide()'); B.shot(pg, 'v6_out', 300)
-    pg.evaluate('(() => { clearSel(); flowDeploy(facCities(G.player)[0]); })()'); pg.wait_for_timeout(400); tapsel(pg, '#modal [data-a=auto]'); pg.wait_for_timeout(300)
+    pg.evaluate('(() => { clearSel(); flowDeploy(facCities(G.player)[0]); })()'); pg.wait_for_timeout(400); tapsel(pg, '#modal [data-a=auto]'); pg.wait_for_timeout(300); tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(800)
     r3 = pg.evaluate(RING); cell = [c for c in r3['cells'] if c[0] == pick[0]][0]
-    ok('no' in cell[1] and cell[2] == '부대', '부대가 선 칸은 흐리게 · "부대" %s' % cell)
-    pg.evaluate('$("toast").textContent = ""'); pg.locator('#modal .dring polygon[data-v="%s"]' % pick[0]).tap(); pg.wait_for_timeout(300)
-    ok('나갈 수 없습니다' in toast(pg) and not any(' on' in c[1] for c in pg.evaluate(RING)['cells']), '그 칸은 고를 수 없다 — ' + toast(pg))
+    ok(' no' in cell[1] and cell[2] == '부대', '부대가 선 칸은 흐리게 · "부대" %s' % cell)
+    pg.evaluate('$("toast").textContent = ""'); taphexs(pick[0])
+    ok('나갈 수 없습니다' in toast(pg) and [c[0] for c in pg.evaluate(RING)['cells'] if ' on' in c[1]] != [pick[0]], '그 칸은 고를 수 없다 — ' + toast(pg))
     pg.evaluate('closeDialog()')
+    ok(pg.evaluate('document.querySelectorAll("#fx .mk").length') == 0, '창을 닫으면 딱지가 걷힌다')
     pg.evaluate('(() => { flowTransport(facCities(G.player)[0]); })()'); pg.wait_for_timeout(400)
-    ok(pg.evaluate('document.querySelectorAll("#modal .dring polygon[data-a=at]").length') == 6, '수송 창에도 나갈 자리')
+    ok(pg.evaluate('document.querySelectorAll("#fx .mk").length') == 0 and '1/2' in pg.evaluate('document.querySelector("#modal .dlg-h").innerText'), '수송 ①단계(호송 무장 · 짐)')
+    tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(800)
+    ok(pg.evaluate('document.querySelectorAll("#fx .mk.ex").length') == 6 and pg.evaluate('!!document.querySelector("#modal .seg.tbk")') and pg.evaluate('!!document.querySelector("#modal [data-a=ok]")'), '수송 ②단계: 내린 뒤 · 지도 위 나갈 자리')
     pg.evaluate('closeDialog()')
 
     # ================= 7. 아래에 더 있다는 표시 =================
     print('7. 아래에 더 있습니다')
     MORE = """(() => { var b = document.querySelector('#modal .dlg-b'), h = b && b.querySelector(':scope > .morehint'); if (!b) return null; var r = b.getBoundingClientRect(), c = h && h.firstChild.getBoundingClientRect();
       return { more: b.scrollHeight - b.scrollTop - b.clientHeight, has: !!h, on: !!h && h.classList.contains('on'), op: h ? +getComputedStyle(h).opacity : -1, top: b.scrollTop, chip: c ? [Math.round(c.bottom - r.bottom), Math.round(c.left + c.width / 2 - r.left - r.width / 2), h.firstChild.textContent] : null }; })()"""
-    pg.evaluate('showHelp()'); pg.wait_for_timeout(600)
+    pg.evaluate('showHelp()'); pg.wait_for_timeout(1000)      # v0.20: 느린 시험 기계에서 표시가 다 떠오를 때까지(0.16초 번짐)
     m0 = pg.evaluate(MORE); print('     ', m0)
     ok(m0['more'] > 100 and m0['has'] and m0['on'] and m0['op'] > 0.9 and '아래에 더 있습니다' in m0['chip'][2], '긴 창(도움말): 아래 끝에 딱지가 뜬다')
     ok(-40 <= m0['chip'][0] <= 0 and abs(m0['chip'][1]) <= 2, '딱지는 몸통의 아래 끝 가운데 %s' % m0['chip'][:2])

@@ -36,10 +36,20 @@ STATE = '''() => {
     sheet: !SHEET ? null : (SHEET.home ? 'home' : 'sel'), sel: UI.sel ? UI.sel.kind + ':' + UI.sel.id : null, chip: ret.classList.contains('on'), ret: !!UI.ret, via: !!UI.via, sret: !!UI.sret,
     target: !!UI.target, march: !!UI.march, pick: !!UI.pickMarch, busy: !!UI.busy, play: !!UI.play, over: G ? G.over : 'noG', title: !$('title').classList.contains('off') };
 }'''
+def duel_through(pg):
+    """v0.20: 일기토 신청이 받아들여지면 수를 고르는 화면이 뜬다(창도 아래 판도 아니라서 여기서는 누를 것이 없었다 — 그대로 두면 끝까지 멈춰 있다).
+    [맡기기]를 누르고, 끝나면 [확인]으로 닫는다."""
+    STAT['duels'] = STAT.get('duels', 0) + 1
+    t0 = time.time()
+    while pg.evaluate('typeof DU !== "undefined" && !!DU') and time.time() - t0 < 60:
+        pg.evaluate('''() => { var c = document.querySelector('#duel [data-x=close]'); if (c) { c.click(); return; } var a = document.querySelector('#duel [data-x=auto]'); if (a) a.click(); }''')
+        pg.wait_for_timeout(250)
 def settle(pg, ms=70):
     pg.wait_for_timeout(ms)
     t0 = time.time()
-    while pg.evaluate('!!(UI.busy && !UI.play)') and time.time() - t0 < 8: pg.wait_for_timeout(80)
+    while pg.evaluate('!!(UI.busy && !UI.play)') and time.time() - t0 < 8:
+        if pg.evaluate('typeof DU !== "undefined" && !!DU && !!DU.human'): duel_through(pg); t0 = time.time()
+        pg.wait_for_timeout(80)
 def inv(pg, where):
     s = pg.evaluate(STATE)
     def bad(msg): BAD.append('%s: %s %s' % (where, msg, json.dumps(s, ensure_ascii=False)))
@@ -137,7 +147,7 @@ def steps(pg):
         elif c[0] == 'esc': pg.keyboard.press('Escape')
         elif c[0] == 'hex': pg.evaluate('([c, r]) => onTap(c, r)', c[1])
         elif c[0] == 'macro':
-            seq = ['#sheet [data-a=deploy]', '#modal [data-a=auto]', '#modal [data-a=ok]'] if c[2] == 'deploy3' else ['#sheet [data-a=trans]', '#modal [data-a=ok]']
+            seq = ['#sheet [data-a=deploy]', '#modal [data-a=auto]', '#modal [data-a=next]', '#modal [data-a=ok]'] if c[2] == 'deploy3' else ['#sheet [data-a=trans]', '#modal [data-a=next]', '#modal [data-a=ok]']      # v0.20: 출진 · 수송은 두 단계
             for q in seq:
                 pg.evaluate('(q) => { MPAINT = 0; var e = document.querySelector(q); if (e && !e.disabled) e.click(); }', q); pg.wait_for_timeout(60)
         STAT['steps'] += 1
@@ -150,6 +160,7 @@ def steps(pg):
     print('×만 눌러 STATUS 창까지: %d번 시험, 걸린 횟수 분포 %s' % (STAT['unwinds'], json.dumps(dict(sorted(STAT['unwind_hist'].items())), ensure_ascii=False)))
     print('본 창:', json.dumps(dict(sorted(STAT['modal_titles'].items(), key=lambda x: -x[1])), ensure_ascii=False))
     print('누른 것:', json.dumps(dict(sorted(STAT['acts'].items(), key=lambda x: -x[1])[:40]), ensure_ascii=False))
+    if STAT.get('duels'): print('일기토 화면 %d번(맡기기로 끝냄)' % STAT['duels'])
     print('어긋남 %d건' % len(BAD)); [print('  ', b[:700]) for b in BAD[:12]]
     print('콘솔 오류 %d건' % len(errs)); [print('  ', e[:400]) for e in errs[:10]]
     STAT['errs'] = len(errs)

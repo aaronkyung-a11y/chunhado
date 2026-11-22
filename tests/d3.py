@@ -26,7 +26,8 @@ def steps(pg):
     print('search toast', pg.evaluate('$("toast").textContent'))
     # 출진(처음 방식): 병과·무장만 정하면 성 앞에 나오고, 고른 채로 파란 칸이 보인다
     tapsel(pg, '#sheet [data-a=tab][data-v=mil]'); tapsel(pg, '#sheet [data-a=deploy]'); tapsel(pg, '#modal [data-a=auto]')
-    print('deploy dialog has destination list:', pg.locator('#modal .dests').count(), '| note:', pg.locator('#modal .note').last.inner_text()[:40])
+    print('deploy dialog has destination list:', pg.locator('#modal .dests').count(), '| step:', pg.locator('#modal .dlg-h').inner_text()[:40])      # v0.20: ①단계에는 풀이 줄이 없다
+    tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(600)      # v0.20: ② 병력 · 군량 · 나갈 자리
     tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(1300)
     print('deployed', pg.evaluate('JSON.stringify(facUnits(G.player).map(function(u){return [u.c,u.r,u.dest,u.mp,u.done]}))'), 'sel', pg.evaluate('UI.sel'), 'busy', pg.evaluate('UI.busy'), 'reach', pg.evaluate('UI.rc ? Object.keys(UI.rc.stop).length : -1'))
     # v0.18: 닿지 않는 땅을 누르면 곧바로 그곳으로 행군 → [이동 취소]로 제자리 · 명령도 거둔다

@@ -133,11 +133,22 @@ function adviceAcc(A, tInt) { return clamp(Math.round(A.int - Math.max(0, (tInt 
 /* 조언: { adv, acc, says } — says = "통한다"고 말하는가. 군사가 없으면 null.
    roll = 그 일의 주사위(recruitRoll·ployRoll), rollA = '조언이 맞는가'의 주사위(recruitRollA·ployRollA), p = 성공률, tInt = 상대의 지력.
    실제 결과(roll < p)를 acc% 의 확률로 바르게, 나머지는 거꾸로 말한다. '맞는가'도 대상에만 걸려 있어, 군사를 바꿔 물어도 새 정보가 생기지 않는다 */
-function advise(f, roll, rollA, p, tInt) {
-  var A = facAdv(f); if (!A) return null;
+function advise(f, roll, rollA, p, tInt) { return adviseBy(facAdv(f), roll, rollA, p, tInt); }
+function adviseBy(A, roll, rollA, p, tInt) {                       // v0.20: 조언하는 이를 정해서(싸움터에서는 부대의 참모)
+  if (!A) return null;
   var real = roll < p, acc = adviceAcc(A, tInt);
   return { adv: A, acc: acc, says: rollA < acc ? real : !real };
 }
+/* v0.20 부대의 참모: 싸움터에서 헤아리는 사람 — 부장 가운데 지력과 통솔이 높은 쪽(지력을 조금 더 친다). 부장이 없으면 주장 자신.
+   staffRead = 어느 수가 가장 나은지 바르게 짚을 확률(%) · staffErr = 예상 피해가 벌어지는 폭(0 ~ 0.4) */
+var STAFF = { readK: 1.15, readMin: 50, errAt: 88, errMax: 0.4 };
+function uStaff(u) {
+  var best = null, bv = -1;
+  for (var i = 1; i < u.off.length; i++) { var o = off(u.off[i]); if (!o) continue; var v = o.int * 1.2 + o.ldr; if (v > bv) { bv = v; best = o; } }
+  return best || uLeader(u);
+}
+function staffRead(o) { return clamp(Math.round((o.ldr * 0.6 + o.int * 0.4) * STAFF.readK), STAFF.readMin, 100); }
+function staffErr(o) { return clamp((STAFF.errAt - o.ldr) / 100, 0, STAFF.errMax); }
 function dateStr() { return G.year + '년 ' + G.month + '월 ' + ['상순', '중순', '하순'][G.xun]; }
 function dateOfTurn(t) { var m = Math.floor((t - 1) / 3); return (194 + Math.floor(m / 12)) + '년 ' + (m % 12 + 1) + '월 ' + ['상순', '중순', '하순'][(t - 1) % 3]; }   // 턴 번호 → 날짜(1턴 = 194년 1월 상순)
 /* ---------- 초반 보호 ---------- */
@@ -2772,9 +2783,48 @@ function rosterGrow(g) {
   }
   return n;
 }
+/* v0.20: 거점이 늘었다(홍농). 옛 저장에는 없다 — 뒤에 덧붙인다(앞선 거점의 번호와 자리는 그대로다).
+   주인은 BASE_GROW 가 가리키는 성(장안)을 쥔 세력 — 그 세력이 없으면 빈 성이다. 새 성이 서는 칸에 부대가 있으면 옆 칸으로 비킨다. */
+function baseGrow(g) {
+  var n0 = g.bases.length, i, j, n = 0;
+  if (n0 >= MAPDATA.bases.length || n0 < BASES_OLD) return 0;
+  for (i = 0; i < n0; i++) if (!g.bases[i] || g.bases[i].n !== MAPDATA.bases[i].n) return 0;       // 다른 지도로 만든 저장이면 건드리지 않는다
+  for (i = n0; i < MAPDATA.bases.length; i++) {
+    var mb = MAPDATA.bases[i], ni = BASE_GROW[mb.n] ? baseByName(BASE_GROW[mb.n]) : -1, nb = ni >= 0 && ni < n0 ? g.bases[ni] : null;
+    var own = (nb && nb.owner >= 0 && g.factions[nb.owner] && g.factions[nb.owner].alive !== false) ? nb.owner : -1, has = own >= 0 && mb.k === 'city';
+    var b = { id: i, n: mb.n, kind: mb.k, c: mb.c, r: mb.r, sz: mb.sz, owner: own, gold: has ? 600 : 0, food: has ? 6000 : 0, troops: has ? 4000 : 0, morale: 60, order: 60,
+      dur: MAX_DUR[mb.sz], maxDur: MAX_DUR[mb.sz], w: { spear: has ? 1600 : 0, halberd: has ? 1000 : 0, bow: has ? 1000 : 0, horse: 0, ram: 0 }, plots: [], captives: [], ai: {}, grown: 1 };
+    var pl = MAPDATA.plots[mb.n] || [];
+    for (j = 0; j < pl.length; j++) b.plots.push({ c: pl[j][0], r: pl[j][1], fac: null });
+    if (has) ['market', 'farm', 'barracks'].forEach(function (t, k) { if (b.plots[k]) b.plots[k].fac = { t: t, lv: 1, done: true, prog: 0, need: 0, rate: 0, hp: FAC_HP }; });
+    g.bases.push(b); n++;
+    var us = g.units || [], occ = {}, q, moved;
+    for (j = 0; j < us.length; j++) occ[K(us[j].c, us[j].r)] = 1;
+    for (j = 0; j < us.length; j++) {
+      if (us[j].c !== mb.c || us[j].r !== mb.r) continue;
+      var ring = [[mb.c, mb.r]], seen = {}, step; moved = false; seen[K(mb.c, mb.r)] = 1;
+      for (step = 0; step < 6 && !moved; step++) {
+        var next = [];
+        for (q = 0; q < ring.length && !moved; q++) {
+          var ns = nbrs(ring[q][0], ring[q][1]);
+          for (var z = 0; z < ns.length && !moved; z++) {
+            var hk = K(ns[z][0], ns[z][1]), tc = TCH[hk];
+            if (seen[hk]) continue; seen[hk] = 1;
+            if (tc === 120 || tc === 115 || tc === 109) continue;
+            if (!occ[hk] && BAT[hk] === undefined) { delete occ[K(us[j].c, us[j].r)]; us[j].c = ns[z][0]; us[j].r = ns[z][1]; occ[hk] = 1; moved = true; }
+            else next.push(ns[z]);
+          }
+        }
+        ring = next;
+      }
+    }
+  }
+  return n;
+}
 function deserialize(s) {
   var g = JSON.parse(s);
   if (!g || g.ver !== 2) return false;
+  var grownB = baseGrow(g);                                              // v0.20: 거점이 늘었다(홍농)
   // 초상은 저장본이 아니라 지금 판의 명부를 따른다(예전 저장을 열어도 새로 그린 초상이 나오게)
   for (var i = 0; i < g.officers.length; i++) { var so = SCENARIO.officers[i]; if (so && so.n === g.officers[i].n) g.officers[i].por = so.por; }
   // 세력 색도 지금 판의 색(석채 빛)을 따른다
@@ -2803,6 +2853,10 @@ function deserialize(s) {
     var gj = 0; for (var gi = G.officers.length - grown; gi < G.officers.length; gi++) { var gn = G.officers[gi]; delete gn.grown; if (gn.f >= 0) { gn.loy = loyNat(gn); if (gn.f === G.player) gj++; } }
     var gcap = facCities(G.player)[0] || facBases(G.player)[0];
     logMsg('무장이 늘었습니다(v0.17) — 천하에 ' + grown + '명이 더해졌습니다' + (gj ? ' · 우리 세력에 ' + gj + '명' : ''), gcap ? gcap.c : undefined, gcap ? gcap.r : undefined, G.player, 1);
+  }
+  if (grownB) for (var gbi = G.bases.length - grownB; gbi < G.bases.length; gbi++) {
+    var gnb = G.bases[gbi]; delete gnb.grown;
+    logMsg('지도에 새 성이 더해졌습니다(v0.20) — ' + gnb.n + (gnb.owner >= 0 ? ' · ' + facName(gnb.owner) + '군의 성' : ' · 빈 성'), gnb.c, gnb.r, G.player, 1);
   }
   var tfix = terrainFix();                                               // v0.15: 산이 넓어졌다 — 못 가는 칸에 서 있던 부대를 옮긴다
   for (var ti = 0; ti < tfix.length; ti++) if (tfix[ti].f === G.player) logMsg(uName(tfix[ti]) + ' — 지형이 바뀌어(v0.15) 옆의 갈 수 있는 칸으로 옮겼습니다', tfix[ti].c, tfix[ti].r, G.player, 1);

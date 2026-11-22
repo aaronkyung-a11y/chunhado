@@ -432,10 +432,10 @@ function mkLabel() {
 function labelSize(L, k) { L.sp.scale.set(L.w / 2 / CH * K3 * k, L.h / 2 / CH * K3 * k, 1); }
 /* lines: [{t, px, font, color, bold}], 판 색 bg, 테두리 색 */
 function corpsMark(cp) { return cp.n >= 1 && cp.n <= 20 ? String.fromCharCode(0x245F + cp.n) : String(cp.n); }      // ① ② ③ …
-function drawLabel(L, lines, bg, border, badge, badgeBg, face) {
-  var x = L.cv.getContext('2d'), i, w = 0, h = 10, S = 2;
+function drawLabel(L, lines, bg, border, badge, badgeBg, face, bar) {
+  var x = L.cv.getContext('2d'), i, w = 0, h = 10, S = 2, BH = bar ? 13 : 0;      // v0.20: bar = { v: 0~1 } 이면 판 아래에 막대(성의 내구)
   for (i = 0; i < lines.length; i++) { x.font = (lines[i].bold || 700) + ' ' + lines[i].px * S + 'px ' + (lines[i].font || FONT_B); lines[i].w = x.measureText(lines[i].t).width; w = Math.max(w, lines[i].w); h += lines[i].px * S * 1.18; }
-  w = Math.ceil(w + 22 * S / 2 + (badge ? 30 : 8)); h = Math.ceil(h);
+  w = Math.ceil(w + 22 * S / 2 + (badge ? 30 : 8)); h = Math.ceil(h) + BH;
   // v0.18: 얼굴 딱지 — 판 밖으로 왼쪽 ox · 위 oy 만큼 나와 모서리에 걸친다. 글씨는 얼굴에 가리지 않게 오른쪽으로 조금 민다
   var FD = face ? FACE_D : 0, ox = face ? Math.round(FD * 0.40) : 0, oy = face ? Math.round(FD * 0.46) : 0, tsh = face ? Math.round(FD * 0.13) : 0;
   if (face) w += tsh * 2;
@@ -452,6 +452,12 @@ function drawLabel(L, lines, bg, border, badge, badgeBg, face) {
     var ln = lines[i]; x.font = (ln.bold || 700) + ' ' + ln.px * S + 'px ' + (ln.font || FONT_B);
     x.fillStyle = 'rgba(20,18,16,0.38)'; x.fillText(ln.t, tcx + 1, y + 1.5);
     x.fillStyle = ln.color || '#fbf6ea'; x.fillText(ln.t, tcx, y); y += ln.px * S * 1.18;
+  }
+  if (bar) {                                                    // 내구 막대: 먹빛 홈에 남은 만큼
+    var bx0 = 9, bwid = bw - 18, by0 = h - BH - 2, bv = clamp(bar.v, 0, 1);
+    rr(x, bx0, by0, bwid, 8, 2.5); x.fillStyle = 'rgba(20,18,16,0.62)'; x.fill();
+    if (bv > 0) { rr(x, bx0 + 1, by0 + 1, Math.max(3, (bwid - 2) * bv), 6, 2); x.fillStyle = bv < 0.3 ? '#e2574a' : (bv < 0.6 ? '#e6b63c' : '#f4efe3'); x.fill(); }
+    x.lineWidth = 1; x.strokeStyle = 'rgba(251,246,234,0.55)'; rr(x, bx0, by0, bwid, 8, 2.5); x.stroke();
   }
   if (badge) { rr(x, w - 31, 3, 28, 28, 4); x.fillStyle = badgeBg || SEAL; x.fill(); x.lineWidth = 1.5; x.strokeStyle = '#fbf6ea'; x.stroke(); x.fillStyle = '#fbf6ea'; x.font = '800 19px ' + FONT_B; x.textBaseline = 'middle'; x.fillText(badge, w - 17, 18); }
   x.restore();
@@ -531,7 +537,7 @@ function shade(hex, k) { var c = rgbOf(hex); return 'rgb(' + Math.round(c[0] * k
 /* ---------- 공사장(v0.10.1) ----------
    짓는 중인 시설은 완성된 그림 대신 '밑그림 + 비계'로 보인다: 그 시설의 그림을 먹빛만 옅게 남기고(밑그림), 그 위에 대나무 비계 · 통나무 더미 · 붉은 깃발을 덧그린다.
    공사가 나아갈수록(셋으로 나눈 단계 0·1·2) 밑그림이 짙어진다. 처음 쓸 때 만들어 TEX['시설@단계'] 에 넣어 둔다(SPRITES 에도 같은 크기로 올린다 — setSprite 가 그대로 쓴다). */
-var SITE_IMG = {}, SITE_URL = {}, SITE_INK = [0.42, 0.54, 0.68], SITE_A = [0.84, 0.90, 0.95];
+var SITE_IMG = {}, SITE_URL = {}, SITE_INK = [0.66, 0.76, 0.86], SITE_A = [0.96, 0.98, 1];      // v0.20: 먹을 짙게(멀리서도 보이게 — 전에는 0.42~0.68 · 0.84~0.95)
 function siteStage(fc) { return clamp(Math.floor(3 * (fc.prog || 0) / Math.max(1, fc.need || 1)), 0, 2); }
 function siteCanvas(key, st) {
   var im = SITE_IMG[key], S = SPRITES[key]; if (!im || !S) return null;
@@ -565,13 +571,13 @@ function siteCanvas(key, st) {
   }
   line(K, up(K, H), 1.4, BACK); line(up(L, H), up(K, H), 1.4, BACK); line(up(K, H), up(R, H), 1.4, BACK);
   [0.36, 0.70].forEach(function (q) { line(up(L, H * q), up(K, H * q), 1.1, BACK); line(up(K, H * q), up(R, H * q), 1.1, BACK); });
-  [L, mid(L, F), F, mid(F, R), R].forEach(function (P) { line([P[0], P[1] + 2], up(P, H + 5), 2.2, POLE, true); });
-  [0.36, 0.70, 1].forEach(function (q) { line(up(L, H * q), up(F, H * q), 1.8, POLE, true); line(up(F, H * q), up(R, H * q), 1.8, POLE, true); });
+  [L, mid(L, F), F, mid(F, R), R].forEach(function (P) { line([P[0], P[1] + 2], up(P, H + 5), 3.2, POLE, true); });
+  [0.36, 0.70, 1].forEach(function (q) { line(up(L, H * q), up(F, H * q), 2.6, POLE, true); line(up(F, H * q), up(R, H * q), 2.6, POLE, true); });
   line(L, up(mid(L, F), H * 0.36), 1.3, POLE, true); line(up(mid(L, F), H * 0.36), up(F, H * 0.70), 1.3, POLE, true);
   line(R, up(mid(F, R), H * 0.36), 1.3, POLE, true); line(up(mid(F, R), H * 0.36), up(F, H * 0.70), 1.3, POLE, true);
   var ft = up(R, H + 22);                                             // 붉은 깃발: 오른쪽 기둥 꼭대기
   line(up(R, H + 5), ft, 1.0, EDGE);
-  x.beginPath(); x.moveTo(ft[0], ft[1]); x.lineTo(ft[0] - 14, ft[1] + 4.5); x.lineTo(ft[0], ft[1] + 9); x.closePath(); x.fillStyle = '#ba342a'; x.fill();
+  x.beginPath(); x.moveTo(ft[0], ft[1]); x.lineTo(ft[0] - 22, ft[1] + 7); x.lineTo(ft[0], ft[1] + 14); x.closePath(); x.fillStyle = '#ba342a'; x.fill(); x.lineWidth = 1; x.strokeStyle = 'rgba(58,40,24,0.9)'; x.stroke();
   var lx = cx - A * 0.72, ly = base + B * 0.78;                       // 통나무 더미: 왼쪽 앞 바닥
   for (i = 0; i < 3; i++) line([lx + i * 3.2 - 10, ly + i * 2.4 - 3], [lx + i * 3.2 + 10, ly + i * 2.4 - 13], 2.6, '#b0844e', true);
   return c;
@@ -629,12 +635,12 @@ function syncScene() {
     }
     if (o.zone && o.zcol !== col) { o.zcol = col; o.zone.material.color.set(shade(col, 0.82)); }
     var cpL = mineB ? baseCorps(b) : null;                                 // 군단에 맡긴 거점: 쉬는 무장 수 대신 군단 번호 딱지
-    sig = b.owner + '|' + (b.owner >= 0 ? Math.round(b.troops / 100) : '') + '|' + (mineB && !cpL ? (idleN[b.id] || 0) : '') + '|' + (UI.sel && UI.sel.kind === 'base' && UI.sel.id === b.id) + '|' + (cpL ? cpL.n : '');
+    sig = b.owner + '|' + (b.owner >= 0 ? Math.round(b.troops / 100) : '') + '|' + (mineB && !cpL ? (idleN[b.id] || 0) : '') + '|' + (UI.sel && UI.sel.kind === 'base' && UI.sel.id === b.id) + '|' + (cpL ? cpL.n : '') + '|' + Math.round(40 * b.dur / Math.max(1, b.maxDur));
     if (sig !== o.sig) {
       o.sig = sig;
       var ls = [{ t: b.n, px: 15, font: FONT_D, bold: 900 }];
       if (b.owner >= 0) ls.push({ t: fmt(b.troops), px: 10.5, color: '#f6efdf' });
-      drawLabel(o.lab, ls, shade(col, 0.86), (UI.sel && UI.sel.kind === 'base' && UI.sel.id === b.id) ? SEAL : INK, cpL ? corpsMark(cpL) : (mineB && idleN[b.id] ? idleN[b.id] : 0), cpL ? INK : null);
+      drawLabel(o.lab, ls, shade(col, 0.86), (UI.sel && UI.sel.kind === 'base' && UI.sel.id === b.id) ? SEAL : INK, cpL ? corpsMark(cpL) : (mineB && idleN[b.id] ? idleN[b.id] : 0), cpL ? INK : null, null, { v: b.dur / Math.max(1, b.maxDur) });
       R3.labelK = 0;
     }
     // 시설
@@ -698,7 +704,8 @@ function syncScene() {
     if (R3.fires[fk2]) continue;
     var kk = +fk2, fc2 = kk % W; p = hexPos(fc2, (kk - fc2) / W);
     var fg = new THREE.Group(); fg.position.set(p[0], p[1], p[2]);
-    for (j = 0; j < 3; j++) { var fsprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: R3.flame, transparent: true, depthTest: false, depthWrite: false })); fsprite.center.set(0.5, 0.08); fsprite.position.set((j - 1) * 0.42, 0, (j % 2) * 0.2); fsprite.renderOrder = 4; fg.add(fsprite); }
+    for (j = 0; j < 5; j++) { var fsprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: R3.flame, transparent: true, depthTest: false, depthWrite: false })); fsprite.center.set(0.5, 0.08); fsprite.position.set((j - 2) * 0.33, 0, (j % 2) * 0.24 - 0.1); fsprite.renderOrder = 4; fsprite.userData.k = j === 2 ? 1.25 : (j % 2 ? 1 : 0.8); fg.add(fsprite); }      // v0.20: 불꽃 다섯(가운데가 크다)
+    for (j = 0; j < 2; j++) { var smoke = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTex('puff'), color: 0x4a4640, transparent: true, opacity: 0, depthTest: false, depthWrite: false })); smoke.renderOrder = 3.9; smoke.userData.smoke = j + 1; fg.add(smoke); }      // 연기 둘이 번갈아 오른다
     R3.objs.add(fg); R3.fires[fk2] = fg;
   }
   for (fk2 in R3.fires) if (!G.fires[fk2]) { R3.objs.remove(R3.fires[fk2]); delete R3.fires[fk2]; }
@@ -730,6 +737,8 @@ function rebuildOverlay() {
   if (UI.sel && UI.sel.kind === 'unit' && UMAP[UI.sel.id]) ovPut(K(UMAP[UI.sel.id].c, UMAP[UI.sel.id].r), [27, 26, 24], 96);
   if (UI.sel && UI.sel.kind === 'base') ovPut(K(G.bases[UI.sel.id].c, G.bases[UI.sel.id].r), [176, 124, 34], 150);
   if (UI.target) ovPut(K(UI.target.c, UI.target.r), [181, 51, 42], 225);
+  var pkL = (typeof MODAL !== 'undefined' && MODAL && MODAL.pick) ? MODAL.pick.list() : null;      // v0.20: 지도에서 고르는 칸(나갈 자리 · 보낼 성)
+  if (pkL) for (i = 0; i < pkL.length; i++) ovPut(K(pkL[i].c, pkL[i].r), pkL[i].on ? [181, 51, 42] : [212, 160, 44], pkL[i].on ? 205 : 160);
   if (SPOT.on && SPOT.v) for (i = 0; i < SPOT.v.lots.length; i++) {            // 건설 자리
     var sl = SPOT.v.lots[i];
     if (sl.i === SPOT.v.pi) ovPut(K(sl.c, sl.r), [181, 51, 42], 138); else if (sl.ok) ovPut(K(sl.c, sl.r), [212, 160, 44], 120);
@@ -812,15 +821,14 @@ function spotDraw() {
   var facLabels = function () { for (i = 0; i < v.facs.length; i++) {      // 이미 지은 시설: 어둠 속에서도 옆에 무엇이 있는지 번호와 이름으로(빈 부지의 테두리보다 나중에 그린다 — 아래에서 부른다)
     var fp = hexPos(v.facs[i].c, v.facs[i].r), fq = w2s(fp[0], fp[1], fp[2]); if (!fq) continue;
     var fpu = pxPerUnit(fq[2]); if (fpu < 15) continue;
-    var fpx = clamp(Math.round(fpu * 0.40), 10, 13), fa = v.facs[i], fon = fa === selF, fly = fq[1] + fpu * 0.16;
+    var fpx = clamp(Math.round(fpu * 0.40), 10, 13), fa = v.facs[i], fon = fa === selF, fly = fq[1] + fpu * (fa.done ? 0.16 : 0.42), fnm = fa.done ? fa.n : fa.n + ' · ' + fa.left;      // v0.20: 짓는 중인 시설의 이름표는 건물의 발치로 내리고(비계를 가리지 않게) 남은 날수를 같은 줄에 적는다(전에는 한 줄 더 — 아래 칸을 덮었다)
     x.font = '700 ' + fpx + 'px ' + FONT_B;
-    var ftw = x.measureText(fa.n).width, fbr = clamp(fpx * 0.6, 6, 7.8), ftx = fq[0] + fbr + 1.5, fbx = ftx - ftw / 2 - fbr - 2.5;      // 번호 딱지 + 이름: 둘을 합친 것이 칸의 가운데에 오게
+    var ftw = x.measureText(fnm).width, fbr = clamp(fpx * 0.6, 6, 7.8), ftx = fq[0] + fbr + 1.5, fbx = ftx - ftw / 2 - fbr - 2.5;      // 번호 딱지 + 이름: 둘을 합친 것이 칸의 가운데에 오게
     if (fon) { rr(x, fbx - fbr - 4, fly - fpx / 2 - 4.5, ftx + ftw / 2 + 6 - (fbx - fbr - 4), fpx + 9, 3); x.fillStyle = SEAL; x.fill(); x.lineWidth = 1.4; x.strokeStyle = PAPER; x.stroke(); }      // 고른 시설: 이름표가 붉은 딱지가 된다
     x.lineWidth = 3; x.strokeStyle = 'rgba(20,18,16,0.78)';
     x.fillStyle = fon ? '#fff' : (fa.done ? 'rgba(244,239,227,0.96)' : 'rgba(244,239,227,0.8)');
-    if (!fon) x.strokeText(fa.n, ftx, fly);
-    x.fillText(fa.n, ftx, fly);
-    if (!fa.done) { var fly2 = fly + fpx + (fon ? 6 : 1); x.font = '600 ' + (fpx - 1) + 'px ' + FONT_B; x.fillStyle = '#f0d58a'; x.strokeText(fa.left + ' 남음', fq[0], fly2); x.fillText(fa.left + ' 남음', fq[0], fly2); }      // 짓는 중: 남은 날수
+    if (!fon) x.strokeText(fnm, ftx, fly);
+    x.fillText(fnm, ftx, fly);
     x.beginPath(); x.arc(fbx, fly, fbr, 0, 6.2832); x.fillStyle = fon ? PAPER : 'rgba(244,239,227,0.95)'; x.fill(); x.lineWidth = 1; x.strokeStyle = fon ? PAPER : INK; x.stroke();      // 번호 딱지(빈 부지의 번호와 같은 차례 — 시설 탭의 줄 앞에도 같은 번호가 있다)
     x.fillStyle = fon ? SEAL : INK; x.font = '900 ' + Math.round(fbr * (fa.no > 9 ? 1.12 : 1.36)) + 'px ' + FONT_D; x.fillText(String(fa.no), fbx, fly + fbr * 0.08);
   } };
@@ -852,6 +860,16 @@ function spotDraw() {
 }
 
 /* ---------- 연출 ---------- */
+/* v0.20 지도 위의 붙박이 딱지: 고를 칸마다 글을 띄운다(나갈 자리 · 보낼 성). 화면이 움직이면 따라간다(tick) */
+function marksClear() { var ms = UI.marks || []; for (var i = 0; i < ms.length; i++) ms[i].el.remove(); UI.marks = []; }
+function marksSet(list) {
+  marksClear();
+  for (var i = 0; i < list.length; i++) {
+    var m = list[i], el = document.createElement('div'); el.className = 'mk ' + (m.cls || ''); el.innerHTML = m.html; el.style.opacity = 0;
+    $('fx').appendChild(el); UI.marks.push({ p: hexPos(m.c, m.r), el: el, dy: m.dy || 0 });
+  }
+  UI.render = true;
+}
 function anim(dur, step, done) { UI.anims.push({ t0: performance.now(), dur: dur, step: step, done: done }); UI.render = true; }
 function floatText(c, r, text, color, delay, big, dy) {
   var el = document.createElement('div'); el.className = 'flt' + (big ? ' big' : ''); el.textContent = text; el.style.color = color || INK; el.style.opacity = 0;
@@ -923,7 +941,11 @@ function tick(now) {
     var nzm = cam.z >= 1.15; if (nzm !== R3.nameZoom) { R3.nameZoom = nzm; UI.dirty = true; }
     var fzm = cam.z >= 0.5; if (fzm !== R3.faceZoom) { R3.faceZoom = fzm; UI.dirty = true; }
     if (UI.dirty) { UI.dirty = false; syncScene(); UI.render = true; }
-    var nf = 0; for (var fk in R3.fires) { nf++; var fg = R3.fires[fk]; for (i = 0; i < fg.children.length; i++) { var s = 0.9 + 0.22 * Math.sin(now / 90 + i * 2.1 + (+fk)); fg.children[i].scale.set(0.8 * s, 1.25 * s + 0.15 * Math.sin(now / 57 + i), 1); } }
+    var nf = 0; for (var fk in R3.fires) { nf++; var fg = R3.fires[fk]; for (i = 0; i < fg.children.length; i++) {
+        var fch = fg.children[i];
+        if (fch.userData.smoke) { var su = ((now / 1700) + fch.userData.smoke * 0.5 + (+fk) * 0.37) % 1; fch.position.set(0.25 * Math.sin(su * 5 + fch.userData.smoke), 1.5 + 1.9 * su, -0.05); fch.scale.set(1.1 + 1.5 * su, 0.9 + 1.2 * su, 1); fch.material.opacity = 0.42 * Math.sin(Math.PI * su); continue; }
+        var s = (0.9 + 0.22 * Math.sin(now / 90 + i * 2.1 + (+fk))) * (fch.userData.k || 1); fch.scale.set(1.0 * s, 1.6 * s + 0.2 * Math.sin(now / 57 + i), 1);
+      } }
     var nst = 0;
     for (var sid in R3.units) {
       var so = R3.units[sid]; if (!so.stK) continue;
@@ -959,6 +981,11 @@ function tick(now) {
       else { var pop = ft < 0.1 ? 0.6 + 4 * ft : 1; f.el.style.opacity = ft < 0.72 ? 1 : (1 - ft) / 0.28; f.el.style.transform = 'translate(-50%,-100%) translate(' + sp[0] + 'px,' + (sp[1] - ft * 34 + (f.dy || 0)) + 'px) scale(' + pop.toFixed(3) + ')'; }
     }
   }
+  if (UI.marks && UI.marks.length) for (i = 0; i < UI.marks.length; i++) {
+    var mk = UI.marks[i], ms = w2s(mk.p[0], mk.p[1] + 0.05, mk.p[2]);
+    if (!ms) { mk.el.style.opacity = 0; continue; }
+    mk.el.style.opacity = 1; mk.el.style.transform = 'translate(-50%,-50%) translate(' + ms[0].toFixed(1) + 'px,' + (ms[1] + mk.dy).toFixed(1) + 'px)';
+  }
   requestAnimationFrame(tick);
 }
 
@@ -968,6 +995,7 @@ function ptList() { var a = []; for (var k in PT) a.push(PT[k]); return a; }
 function pickAt(sx, sy) {
   var g = pickGround(sx, sy), gh = g ? worldToHex(g[0], g[1]) : null, su = selUnit();
   if (gh && su) { var gk = K(gh[0], gh[1]); if ((UI.rc && UI.rc.stop[gk]) || (UI.atk || []).some(function (t) { return K(t.c, t.r) === gk; })) return gh; }
+  if (gh && typeof MODAL !== 'undefined' && MODAL && MODAL.pick && MODAL.pick.has(gh[0], gh[1])) return gh;      // v0.20: 고르는 칸은 성의 그림에 가려 있어도 그 칸으로 집는다
   if (gh && SPOT.on && SPOT.v) { var gp = plotAt(gh[0], gh[1]); if (gp && gp.base === SPOT.v.b) return gh; }      // 건설 자리를 보는 중(v0.10.1): 그 거점의 부지는 성의 그림에 가려 있어도 부지로 집는다
   var best = null, bd = 1e9;
   function test(c, r, sp, pri) {

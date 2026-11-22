@@ -232,7 +232,7 @@ def steps(pg):
     reset(pg); open_base(pg, 'mil')
     tap(pg, '#sheet [data-a=deploy]'); s = st(pg); check('출진 창', s['modal'] and '출진' in s['modal'], s)
     X(pg); s = st(pg); check('출진 창 × → 거점 창 군사 탭', s['modal'] is None and s['tab'] == 'mil', s)
-    tap(pg, '#sheet [data-a=deploy]'); tap(pg, '#modal [data-a=auto]'); tap(pg, '#modal [data-a=ok]', 0, 2600); s = st(pg)
+    tap(pg, '#sheet [data-a=deploy]'); tap(pg, '#modal [data-a=auto]'); tap(pg, '#modal [data-a=next]', 0, 700); tap(pg, '#modal [data-a=ok]', 0, 2600); s = st(pg)      # v0.20: 출진은 두 단계
     check('출진 → 막 나온 부대 창', s['modal'] is None and s['sheet'] and s['sheet'].startswith('unit:'), s)
     uid = int(s['sheet'].split(':')[1]) if s['sheet'] and s['sheet'].startswith('unit:') else -1
     tap(pg, '#sheet .row[data-a=off]', 0); s = st(pg); check('부대 창 → 무장 정보', s['modal'] is not None, s)
@@ -282,7 +282,7 @@ def steps(pg):
     # 수송
     reset(pg); open_base(pg, 'mil')
     tap(pg, '#sheet [data-a=trans]'); s = st(pg); check('수송 창', s['modal'] and '수송' in s['modal'], s)
-    tap(pg, '#modal [data-a=ok]', 0, 900); s = st(pg); check('수송 출발 → 수송대 창', s['modal'] is None and s['sheet'] and s['sheet'].startswith('unit:'), s)
+    tap(pg, '#modal [data-a=next]', 0, 700); tap(pg, '#modal [data-a=ok]', 0, 900); s = st(pg); check('수송 출발 → 수송대 창', s['modal'] is None and s['sheet'] and s['sheet'].startswith('unit:'), s)
     SX(pg); s = st(pg); check('수송대 창 × → 나온 성의 군사 탭', s['sheet'] == 'base:%d' % info['id'] and s['tab'] == 'mil', s)
 
     # ---- 6. 지도에서 내 부지 누르기 ----

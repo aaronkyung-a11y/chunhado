@@ -14,6 +14,15 @@
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <filter id="inkEdge" x="-8%" y="-16%" width="116%" height="132%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.022 0.03" numOctaves="2" seed="4" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G" result="d"/>
+    <feTurbulence type="fractalNoise" baseFrequency="0.55 0.5" numOctaves="1" seed="9" result="g"/>
+    <feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.15 1.52" result="ga"/>
+    <feComposite in="d" in2="ga" operator="in"/>
+  </filter>
+</defs></svg>
 <div id="app">
   <canvas id="map"></canvas>
   <canvas id="spot" aria-hidden="true"></canvas>
@@ -35,7 +44,7 @@
     <button id="btnLog" type="button">기록</button>
     <button id="btnMenu" type="button">메뉴</button>
     <span class="sp"></span>
-    <button id="btnNext" type="button">다음 부대<span class="n"></span></button>
+    <button id="btnNext" type="button">다음<span class="w"> 부대</span><span class="n"></span></button>
     <button id="btnEnd" type="button">턴 종료</button>
   </nav>
   <section id="sheet" aria-label="STATUS 창"></section>

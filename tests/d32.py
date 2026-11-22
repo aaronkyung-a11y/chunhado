@@ -54,16 +54,18 @@ def steps(pg):
 
     # ---------- ① 수송 창: 짐을 내린 뒤 ----------
     pg.evaluate('() => { selectBase(G.bases[T.a]); flowTransport(G.bases[T.a]); }'); pg.wait_for_timeout(400)
+    pg.evaluate('() => { var e = $("tr_gold"); e.value = 300; e.dispatchEvent(new Event("input", { bubbles: true })); }'); pg.wait_for_timeout(150)      # v0.20: 짐은 ①단계에서 싣는다
+    ok(not pg.evaluate('!!document.querySelector("#modal .seg.tbk")') and pg.evaluate('$("tv_gold").textContent') == '300', "①단계(호송 무장 · 짐)에는 '짐을 내린 뒤'가 없다 · 금 300 을 실었다")
+    tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(700)
     seg = pg.evaluate('''() => Array.prototype.map.call(document.querySelectorAll('#modal .seg.tbk button'), function (e) { return [e.textContent, e.classList.contains('on'), e.scrollWidth <= e.clientWidth + 1, Math.round(e.getBoundingClientRect().height)]; })''')
     print('  수송 창:', seg); B.shot(pg, 'b1_trans', 200)
     ok(len(seg) == 2 and seg[0][0] == '그곳에 머문다' and seg[0][1] and seg[1][0] == T['an'] + ('으로' if pg.evaluate('euro(T.an)').endswith('으로') else '로') + ' 돌아온다' and not seg[1][1] and seg[0][2] and seg[1][2], "수송 창에 '짐을 내린 뒤' 두 갈래 — 처음은 머문다 %s" % [s[0] for s in seg])
     ok(all(s[3] >= 36 for s in seg), '두 단추의 높이 %s (누를 만하다)' % [s[3] for s in seg])
-    pg.evaluate('() => { var e = $("tr_gold"); e.value = 300; e.dispatchEvent(new Event("input", { bubbles: true })); }'); pg.wait_for_timeout(150)
     tapsel(pg, '#modal .seg.tbk button', 1)
     s2 = pg.evaluate('''() => ({ on: Array.prototype.map.call(document.querySelectorAll('#modal .seg.tbk button'), function (e) { return e.classList.contains('on'); }), ui: UI.tback, opt: JSON.parse(localStorage.getItem('chunhado_opts') || '{}').tback,
-      note: document.querySelector('#modal .dlg-b .note').textContent, gold: +$('tr_gold').value, goldTx: $('tv_gold').textContent })''')
+      note: document.querySelector('#modal .dlg-b').textContent, team: document.querySelector('#modal .note.team').textContent })''')
     ok(s2['on'] == [False, True] and s2['ui'] is True and s2['opt'] is True and '돌아온다' in s2['note'], '돌아온다를 누르면 켜지고, 고른 것을 기억한다(다음 수송 창에도 그대로) · 풀이가 붙는다')
-    ok(s2['gold'] == 300 and s2['goldTx'] == '300', '갈래를 바꿔도 실을 것으로 고른 값은 그대로(금 %s)' % s2['goldTx'])
+    ok('금 300' in s2['team'] and '병력 1,000' in s2['team'], '②단계 머리에 실은 것이 적혀 있다 — 갈래를 바꿔도 그대로 [%s]' % s2['team'])
     b0 = pg.evaluate('() => { var b = G.bases[T.b]; return [b.troops, b.gold]; }')
     tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(700)
     u1 = pg.evaluate('''() => { var u = selUnit(); window.U1 = u ? u.id : -1; return u ? { type: u.type, back: u.back === true, home: u.home, lead: uLeader(u).n, oid: u.off[0], talk: ($('talk') ? $('talk').textContent : '') } : null; }''')
@@ -98,13 +100,14 @@ def steps(pg):
     ok(e1['troops'] == b0[0] + 1000 and e1['gold'] == b0[1] + 300, '실은 것은 그 거점에 합쳐진다(병력 +1,000 · 금 +300)')
     ok(T['bn'] + '에 짐을 내림' in e1['toast'] and '돌아갑니다' in e1['toast'] and ('%d일' % (T['tt'] * 10)) in e1['toast'] and T['an'] in e1['toast'], '알림: %s' % e1['toast'])
     row = pg.evaluate('(oid) => offStatus(off(oid))', u1['oid'])
-    ok(row == '이동 중 (%d일)' % (T['tt'] * 10), '무장의 상태 글: %s' % row)
+    ok(row == pg.evaluate('euro(T.an)') + ' 이동 중 (%d일)' % (T['tt'] * 10), '무장의 상태 글(v0.20: 가는 곳을 적는다): %s' % row)
     # 날이 차면 떠나온 거점에서 쉰다
     arr = pg.evaluate('''(oid) => { var o = off(oid), n = 0; while (o.st === 'travel' && n < 9) { phaseStart(G.player); n++; } return [n, o.st, o.loc, o.acted]; }''', u1['oid'])
     ok(arr[0] == T['tt'] and arr[1] == 'active' and arr[2] == T['a'] and arr[3] is False, '%d턴 뒤 %s에 닿아 쉰다 %s' % (T['tt'], T['an'], arr))
 
     # ---------- 부대에 보급한 수송대는 떠나온 거점으로 행군 ----------
     pg.evaluate('() => { G.factions[G.player].ap = 250; selectBase(G.bases[T.a]); flowTransport(G.bases[T.a]); }'); pg.wait_for_timeout(400)
+    tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(700)
     ok(pg.evaluate('''Array.prototype.map.call(document.querySelectorAll('#modal .seg.tbk button'), function (e) { return e.classList.contains('on'); })''') == [False, True], '다음 수송 창은 지난번에 고른 대로(돌아온다) 열린다')
     tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(700)
     pg.evaluate('''() => { var t = selUnit(); window.U2 = t.id; talkHide(); var A = G.bases[T.a], o = idleOfficers(A).filter(function (x) { return !isLord(x); })[0];
@@ -138,6 +141,7 @@ def steps(pg):
 
     # ---------- 머문다로 낸 수송대는 전과 같다 ----------
     pg.evaluate('() => { G.factions[G.player].ap = 250; clearSel(); selectBase(G.bases[T.a]); flowTransport(G.bases[T.a]); }'); pg.wait_for_timeout(400)
+    tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(700)
     tapsel(pg, '#modal .seg.tbk button', 0); tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(700)
     u4 = pg.evaluate('''() => { var u = selUnit(); window.U4 = u.id; talkHide(); return { back: u.back === undefined, oid: u.off[0], ui: UI.tback, tb: Array.prototype.map.call(document.querySelectorAll('#sheet [data-a=tback] small'), function (e) { return e.textContent; }) }; }''')
     ok(u4['back'] and u4['ui'] is False and u4['tb'] == ['그곳에 머묾'], '머문다로 내면 back 이 없다 · 기억도 머문다로')

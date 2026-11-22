@@ -119,7 +119,8 @@ def steps(pg):
     ok(len(hs['chips']) == 2 and '제1군단' in hs['chips'][0] and '군비' in hs['chips'][0] and hs['por'] and '+ 군단' in hs['chips'][1], 'STATUS 창의 군단 줄: [제1군단 · 군비] [+ 군단] %s' % hs['chips'])
     ok(not any(n in ' '.join(hs['todo']) for _, n in info['others']) and info['lord'] in ' '.join(hs['todo']), "'지금 할 일'에는 직할 거점(%s)만 — 맡긴 거점의 쉬는 무장은 나오지 않는다" % info['lord'])
     lab = pg.evaluate('''((ids) => ids.map(function (id) { return R3.bases[id].sig; }).concat([R3.bases[facCities(G.player).filter(function (b) { return !b.corps; })[0].id].sig]))''', [b for b, _ in info['others']])
-    ok(all(s.endswith('|1') for s in lab[:2]) and lab[2].endswith('|'), '지도의 이름표: 맡긴 거점에는 군단 번호 딱지(①), 직할 거점에는 없다 %s' % lab)
+    ok(all(s.split('|')[4] == '1' for s in lab[:2]) and lab[2].split('|')[4] == '',      # v0.20: 이름표의 지문 끝에 내구 칸이 붙었다 — 군단 칸은 다섯째
+        '지도의 이름표: 맡긴 거점에는 군단 번호 딱지(①), 직할 거점에는 없다 %s' % lab)
     pg.evaluate('(id) => { var b = G.bases[id]; jumpTo(b.c, b.r, 0.6); }', info['others'][0][0]); pg.wait_for_timeout(600)
     B.shot(pg, 'c06_map', 300)
     tapsel(pg, '#sheet .cpb[data-a=corps]'); pg.wait_for_timeout(350)
@@ -214,14 +215,14 @@ def steps(pg):
     ok(got and e['n'] in c6['bases'] and c6['dir'] == 'arm', '%s군의 %s을(를) 차지해 제1군단의 거점이 되고, 방침은 군비로 돌아갔다 %s' % (e['own'], e['n'], c6['bases']))
     lg = pg.evaluate('G.log.filter(function (x) { return /손에 넣어 방침을 군비로/.test(x.t); }).map(function (x) { return x.t; })')
     ok(len(lg) == 1 and e['n'] in lg[0], '기록에 남는다 [%s]' % (lg[0] if lg else ''))
-    ok(pg.evaluate('(id) => R3.bases[id].sig', e['id']).endswith('|1'), '새 거점의 이름표에도 군단 딱지')
+    ok(pg.evaluate('(id) => R3.bases[id].sig', e['id']).split('|')[4] == '1', '새 거점의 이름표에도 군단 딱지')
 
     # ================= 7. 저장 · 이어서 하기 =================
     pg.evaluate('saveGame()'); pg.reload(); pg.wait_for_function('window.R3 && R3.ready', timeout=60000); pg.wait_for_timeout(600)
     tapsel(pg, '#tCont'); pg.wait_for_timeout(1500)
     pg.evaluate('talkHide(); clearSel(); showHome()'); pg.wait_for_timeout(300)
     c7 = cp(pg)
-    ok(c7 and c7['bases'] == c6['bases'] and c7['lead'] == c6['lead'] and '제1군단' in txt(pg, '#sheet .hm-corps') and pg.evaluate('(id) => R3.bases[id].sig', e['id']).endswith('|1'), '다시 들어와도 군단이 그대로(거점 · 군단장 · STATUS 창 · 지도 딱지)')
+    ok(c7 and c7['bases'] == c6['bases'] and c7['lead'] == c6['lead'] and '제1군단' in txt(pg, '#sheet .hm-corps') and pg.evaluate('(id) => R3.bases[id].sig', e['id']).split('|')[4] == '1', '다시 들어와도 군단이 그대로(거점 · 군단장 · STATUS 창 · 지도 딱지)')
 
     # ================= 8. 해산 =================
     tapsel(pg, '#sheet .cpb[data-a=corps]'); pg.wait_for_timeout(350)

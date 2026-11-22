@@ -23,11 +23,15 @@ if (process.env.OLD) {
   NEW.LIM = OLD.LIM = vm.runInContext('SCENARIO.officers.length', OLD);      // v0.17: 무장이 늘었다 — 옛 판에도 있던 사람들끼리만 견준다(번호는 그대로다)
   const a = run(NEW, ALL), b = run(OLD, ALL);
   let diff = 0, tied = [], tiedUp = 0;
+  // v0.20: 거점이 늘었다(홍농 — 장제 · 장수 · 호거아가 옮겨 갔고 함곡관 · 동관의 이웃이 바뀌었다). 조합의 차례가 달라졌으므로 (거점 · 보내는 무장 · 대상)이 같은 것끼리 견준다
+  const old = {}; b.forEach(function (x) { old[x.slice(0, 3).join('|')] = x; });
+  let both = 0;
   for (let i = 0; i < a.length; i++) {
-    const same = b[i] && a[i].slice(0, 4).join() === b[i].slice(0, 4).join();
-    if (a[i][4]) { tied.push(a[i][4] + ' ' + b[i][3] + '→' + a[i][3] + '%'); if (a[i][3] >= b[i][3]) tiedUp++; } else if (!same) diff++;
+    const o = old[a[i].slice(0, 3).join('|')]; if (!o) continue;
+    both++;
+    if (a[i][4]) { tied.push(a[i][4] + ' ' + o[3] + '→' + a[i][3] + '%'); if (a[i][3] >= o[3]) tiedUp++; } else if (a[i][3] !== o[3]) diff++;
   }
-  ok(a.length === b.length && diff === 0, '옛 관계가 없을 때의 성공률이 v0.10.1 과 다르다: ' + diff + ' / ' + a.length);
+  ok(both >= b.length * 0.8 && diff === 0, '옛 관계가 없을 때의 성공률이 v0.10.1 과 다르다: ' + diff + ' / 두 판에 다 있는 ' + both + ' (새 판 ' + a.length + ' · 옛 판 ' + b.length + ')');
   ok(tiedUp === tied.length, '사이가 있는 조합은 전보다 낮아지면 안 된다');
   console.log('① 새 게임의 이웃 등용 ' + a.length + '조합 — 사이가 없는 ' + (a.length - tied.length) + '조합은 v0.10.1 과 다른 것 ' + diff + ', 사이가 있는 ' + tied.length + '조합: ' + tied.join(' · '));
 }

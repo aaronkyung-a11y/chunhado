@@ -21,6 +21,7 @@ def steps(pg):
     pg.locator('#sheet [data-a=deploy]').tap(); pg.wait_for_timeout(400); B.shot(pg, 'd1_07_deploy0', 200)
     pg.locator('#modal [data-a=auto]').tap(); pg.wait_for_timeout(400); B.shot(pg, 'd1_08_deploy1', 200)
     print('has dests', pg.locator('#modal .dests').count())
+    pg.locator('#modal [data-a=next]').tap(); pg.wait_for_timeout(700); B.shot(pg, 'd1_08_deploy2', 200)      # v0.20: ② 병력 · 군량 · 나갈 자리
     pg.locator('#modal [data-a=ok]').tap(); pg.wait_for_timeout(250); B.shot(pg, 'd1_09_deploying', 0)
     pg.wait_for_timeout(900); B.shot(pg, 'd1_10_deployed', 200)
     st = pg.evaluate('''() => { var u = selUnit(); if (!u) return null; var ks = Object.keys(UI.rc.stop).map(Number), far = ks[0], fd = -1;

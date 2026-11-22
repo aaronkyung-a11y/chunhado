@@ -49,7 +49,7 @@ const R = JSON.parse(vm.runInContext(`JSON.stringify((function () {
   aimClear(bw); removeUnit(d3);
   // ⑤ 적 거점: 다가가서 성 앞에 서고, 턴마다 친다. 출진한 턴에는 치지 못한다
   var ns = nbrs(eb.c, eb.r).filter(function (q) { return inMap(q[0], q[1]) && MC[0][K(q[0], q[1])] < 99 && !UAT[K(q[0], q[1])] && BAT[K(q[0], q[1])] === undefined; });
-  var far = null; for (var rr = 3; rr <= 9 && !far; rr++) for (var qc = eb.c - rr; qc <= eb.c + rr && !far; qc++) for (var qr = eb.r - rr; qr <= eb.r + rr && !far; qr++) if (inMap(qc, qr) && hdist(qc, qr, eb.c, eb.r) === rr && rr >= 5 && MC[0][K(qc, qr)] < 99 && !UAT[K(qc, qr)] && BAT[K(qc, qr)] === undefined && !PAT[K(qc, qr)]) { placeUnit(a, qc, qr); if (marchPath(a, K(eb.c, eb.r))) far = [qc, qr]; }
+  var far = null; for (var rr = 3; rr <= 13 && !far; rr++)      /* v0.20: 대상 성이 업으로 바뀌었다(홍농이 생겨 장안의 무장이 줄었다) — 길이 좋아 5칸은 한 턴에 닿는다. 8칸 밖에서 떠난다 */ for (var qc = eb.c - rr; qc <= eb.c + rr && !far; qc++) for (var qr = eb.r - rr; qr <= eb.r + rr && !far; qr++) if (inMap(qc, qr) && hdist(qc, qr, eb.c, eb.r) === rr && rr >= 8 && MC[0][K(qc, qr)] < 99 && !UAT[K(qc, qr)] && BAT[K(qc, qr)] === undefined && !PAT[K(qc, qr)]) { placeUnit(a, qc, qr); if (marchPath(a, K(eb.c, eb.r))) far = [qc, qr]; }
   fresh(a); var s5 = aimSet(a, { kind: 'base', b: eb });
   R.base = { ok: !!s5.ok, dest: a.dest === K(eb.c, eb.r), far: far ? hdist(far[0], far[1], eb.c, eb.r) : -1, name: aimName(a) };
   var bs5 = [], tr0 = eb.troops, du0 = eb.dur; guard = 0;

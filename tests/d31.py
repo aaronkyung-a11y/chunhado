@@ -121,6 +121,9 @@ def steps(pg):
     pg.evaluate('closeDialog()'); pg.evaluate(RESET); pg.wait_for_timeout(300)
     # ---------- 5. 전법의 새 이름 · 확률(숫자) · 군사의 추천 ----------
     pg.evaluate(TARGET); pg.wait_for_timeout(400)
+    # v0.20: 싸움터에서는 부대의 부장이 헤아린다 — 지력 높은 부장을 붙인다(부장이 없으면 주장이 스스로: 아래 '어림'에서 본다)
+    dep = pg.evaluate('''() => { var u = UMAP[T.a], o = G.officers.filter(function (x) { return x.f === G.player && x.st === 'active' && x.unit === null && x.int >= 90 && !isLord(x); })[0]; o.unit = u.id; u.off.push(o.id); window.__dep = o.id; refreshSheet(); return [o.n, o.int, o.ldr, uStaff(u).n, staffRead(o), staffErr(o)]; }''')
+    print('  부장:', dep); ok(dep[3] == dep[0], '부대의 참모 = 붙인 부장(%s · 지력 %d · 통솔 %d)' % (dep[0], dep[1], dep[2]))
     acts = pg.evaluate(ACTS); tacs = [a for a in acts if a['han']]
     print('  단추(숫자):', [(a['label'], a['han'], a['fx'], a['sub'], a['rec']) for a in acts])
     ok([a['label'] for a in tacs] == ['견인', '횡소', '일소'] and [a['han'] for a in tacs] == ['牽引', '橫掃', '一掃'], '극병 전법 셋: 새 이름과 한자 %s' % [(a['label'], a['han']) for a in tacs])
@@ -129,10 +132,10 @@ def steps(pg):
     ok(sum(1 for a in acts if a['rec']) == 1 and all(a['fit'] for a in acts), '군사의 추천(薦)은 한 곳에만 — %s · 넘치는 단추 %s' % ([a['label'] for a in acts if a['rec']], [a['label'] for a in acts if not a['fit']]))
     say = pg.evaluate('(document.querySelector("#sheet .say.advn") || {}).textContent || ""')
     rec = [a['label'] for a in acts if a['rec']][0]
-    ok((rec + ('이' if (ord(rec[-1]) - 0xAC00) % 28 else '가') + ' 가장 낫겠습니다.') in say, '군사의 말: ' + say[:60])
-    # 군사가 없으면 추천도 없다
+    ok((rec + ('이' if (ord(rec[-1]) - 0xAC00) % 28 else '가') + ' 가장 낫겠습니다.') in say and say.startswith('부장' + dep[0]), '부장의 말(v0.20: 군사가 아니라 이 부대의 부장): ' + say[:60])
+    # 군사가 없어도 부장은 권한다(싸움터의 조언은 군사와 상관없다)
     adv0 = pg.evaluate('(() => { var a = G.factions[G.player].adv; G.factions[G.player].adv = -1; refreshSheet(); return a; })()')
-    ok(pg.evaluate('document.querySelectorAll("#sheet .act .rec").length') == 0, '군사가 없으면 추천하지 않는다')
+    ok(pg.evaluate('document.querySelectorAll("#sheet .act .rec").length') == 1 and pg.evaluate('(document.querySelector("#sheet .say.advn") || {}).textContent || ""') == say, '군사가 없어도 부장의 추천은 그대로')
     pg.evaluate('(a) => { G.factions[G.player].adv = a; refreshSheet(); }', adv0)
     # ---------- 6. 확률을 말로(가늠) ----------
     pg.evaluate('() => { UI.pct = false; refreshSheet(); }'); pg.wait_for_timeout(200)
@@ -141,8 +144,8 @@ def steps(pg):
     ok(all('%' not in a['sub'] for a in acts) and all(any(a['sub'].startswith(w) for w in WORDS) and a['gauge'] and a['gauge'][0] == 5 and not a['gauge'][2] for a in tacs), '말로: 전법 단추에 %% 가 없고 "높음" 같은 말과 눈금 다섯 칸 [%s %s]' % (tacs[0]['sub'], tacs[0]['gauge']))
     od = pg.evaluate('tacticOdds(UMAP[T.a], UMAP[T.d]).ok'); lv = 5 if od >= 85 else 4 if od >= 65 else 3 if od >= 45 else 2 if od >= 25 else 1
     ok(tacs[0]['sub'].startswith(WORDS[lv]) and tacs[0]['gauge'][1] == lv, '성공률 %d%% → "%s" · 눈금 %d칸' % (od, WORDS[lv], lv))
-    eye = pg.evaluate('(() => { var e = oddsEye(); return [e.o.n, e.adv, e.fine, e.o.int]; })()')
-    ok(eye[1] and eye[2], '가늠하는 이: 군사 %s(지력 %d) — 또렷이' % (eye[0], eye[3]))
+    eye = pg.evaluate('(() => { var e = oddsEye(); return [e.o.n, !!e.staff, e.fine, e.o.int, !!e.adv]; })()')
+    ok(eye[0] == dep[0] and eye[1] and eye[2] and not eye[4], '가늠하는 이: 부장 %s(지력 %d) — 또렷이' % (eye[0], eye[3]))
     ch = [a for a in acts if a['label'] == '일기토'][0]; pl = [a for a in acts if a['label'] in ('화계', '교란', '위보')]
     ok('응할 확률' in ch['sub'] and '%' not in ch['sub'] and all(p['gauge'] for p in pl if not p['off']), '일기토 · 계략도 말로 [%s | %s]' % (ch['sub'], pl[0]['sub']))
     ok('적중률' not in pg.evaluate('(document.querySelector("#sheet .say.advn") || {}).textContent || ""'), '군사의 조언도 "적중률 N%" 대신 말로: ' + pg.evaluate('(document.querySelector("#sheet .say.advn small") || {}).textContent || ""'))
@@ -151,7 +154,7 @@ def steps(pg):
     ti = pg.evaluate('''() => { var m = $('modal'); return { odds: m.querySelector('.odds').textContent, w: m.querySelector('.odds').classList.contains('w'), eye: (m.querySelector('.note.eye') || {}).textContent || '', names: Array.prototype.map.call(m.querySelectorAll('.tac .tn b'), function (b) { return b.textContent; }),
       ids: Array.prototype.map.call(m.querySelectorAll('.tac'), function (b) { return b.getAttribute('data-t'); }), sum: m.querySelector('.sum:nth-of-type(2)') ? m.querySelector('.sum:nth-of-type(2)').textContent : m.querySelectorAll('.sum')[1].textContent, pull: m.querySelector('.tac[data-t=galkwi] .tl span').textContent, rows: Array.prototype.map.call(m.querySelectorAll('.tcmp tr[data-t]'), function (r) { return r.getAttribute('data-t'); }) }; }''')
     print('  전법 풀이(말):', ti); B.shot(pg, 'd2_tacinfo_words', 200)
-    ok(ti['w'] and '%' not in ti['odds'] and '통할 가능성' in ti['odds'] and '대성공' in ti['odds'] and '가늠 — 군사' in ti['eye'] and '또렷이' in ti['eye'], '전법 풀이: 성공 · 대성공을 말로, 누가 가늠하는지 한 줄')
+    ok(ti['w'] and '%' not in ti['odds'] and '통할 가능성' in ti['odds'] and '대성공' in ti['odds'] and ('가늠 — 부장 ' + dep[0]) in ti['eye'] and '또렷이' in ti['eye'], '전법 풀이: 성공 · 대성공을 말로, 누가 가늠하는지 한 줄 — ' + ti['eye'][:40])
     ok(ti['names'] == ['견인 牽引', '횡소 橫掃', '일소 一掃'] and ti['ids'] == ['galkwi', 'hoengchi', 'seonpung'] and ti['rows'] == ['견인', '횡소', '일소'], '전법 풀이의 이름: %s' % ti['names'])
     ok('끌어당긴다' in ti['pull'] and '반격을 받지 않는다' in ti['pull'], '견인의 효과: ' + ti['pull'])
     ok('%' not in ti['sum'] and '통할 가능성' in ti['sum'] and ('▲' in ti['sum'] or '▼' in ti['sum'] or '–' in ti['sum']), '셈법도 숫자 대신 보탬 · 깎임의 화살표로: ' + ti['sum'][:70])
@@ -159,15 +162,19 @@ def steps(pg):
     o2 = pg.evaluate('(() => { var m = $("modal"); return [m.querySelector(".odds").textContent, m.querySelector(".odds").classList.contains("w"), !!m.querySelector(".note.eye"), m.querySelectorAll(".sum")[1].textContent]; })()')
     ok(o2[0].count('%') == 3 and not o2[1] and not o2[2] and ('성공률 %d%% = 적성' % od) in o2[3], '숫자로 바꾸면 예전 그대로(대성공 · 성공 · 실패 %% 셋): ' + o2[0])
     pg.evaluate('() => { UI.pct = false; closeDialog(); }')
-    # 어림: 군사와 군주의 지력이 모두 낮으면 셋으로만 보인다
-    pg.evaluate('''() => { var F = G.factions[G.player], L = off(F.lord), A = facAdv(G.player); window.__int = [L.int, A.int]; L.int = 55; A.int = 60; refreshSheet(); }'''); pg.wait_for_timeout(150)
+    # 어림: 부장을 떼면 주장이 스스로 헤아린다 — 지력이 낮으면 셋으로만 보인다(v0.20). 예상 피해도 통솔에 따라 '약 N'
+    pg.evaluate('''() => { var F = G.factions[G.player], L = off(F.lord), A = facAdv(G.player), u = UMAP[T.a], d = off(window.__dep); window.__int = [L.int, A.int]; L.int = 55; A.int = 60; u.off.pop(); d.unit = null;
+      var Ld = uLeader(u); window.__ld = [Ld.int, Ld.ldr]; Ld.int = 60; Ld.ldr = 62; refreshSheet(); }'''); pg.wait_for_timeout(150)
+    est = pg.evaluate('''() => { var u = UMAP[T.a], t = UMAP[T.d], v = Math.round(attackExpect(u, t).dealt), sub = [].filter.call(document.querySelectorAll('#sheet [data-a=act]'), function (e) { return e.querySelector('b').textContent.indexOf('공격') === 0; })[0].querySelector('small').textContent; return [v, sub, staffErr(uStaff(u)), uStaff(u).n === uLeader(u).n]; }''')
+    em = re.search(r'^예상 약 -([\d,]+)$', est[1]); ev = int(em.group(1).replace(',', '')) if em else -1
+    ok(est[3] and em is not None and abs(ev - est[0]) <= est[0] * est[2] + 50 and ev % 10 == 0, "통솔 62 의 주장이 내다본 피해는 '약 N'(실제 %d · 보인 값 %s · 벌어지는 폭 ±%d%%)" % (est[0], est[1], round(est[2] * 100)))
     ac2 = pg.evaluate(ACTS); t2 = [a for a in ac2 if a['han']]
     eye2 = pg.evaluate('(() => { var e = oddsEye(); return [e.o.n, e.adv, e.fine, e.o.int]; })()')
     ok(not eye2[2] and all(any(a['sub'].startswith(w) for w in COARSE) and a['gauge'][2] for a in t2), '지력 60의 눈으로는 어림으로만: %s (눈금은 흐리게)' % t2[0]['sub'])
     tapsel(pg, '#sheet [data-a=tacinfo]'); pg.wait_for_timeout(250)
     e2 = pg.evaluate('(document.querySelector("#modal .note.eye") || {}).textContent || ""')
-    ok('어림으로만' in e2 and '지력 70 이상의 군사' in e2, '전법 풀이에 까닭이 적혀 있다: ' + e2[:60]); B.shot(pg, 'd3_coarse', 150)
-    pg.evaluate('() => { closeDialog(); var F = G.factions[G.player]; off(F.lord).int = window.__int[0]; facAdv(G.player).int = window.__int[1]; refreshSheet(); }')
+    ok('어림으로만' in e2 and '가늠 — 주장' in e2 and '지력 70 이상의 부장' in e2, '전법 풀이에 까닭이 적혀 있다: ' + e2[:60]); B.shot(pg, 'd3_coarse', 150)
+    pg.evaluate('() => { closeDialog(); var F = G.factions[G.player]; off(F.lord).int = window.__int[0]; facAdv(G.player).int = window.__int[1]; var Ld = uLeader(UMAP[T.a]); Ld.int = window.__ld[0]; Ld.ldr = window.__ld[1]; refreshSheet(); }')
     # 메뉴: 확률 표시
     pg.evaluate('() => { clearSel(); }'); tapsel(pg, '#btnMenu'); pg.wait_for_timeout(300)
     b0 = pg.evaluate('document.querySelector("#modal [data-a=pct]").textContent')

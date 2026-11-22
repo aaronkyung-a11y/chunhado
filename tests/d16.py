@@ -141,7 +141,7 @@ def steps(pg):
       var e = cmdDeploy(eb, { type: "spear", ids: [eo[0].id], troops: Math.min(3000, cmdCap(eo[0])), food: 3000 }).unit; e.ai = { mode: "return" };
       placeUnit(u, spot.me[0], spot.me[1]); placeUnit(e, spot.foe[0], spot.foe[1]); u.done = false; u.moved = false; u.ox = -1; u.mp = uMaxMp(u); u.morale = 100; u.born = -1;
       syncScene(); requestDraw(); gotoUnit(u);
-      return { u: u.id, e: e.id, p: [e.c, e.r], acc: adviceAcc(facAdv(G.player), uInt(e)), eint: uInt(e) }; })()''')
+      return { u: u.id, e: e.id, p: [e.c, e.r], acc: adviceAcc(uStaff(u), uInt(e)), eint: uInt(e), staff: uStaff(u).n, lead: uStaff(u) === uLeader(u) }; })()''')      # v0.20: 싸움터의 조언은 부대의 참모(부장 — 없으면 주장)가
     pg.wait_for_timeout(700)
     taphex(pg, *s3['p']); pg.wait_for_timeout(500)
     acts = pg.evaluate('''Array.prototype.map.call(document.querySelectorAll("#sheet [data-a=act]"), function (e) { var a = e.querySelector(".adv"); return { t: e.innerText.replace(/\\n/g, " / "), m: a ? a.className : "" }; })''')
@@ -149,8 +149,8 @@ def steps(pg):
     print('  계략 단추', pl, '적중률', s3['acc'])
     ok(len(pl) == 3 and all(a['m'] in ('adv y', 'adv n') for a in pl), '계략 단추마다 군사의 ○·×')
     ok(not any(a['m'] for a in acts if not a['t'].startswith(('화계', '교란', '위보'))), '공격·전법 단추에는 없다(조언은 등용과 계략에만)')
-    note = txt(pg, '#sheet .advn'); advn = pg.evaluate('facAdv(G.player).n')
-    ok(advn in note and ('통하겠' in note or '어렵겠습니다' in note) and ('적중률 %d%%' % s3['acc']) in note and len(note) <= 60 and pg.evaluate('!!document.querySelector("#sheet .advn .por")'), '대상 줄 아래에 군사의 말 한 줄(초상 · 무엇이 통할지 · 적중률) [%s]' % note)
+    note = txt(pg, '#sheet .advn'); advn = s3['staff']
+    ok(note.startswith(('주장' if s3['lead'] else '부장') + advn) and ('통하겠' in note or '어렵겠습니다' in note) and ('적중률 %d%%' % s3['acc']) in note and len(note) <= 60 and pg.evaluate('!!document.querySelector("#sheet .advn .por")'), '대상 줄 아래에 군사의 말 한 줄(초상 · 무엇이 통할지 · 적중률) [%s]' % note)
     ys = [a['t'][:2] for a in pl if a['m'] == 'adv y']; ns = [a['t'][:2] for a in pl if a['m'] == 'adv n']
     ok(all(y in note.split('어렵')[0].split('통하겠')[0] for y in ys) and all(n in note.split('통하겠')[-1] for n in ns), '말과 단추의 ○·×가 같다 (○ %s · × %s)' % (ys, ns))
     B.shot(pg, 'p1_ploy', 200)

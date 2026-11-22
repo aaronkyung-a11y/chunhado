@@ -164,7 +164,7 @@ def steps(pg):
     ok('어디로 보낼까요' in pg.evaluate('document.querySelector("#modal .dlg-h").textContent'), '(준비) 이동: 보낼 곳을 고르는 창')
     tapsel(pg, '#modal .row[data-a=d]', 0); pg.wait_for_timeout(450)
     t = tk(pg); ls = lines(pg, mv, 'move')
-    ok(t['on'] and t['who'] == mv and t['say'] in ls and re.match(r'^1명 출발 — \d+일 뒤 도착$', t['sub']) is not None and not pg.evaluate('!!MODAL'), '이동: 떠나는 무장(%s)이 답한다 ["%s" / %s]' % (mv, t['say'], t['sub']))
+    ok(t['on'] and t['who'] == mv and t['say'] in ls and re.match(r'^1명 출발 — \S+로 \d+일 뒤 도착$', t['sub']) is not None and not pg.evaluate('!!MODAL'), '이동: 떠나는 무장(%s)이 답한다 ["%s" / %s]' % (mv, t['say'], t['sub']))
     # --- 흡수합병
     reset(pg, bid)
     mg = pg.evaluate('''((id) => { var b = G.bases[id], pair = null, i, j;
@@ -193,6 +193,7 @@ def steps(pg):
     # --- 출진: 주장이 답한다
     reset(pg, bid)
     cmd(pg, 'deploy'); tapsel(pg, '#modal [data-a=auto]'); pg.wait_for_timeout(300)
+    tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(700)      # v0.20: 출진은 두 단계
     tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(1100)
     t = tk(pg); u = pg.evaluate('''(() => { var u = selUnit(); return u ? { leader: uLeader(u).n, name: uName(u), type: UNIT_TYPES[u.type].name, troops: u.troops } : null; })()''')
     ls = lines(pg, u['leader'], 'deploy') if u else []
@@ -202,7 +203,7 @@ def steps(pg):
     pg.evaluate('clearSel(); showHome()'); pg.wait_for_timeout(300)
     # --- 수송
     pg.evaluate('(id) => { selectBase(G.bases[id]); }', bid); pg.wait_for_timeout(500); reset(pg, bid)
-    cmd(pg, 'trans'); tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(900)
+    cmd(pg, 'trans'); tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(700); tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(900)
     t = tk(pg); u = pg.evaluate('''(() => { var u = selUnit(); return u ? { leader: uLeader(u).n, type: u.type } : null; })()''')
     ls = lines(pg, u['leader'], 'trans') if u else []
     ok(u is not None and u['type'] == 'trans' and t['on'] and t['who'] == u['leader'] and t['say'] in ls and t['sub'].startswith('수송대 출발'), '수송: 이끄는 무장(%s)이 답한다 ["%s" / %s]' % (u and u['leader'], t['say'], t['sub']))
@@ -275,7 +276,8 @@ def steps(pg):
       var mine = idleOfficers(b).filter(function (o) { return !isLord(o); }).sort(function (x, y) { return y.int - x.int; });
       var dull = facOfficers(G.player).filter(function (o) { return advOk(o, G.player) && o.unit === null; }).sort(function (x, y) { return x.int - y.int; })[0];
       setAdvisor(G.player, dull.id);
-      var u = cmdDeploy(b, { type: "spear", ids: [mine[0].id], troops: Math.min(4000, cmdCap(mine[0])), food: 3000 }).unit;
+      var dullU = mine[mine.length - 1];                                    // v0.20: 싸움터의 조언은 부대의 부장이 한다 — 지력이 가장 낮은 무장을 부장으로 붙인다
+      var u = cmdDeploy(b, { type: "spear", ids: [mine[0].id, dullU.id], troops: Math.min(4000, cmdCap(mine[0])), food: 3000 }).unit;
       var eb = G.bases.filter(function (x) { return x.owner >= 0 && x.owner !== G.player && x.kind === "city" && baseOfficers(x).filter(function (o) { return !isLord(o); }).length; })[0];
       var eo = baseOfficers(eb).filter(function (o) { return !isLord(o); }).sort(function (x, y) { return y.int - x.int; })[0]; eb.w.spear = 9000; eb.troops = 20000; G.factions[eb.owner].ap = 300; eo.acted = false;
       var e = cmdDeploy(eb, { type: "spear", ids: [eo.id], troops: Math.min(3000, cmdCap(eo)), food: 3000 }).unit; e.ai = { mode: "return" };
@@ -286,13 +288,13 @@ def steps(pg):
         if (!out) G.turn++;
       }
       UI.briefT = G.turn; syncScene(); requestDraw(); gotoUnit(u);
-      return { u: u.id, e: e.id, p: [e.c, e.r], adv: dull.n, advInt: dull.int, eInt: uInt(e), miss: out, turn: G.turn }; })''', bid)
+      return { u: u.id, e: e.id, p: [e.c, e.r], adv: dullU.n, advInt: dullU.int, eInt: uInt(e), miss: out, turn: G.turn, staff: uStaff(u).n, fadv: dull.n }; })''', bid)
     pg.wait_for_timeout(700)
     print('  빗나갈 조언:', s3)
     ok(s3['miss'] is not None and s3['miss']['acc'] < 100, '(준비) 군사 %s(지력 %d) · 상대 지력 %d → 적중률 %s%% — 조언과 결과가 어긋나는 계략을 찾았다' % (s3['adv'], s3['advInt'], s3['eInt'], s3['miss'] and s3['miss']['acc']))
     taphex(pg, *s3['p']); pg.wait_for_timeout(500)
     row = pg.evaluate('''(() => { var e = document.querySelector("#sheet .advn"); return e ? { tx: e.innerText.replace(/\\n/g, " / "), por: !!e.querySelector(".por") } : null; })()''')
-    ok(row and s3['adv'] in row['tx'] and ('적중률 %d%%' % s3['miss']['acc']) in row['tx'] and row['por'], '부대 창: 군사의 말 한 줄(초상 · 적중률) [%s]' % (row and row['tx']))
+    ok(row and s3['staff'] == s3['adv'] and row['tx'].startswith('부장' + s3['adv']) and s3['fadv'] not in row['tx'] and ('적중률 %d%%' % s3['miss']['acc']) in row['tx'] and row['por'], '부대 창: 부장의 말 한 줄(초상 · 적중률 — 군사 %s가 아니다) [%s]' % (s3['fadv'], row and row['tx']))
     B.shot(pg, 'k07_ploy', 100)
     acts = pg.evaluate('''Array.prototype.map.call(document.querySelectorAll("#sheet [data-a=act]"), function (e) { return e.innerText.replace(/\\n/g, " / "); })''')
     i = [k for k, a in enumerate(acts) if a.startswith(s3['miss']['name'])][0]
@@ -303,7 +305,7 @@ def steps(pg):
         if t['on'] and t['who'] == s3['adv']: seen = t; break
     print('  결과:', seen)
     want = '…제 헤아림이 모자랐습니다.' if s3['miss']['says'] else '…뜻밖입니다. 제가 잘못 보았습니다.'
-    ok(seen is not None and seen['role'] == '군사' and seen['say'] == want and (s3['miss']['name'] + (' 성공' if s3['miss']['real'] else ' 실패')) in seen['sub'], '조언이 빗나가면 결과와 함께 군사가 한마디 ["%s" / %s]' % (seen and seen['say'], seen and seen['sub']))
+    ok(seen is not None and seen['role'] == '부장' and seen['say'] == want and (s3['miss']['name'] + (' 성공' if s3['miss']['real'] else ' 실패')) in seen['sub'], '조언이 빗나가면 결과와 함께 군사가 한마디 ["%s" / %s]' % (seen and seen['say'], seen and seen['sub']))
     if seen: B.shot(pg, 'k08_miss', 100)
 
     # ================= 5. 건설 자리를 보는 동안 =================
