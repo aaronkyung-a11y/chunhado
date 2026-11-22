@@ -634,16 +634,16 @@ function counselText(c) {
     P = x.pick; t = off(P.t); o = off(P.o); go = ['recruit', b.id];
     var kindN = t.st === 'captive' ? '포로' : '재야', tie = tieOf(o, t, b.owner);
     if (x.says === null || L === 0) { tip = '등용할 인재 ' + x.ts.length + '명'; say = b.n + ' — 부를 만한 인재가 ' + x.ts.length + '명 있습니다. 등용하시지요.'; }
-    else if (x.says) { tip = t.n + ' 등용 <i class="adv y">○</i>'; say = L === 2 ? b.n + '의 ' + kindN + ' ' + t.n + '에게 ' + send(o) + (tie ? '(' + tie.short + ')' : '') + '. 응할 것입니다.' : b.n + '의 ' + josa(t.n, '은는') + ' 지금 부르면 응할 것입니다.'; }
-    else { tip = kindN + ' ' + x.ts.length + '명 <i class="adv n">×</i>'; say = b.n + '의 ' + josa(t.n, '은는') + ' 오늘은 응하지 않겠습니다. 다음 턴에 다시 권하시지요.'; }
+    else if (x.says) { tip = t.n + ' 등용 <i class="adv y">응할 듯</i>'; say = L === 2 ? b.n + '의 ' + kindN + ' ' + t.n + '에게 ' + send(o) + (tie ? '(' + tie.short + ')' : '') + '. 응할 것입니다.' : b.n + '의 ' + josa(t.n, '은는') + ' 지금 부르면 응할 것입니다.'; }
+    else { tip = kindN + ' ' + x.ts.length + '명 <i class="adv n">오늘은 불응</i>'; say = b.n + '의 ' + josa(t.n, '은는') + ' 오늘은 응하지 않겠습니다. 다음 턴에 다시 권하시지요.'; }
   } else if (c.kind === 'poach') {
-    P = x.pick; t = off(P.t); o = off(P.o); go = ['recruit', b.id]; tip = L === 0 ? '이웃 무장 등용' : t.n + ' 등용 <i class="adv y">○</i>';
+    P = x.pick; t = off(P.t); o = off(P.o); go = ['recruit', b.id]; tip = L === 0 ? '이웃 무장 등용' : t.n + ' 등용 <i class="adv y">응할 듯</i>';
     say = L === 0 ? b.n + ' — 이웃 세력의 무장을 불러 보시지요.' : (L === 2 ? G.bases[t.loc].n + '의 ' + t.n + '(' + facName(t.f) + '군)에게 ' + send(o, b.n) + '. 응할 것입니다.' : b.n + '에서 ' + josa(t.n, '을를') + ' 부르면 응할 것입니다.');
   } else if (c.kind === 'search') {
     o = off(x.o); go = ['base', b.id, 'men'];
     if (L === 0) { tip = '탐색'; say = b.n + ' — 탐색으로 인재를 찾아보시지요.'; }
-    else if (x.says) { tip = '탐색 <i class="adv y">○</i>'; say = L === 2 ? b.n + '에 숨은 인재가 있습니다. ' + (isLord(o) ? '주공께서 직접' : josa(o.n, '이가')) + ' 찾아 나서면 오늘 만날 것입니다.' : b.n + '에 숨은 인재가 있는 듯합니다. 탐색해 보시지요.'; }
-    else { tip = '숨은 인재 <i class="adv n">×</i>'; say = b.n + '에 숨은 인재가 있는 듯하나, 오늘은 만나기 어렵겠습니다. 다음 턴에 찾아보시지요.'; }
+    else if (x.says) { tip = '탐색 <i class="adv y">만날 듯</i>'; say = L === 2 ? b.n + '에 숨은 인재가 있습니다. ' + (isLord(o) ? '주공께서 직접' : josa(o.n, '이가')) + ' 찾아 나서면 오늘 만날 것입니다.' : b.n + '에 숨은 인재가 있는 듯합니다. 탐색해 보시지요.'; }
+    else { tip = '숨은 인재 <i class="adv n">오늘은 못 만남</i>'; say = b.n + '에 숨은 인재가 있는 듯하나, 오늘은 만나기 어렵겠습니다. 다음 턴에 찾아보시지요.'; }
   } else if (c.kind === 'reward') {
     t = off(x.t); go = ['base', b.id, 'men']; tip = t.n + ' 충성 ' + x.loy + ' → 포상';
     say = L === 2 ? b.n + '의 ' + josa(t.n, '은는') + ' 충성이 ' + x.loy + '입니다. 포상으로 마음을 잡아 두십시오.' : b.n + ' — 마음이 뜬 무장이 있습니다. 포상하시지요.';
@@ -943,8 +943,14 @@ function onTap(c, r) {
    UI.mpath = 고른 부대의 갈 길 { id, path } (지도에 그린다)   UI.mfrom = 성의 창에 [이 성으로 행군] 단추를 낼 부대 */
 function mpathOf(u) { UI.mpath = (u && u.f === G.player && UMAP[u.id] && u.dest >= 0) ? { id: u.id, path: marchPath(u, u.dest) } : null; if (UI.mpath && !UI.mpath.path) UI.mpath = null; }
 function noteOrder(u) { UI.mNew = { id: u.id, turn: G.turn, from: K(u.c, u.r), prev: u.dest >= 0 ? u.dest : -1, aim0: u.aim ? { k: u.aim.k, id: u.aim.id, n: u.aim.n } : null }; }
+/* v0.18.1: 거점에 들어갔을 때의 한마디 — 돌아가기로 한 수송대면 무장이 어디로 며칠 걸려 돌아가는지 */
+function backSay(res) { return res && res.back ? ' · 무장은 ' + euro(G.bases[res.back.to].n) + ' 돌아갑니다(' + days(res.back.turns) + ')' : ''; }
+function enterToast(res) { var bn = G.bases[res.entered].n; if (res.back) toast(bn + '에 짐을 내림' + backSay(res), 3400); else toast(bn + ' 입성'); }
+function transHomeOf(x) { var hb = x && x.type === 'trans' ? G.bases[x.home] : null; return hb && hb.owner === x.f ? hb : null; }
+function tbackBtn(x) { var hb = transHomeOf(x), on = !!(x.back && hb); return '<button class="act tbk' + (on ? ' on' : '') + '" type="button" data-a="tback"><b>짐 내린 뒤</b><small>' + (on ? euro(hb.n) + ' 돌아옴' : '그곳에 머묾') + '</small></button>'; }
+function gohomeBtn(x) { var hb = transHomeOf(x); return hb && x.dest !== K(hb.c, hb.r) && hdist(x.c, x.r, hb.c, hb.r) > 1 ? '<button class="act" type="button" data-a="gohome"><b>귀환</b><small>' + euro(hb.n) + ' 행군</small></button>' : ''; }
 function marchDone(x, res, say) {                            // 행군의 한 구간이 끝난 뒤(명령을 내린 직후)
-  if (res && res.ok && res.entered !== undefined) { toast(G.bases[res.entered].n + ' 입성'); selectBase(G.bases[res.entered]); }
+  if (res && res.ok && res.entered !== undefined) { enterToast(res); selectBase(G.bases[res.entered]); }
   else if (res && res.ok && res.captured !== undefined) { sfx('fall'); sfx('cheerlate'); fxFall(G.bases[res.captured], '점령'); toast(G.bases[res.captured].n + ' 점령!'); selectBase(G.bases[res.captured]); }
   else if (alive(x)) {
     if (res && res.front !== undefined && !x.aim) toast(G.bases[res.front].n + ' 앞 — 성을 눌러 공격', 3200);
@@ -997,7 +1003,7 @@ function doMove(u, c, r) {
   if (!res.ok) { toast(res.msg); return; }
   UI.hide = alive(u) ? u.id : -1; UI.rc = null; UI.atk = null; UI.target = null;
   animMove(vis, res.from, res.path, function () {
-    if (res.entered !== undefined) { toast(G.bases[res.entered].n + ' 입성'); selectBase(G.bases[res.entered]); }
+    if (res.entered !== undefined) { enterToast(res); selectBase(G.bases[res.entered]); }
     else if (res.captured !== undefined) { sfx('fall'); sfx('cheerlate'); fxFall(G.bases[res.captured], '점령'); toast(G.bases[res.captured].n + ' 점령!'); selectBase(G.bases[res.captured]); }
     else if (res.dead) { toast('불길 속에서 부대가 흩어졌습니다'); clearSel(); }
     else {
@@ -1277,6 +1283,14 @@ function unitSheet(u) {
       off: function (el) { showOfficer(off(+el.getAttribute('data-v'))); },
       corps: function () { var x = UMAP[u.id], cp = x && unitCorps(x); if (cp) showCorps(cp.id); },
       supply: function () { var x = UMAP[u.id]; if (x) pickSupply(x); },
+      tback: function () {                                       // v0.18.1: 짐을 내린 뒤 머물지 · 돌아올지(가는 길에도 바꾼다)
+        var x = UMAP[u.id]; if (!x || x.type !== 'trans' || x.f !== G.player) return;
+        var hb = transHomeOf(x);
+        if (!hb && !x.back) return toast('떠나온 거점이 남의 손에 있어 돌아갈 곳이 없습니다', 2600);
+        transSetBack(x, !x.back);
+        toast(x.back ? '짐을 내리면 ' + josa(uLeader(x).n, '은는') + ' ' + euro(hb.n) + ' 돌아옵니다' : '짐을 내린 곳에 머뭅니다', 2600); refreshSheet();
+      },
+      gohome: function () { var x = UMAP[u.id], hb = transHomeOf(x); if (x && hb && !x.done && x.f === G.player) orderMarch(x, hb.c, hb.r); },
       direct: function () { var x = UMAP[u.id]; if (!x) return; var r = corpsTakeUnit(x); if (!r.ok) return toast(r.msg); sfx('ui'); toast(uName(x) + ' — 직할로 되돌렸습니다'); selectUnit(x, true); syncScene(); afterAction(); }
     },
     render: function () {
@@ -1321,11 +1335,12 @@ function unitSheet(u) {
             '<button class="act' + (x.ox >= 0 ? '' : ' off') + '" type="button" data-a="undo"><b>이동 취소</b></button>' +
             (canDouse ? '<button class="act" type="button" data-a="douse"><b>소화</b><small>기력 10</small></button>' : '') +
             (x.type === 'trans' ? '<button class="act' + (supplyPairs(x).length ? ' pri' : ' off') + '" type="button" data-a="supply"><b>보급</b><small>' + (supplyPairs(x).length ? '옆의 아군 부대에' : '아군 부대 옆에서') + '</small></button>' : (supplyPairs(x).length ? '<button class="act pri" type="button" data-a="supply"><b>보급 받기</b><small>옆의 수송대에서</small></button>' : '')) +
+            (x.type === 'trans' ? tbackBtn(x) + gohomeBtn(x) : '') +
             ((x.dest >= 0 || x.aim) ? '<button class="act" type="button" data-a="unmarch"><b>' + (x.aim ? '명령 취소' : '행군 취소') + '</b></button>' : '') + '</div>' +
             (x.aim ? '<p class="note aimn"><b class="hi">' + aimName(x) + ' 공격 명령</b> — 턴을 마칠 때마다 다가가고, 닿으면 알아서 칩니다</p>' : (x.dest >= 0 ? '<p class="note"><b class="hi">' + destName(x.dest) + ' 방면 행군 중</b>' + marchLeft(x) + '</p>' : '<p class="note">파란 칸 = 이동 · 적 = 공격 · <b>먼 곳을 누르면 그곳으로 행군</b> · 먼 적을 누르면 가서 칩니다</p>'));
         }
       } else if (mine && x.done && x.status) h += '<p class="note">' + statusName(x.status) + ' — 명령을 내릴 수 없습니다</p>';
-      else if (mine && x.done) h += '<p class="note">이번 턴 행동 끝' + (x.dest >= 0 ? ' · ' + destName(x.dest) + ' 방면 행군 중' : '') + '</p>' + (x.type !== 'trans' && supplyPairs(x).length ? '<div class="acts"><button class="act pri" type="button" data-a="supply"><b>보급 받기</b><small>옆의 수송대에서</small></button></div>' : '');
+      else if (mine && x.done) h += '<p class="note">이번 턴 행동 끝' + (x.dest >= 0 ? ' · ' + destName(x.dest) + ' 방면 행군 중' : '') + '</p>' + (x.type !== 'trans' && supplyPairs(x).length ? '<div class="acts"><button class="act pri" type="button" data-a="supply"><b>보급 받기</b><small>옆의 수송대에서</small></button></div>' : '') + (x.type === 'trans' && !x.status ? '<div class="acts">' + tbackBtn(x) + '</div>' : '');
       h += '<div class="rows">';
       for (i = 0; i < ms.length; i++) h += offRow(ms[i], { badge: i === 0 ? '주장' : '부장' });
       h += '</div></div>';
@@ -1376,7 +1391,7 @@ function flowSupply(t, u) {
         var r = cmdSupply(t, u, st);
         if (!r.ok) return toast(r.msg);
         closeDialog(); sfx('drum');
-        talk(uLeader(t), sayLine(uLeader(t), 'trans'), uName(u) + '에 보급 — ' + (r.food ? '병량 ' + fmt(r.food) : '') + (r.food && r.troops ? ' · ' : '') + (r.troops ? '병력 ' + fmt(r.troops) + '명' : ''), 3000);
+        talk(uLeader(t), sayLine(uLeader(t), 'trans'), uName(u) + '에 보급 — ' + (r.food ? '병량 ' + fmt(r.food) : '') + (r.food && r.troops ? ' · ' : '') + (r.troops ? '병력 ' + fmt(r.troops) + '명' : '') + (r.home !== undefined ? ' · 다음 턴부터 ' + euro(G.bases[r.home].n) + ' 돌아갑니다' : ''), r.home !== undefined ? 3800 : 3000);
         if (R3 && R3.ready) syncScene();
         var su = selUnit(); if (su) { UI.rc = unitReach(su); UI.atk = allTargets(su); } else { UI.rc = null; UI.atk = null; }
         refreshSheet(); requestDraw(); afterAction();
@@ -2148,28 +2163,30 @@ function flowTransport(b) {
   var list = idleOfficers(b).filter(function (o) { return !(cp0 && cp0.lead === o.id); }).sort(function (x, y) { return aiMilScore(x) - aiMilScore(y); });
   if (!list.length) return toast('행동할 수 있는 무장이 없습니다');
   if (b.troops < 100) return toast('호위할 병력이 없습니다');
-  var st = { id: list[0].id, troops: Math.min(1000, Math.floor(b.troops / 100) * 100), gold: 0, food: 0, spear: 0, halberd: 0, bow: 0, horse: 0, ram: 0, at: null }, RO = ringOn(st);
+  var st = { id: list[0].id, troops: Math.min(1000, Math.floor(b.troops / 100) * 100), gold: 0, food: 0, spear: 0, halberd: 0, bow: 0, horse: 0, ram: 0, at: null, back: !!UI.tback }, RO = ringOn(st);
   var fs = [['troops', '병력', b.troops, 100], ['gold', '금', b.gold, 50], ['food', '병량', b.food, 500], ['spear', '창', b.w.spear, 100], ['halberd', '극', b.w.halberd, 100], ['bow', '노', b.w.bow, 100], ['horse', '군마', b.w.horse, 100], ['ram', '충차', b.w.ram, 1]];
   var on = {
     pick: function (el) { st.id = +el.getAttribute('data-v'); refreshDialog(); },
     auto: function () { var t = autoTeam(b, 'trans', 0); if (t.length) st.id = t[0]; toast('자동 선택', 1500); refreshDialog(); },
     ok: function () {
       var need = Math.ceil(st.troops / 20) * 8;
-      var r = cmdDeploy(b, { type: 'trans', ids: [st.id], troops: st.troops, food: Math.max(st.food, Math.min(b.food, need)), gold: st.gold, cargo: { spear: st.spear, halberd: st.halberd, bow: st.bow, horse: st.horse, ram: st.ram }, at: st.at || undefined });
+      var r = cmdDeploy(b, { type: 'trans', ids: [st.id], troops: st.troops, food: Math.max(st.food, Math.min(b.food, need)), gold: st.gold, cargo: { spear: st.spear, halberd: st.halberd, bow: st.bow, horse: st.horse, ram: st.ram }, at: st.at || undefined, back: st.back });
       if (!r.ok) return toast(r.msg);
-      closeDialog(); sfx('drum'); talk(uLeader(r.unit), sayLine(uLeader(r.unit), 'trans'), '수송대 출발 — 거점에 들이거나, 아군 부대 옆에서 [보급]', 3200); syncScene(); selectUnit(r.unit); UI.sret = backToBase(b.id); afterAction();
+      closeDialog(); sfx('drum'); talk(uLeader(r.unit), sayLine(uLeader(r.unit), 'trans'), st.back ? '수송대 출발 — 짐을 내리면 ' + euro(b.n) + ' 돌아옵니다' : '수송대 출발 — 거점에 들이거나, 아군 부대 옆에서 [보급]', 3200); syncScene(); selectUnit(r.unit); UI.sret = backToBase(b.id); afterAction();
     }
   };
   fs.forEach(function (f) { on[f[0]] = function (el) { st[f[0]] = +el.value; $('tv_' + f[0]).textContent = fmt(st[f[0]]); }; });
   on.at = RO.at; on.atauto = RO.atauto;
+  on.tback = function (el) { st.back = el.getAttribute('data-v') === '1'; UI.tback = st.back; saveOpts(); refreshDialog(); };      // v0.18.1: 고른 것은 다음 수송 창에도 그대로
   showDialog({
     render: function () {
       var h = dlgHead('수송 — ' + b.n) + '<div class="dlg-b"><div class="sec">호송 무장<button class="btn auto" type="button" data-a="auto">자동</button></div><div class="rows">', i;
       for (i = 0; i < list.length; i++) h += offRow(list[i], { a: 'pick', sel: list[i].id === st.id });
       h += '</div><div class="sec">실을 것</div>';
       for (i = 0; i < fs.length; i++) { var f = fs[i], m = Math.floor(f[2] / f[3]) * f[3]; if (m <= 0 && f[0] !== 'troops') continue; h += '<div class="fld"><label><span>' + f[1] + ' (보유 ' + fmt(f[2]) + ')</span><b id="tv_' + f[0] + '">' + fmt(st[f[0]]) + '</b></label><input type="range" id="tr_' + f[0] + '" min="' + (f[0] === 'troops' ? 100 : 0) + '" max="' + m + '" step="' + f[3] + '" value="' + st[f[0]] + '" data-i="' + f[0] + '"></div>'; }
+      h += '<div class="sec">짐을 내린 뒤 <small>호송 무장은</small></div><div class="seg tbk"><button type="button" data-a="tback" data-v="0"' + (st.back ? '' : ' class="on"') + '>그곳에 머문다</button><button type="button" data-a="tback" data-v="1"' + (st.back ? ' class="on"' : '') + '>' + euro(b.n) + ' 돌아온다</button></div>';
       h += deployRing(b, st);
-      return h + '<p class="note">군량 80일분은 자동으로 실립니다 · 아군 거점에 들이면 합쳐지고, <b>아군 부대 옆</b>에서는 [보급]으로 병량과 병력을 넘깁니다</p></div><div class="dlg-f"><div class="pv">행동력 ' + AP.deploy + '</div><button class="btn pri" type="button" data-a="ok">출발</button></div>';
+      return h + '<p class="note">군량 80일분은 자동으로 실립니다 · 아군 거점에 들이면 합쳐지고, <b>아군 부대 옆</b>에서는 [보급]으로 병량과 병력을 넘깁니다' + (st.back ? ' · <b>돌아온다</b>: 거점에 짐을 내린 무장은 걸어서, 부대에 보급한 수송대는 행군으로 돌아옵니다' : '') + '</p></div><div class="dlg-f"><div class="pv">행동력 ' + AP.deploy + '</div><button class="btn pri" type="button" data-a="ok">출발</button></div>';
     },
     on: on
   });
@@ -2279,6 +2296,7 @@ var HELP_HTML = '<div class="help">' +
   '<h3>초반 보호</h3><p>판을 시작하면 한동안 다른 세력이 우리 <b>거점과 시설</b>을 먼저 치지 않습니다. 기간은 <b>시작할 때의 병력</b>으로 정해집니다 — 1만 미만이면 ' + months(PEACE_PLAYER[0][1]) + ', 2만 미만이면 ' + months(PEACE_PLAYER[1][1]) + ', 그 밖은 ' + months(PEACE_ALL) + '. 언제까지인지는 STATUS 창의 이름 옆 표에 보입니다(누르면 풀이).</p>' +
   '<ul><li>들판의 부대끼리는 싸울 수 있고, 주인 없는 성은 누구나 차지합니다.</li><li><b>우리가 어떤 세력의 거점이나 시설을 먼저 치면</b> 그 세력에 대해서는 보호가 풀립니다(치기 전에 알려 줍니다). 다른 세력과의 보호는 그대로입니다.</li><li>처음 ' + months(PEACE_ALL) + '은 다른 세력끼리도 서로의 거점을 치지 않습니다.</li><li>보호가 끝난 뒤 ' + months(PEACE_RAMP) + '은 완충 기간입니다 — 한 번에 한 세력만 우리를 치러 오고, 출진에 필요한 병력 우위가 평소의 1.25배 대신 2배에서 시작해 차츰 내려옵니다.</li><li>0.8에서 하던 판을 이어 해도, 아직 그 기간 안이면 보호받습니다.</li></ul>' +
   '<h3>수송과 보급</h3><p>거점의 출진 탭 <b>수송</b>으로 병력·금·병량·무기를 실은 수송대를 냅니다. 아군 거점에 들이면 실은 것이 그 거점에 합쳐집니다. <b>아군 부대의 옆 칸</b>에 가면 부대 창의 <b>보급</b>으로 병량과 병력을 넘길 수 있습니다(받는 부대 쪽에서는 <b>보급 받기</b>). 병력은 받는 주장의 지휘 한도까지이고, 창병·극병·노병·기병에게는 그 무기도 실어 와야 합니다. 보급한 수송대는 그 턴의 행동을 마칩니다.</p>' +
+  '<p><b>짐을 내린 뒤</b> — 수송 창에서 호송 무장이 <b>그곳에 머물지 · 돌아올지</b>를 고릅니다(가는 길에도 부대 창의 <b>짐 내린 뒤</b>로 바꿉니다). <b>돌아온다</b>면, 아군 거점에 짐을 내린 무장은 떠나온 거점으로 걸어서 돌아오고(무장 [이동]과 같은 날수 · 행동력은 들지 않습니다), 부대에 보급한 수송대는 떠나온 거점으로 행군합니다(더 나눠 줄 것이 있으면 <b>행군 취소</b>). 떠나온 거점을 잃었으면 머뭅니다. 부대 창의 <b>귀환</b>은 수송대를 지금 떠나온 거점으로 행군시킵니다.</p>' +
   '<h3>행군과 공격 명령</h3><p>부대를 고른 채 <b>파란 칸 밖의 땅을 누르면 곧바로 그곳으로 행군</b>합니다 — 이번 턴에 갈 수 있는 만큼 바로 가고, 턴을 마칠 때마다 한 구간씩 알아서 갑니다. 잘못 눌렀으면 <b>이동 취소</b>(제자리로 돌아오고 명령도 거둡니다). <b>닿지 않는 적 부대나 적의 성을 누르면 공격 명령</b>입니다: 다가가서, 턴을 마칠 때 닿으면 알아서 칩니다(주는 피해에서 받는 반격을 뺀 기대값이 가장 큰 수 — 군사의 추천 薦과 같습니다. 계략 · 일기토는 걸지 않습니다). 닿는 적을 누르면 전처럼 수를 직접 고릅니다. 도중에 직접 움직이거나 쳐도 되고, 부대 창의 <b>명령 취소</b>로 거둡니다. 내 성이나 빈 성으로 보내려면 그 성을 누르고 맨 위의 <b>이 성으로 행군</b>을 누르세요.</p>' +
   '<h3>전투</h3><p>부대를 고르고 적을 누르면 공격·전법·계략 가운데 고를 수 있습니다. 전법은 기력을 쓰고, 병과 적성(C→S)이 높을수록 쓸 수 있는 전법이 늘고 잘 통합니다. 적성은 부대의 공격·방어에도 곱해집니다(C ×' + APT_MUL.C + ' ~ S ×' + APT_MUL.S + ') — 주장과 부장 가운데 가장 높은 적성을 씁니다. 무장 줄마다 능력치 아래에 <b>창 · 극 · 노 · 기 · 병기</b> 적성이 적혀 있습니다.</p>' +
   '<p><b>전법의 결과는 세 가지</b>입니다. <b>실패</b>하면 피해가 통상 공격의 ' + Math.round(TACTIC_K.failDmg * 100) + '%로 줄고 효과가 없으며 반격을 통상 공격의 ' + (TACTIC_K.failCounter / 0.55).toFixed(2).replace(/0$/, '') + '배로 받습니다. <b>성공</b>하면 전법의 피해와 효과가 들어가고 반격은 통상 공격만큼 받습니다(견인·관진, 멀리서 쏜 전법, 밀려나 떨어진 적은 반격하지 못합니다). <b>대성공</b>이면 피해가 ' + TACTIC_K.crit + '배가 되고 <b>효과 자체가 세집니다</b> — 격퇴·축출은 두 칸 밀어내고, 난진은 반드시 혼란시키고, 탈기는 기력을 30 깎는 식입니다. <b>성공률은 양쪽을 다 봅니다</b>: 내 병과 적성, 내 무력·통솔과 상대 통솔의 차이, 양쪽 병력, 상대의 병과 적성, 상대가 선 지형. 병력이 훨씬 많은 부대나 통솔이 높은 장수에게는 잘 통하지 않고, 병력 차만큼 피해도 줄어듭니다. <b>전법이 늘 이득은 아닙니다</b> — 무장이 상대보다 강할수록 이득이 크고, 약한 쪽이 쓰면 보통 공격보다 손해입니다. 대성공률은 적성·무력·(내 무력 − 상대 통솔)로 정해지며, 혼란은 상대의 지력·통솔이 높을수록 덜 걸립니다. 적을 고른 뒤 <b>전법 풀이</b>를 누르면 그 상대에 대한 확률과 효과, 그리고 전법마다 <b>기대 피해 · 받는 반격</b>을 보통 공격과 나란히 볼 수 있습니다.</p>' +
@@ -2597,7 +2615,7 @@ function showMenu() {
 }
 
 /* ---------- 저장 ---------- */
-function saveOpts() { try { localStorage.setItem('chunhado_opts', JSON.stringify({ sound: UI.sound, music: UI.music, pspeed: UI.pspeed, home: HOME.open, talk: UI.talk !== false, voice: UI.voice !== false, pct: !!UI.pct })); } catch (e) { /* */ } }
+function saveOpts() { try { localStorage.setItem('chunhado_opts', JSON.stringify({ sound: UI.sound, music: UI.music, pspeed: UI.pspeed, home: HOME.open, talk: UI.talk !== false, voice: UI.voice !== false, pct: !!UI.pct, tback: !!UI.tback })); } catch (e) { /* */ } }
 function loadOpts() {
   try {
     var o = JSON.parse(localStorage.getItem('chunhado_opts') || '{}');
@@ -2607,6 +2625,7 @@ function loadOpts() {
     if (o.talk === false) UI.talk = false;
     if (o.voice === false) UI.voice = false;
     if (o.pct === true) UI.pct = true;                         // v0.18: 확률을 숫자로(기본은 말)
+    if (o.tback === true) UI.tback = true;                     // v0.18.1: 수송 창의 '짐을 내린 뒤 돌아온다'
   } catch (e) { /* */ }
 }
 /* 지금 틀 음악의 장면: 싸운 지 한 턴 안이거나 적이 내 성 코앞이면 전투, 적이 가까이 있으면 긴장, 아니면 평시 */
@@ -2809,7 +2828,7 @@ function startPlayback() {
 }
 function marchLog(u, name, res) {
   var b;
-  if (res.entered !== undefined) { b = G.bases[res.entered]; logMsg(name + ' ' + b.n + ' 입성', b.c, b.r, G.player, 1); }
+  if (res.entered !== undefined) { b = G.bases[res.entered]; logMsg(name + ' ' + b.n + ' 입성' + backSay(res).replace('돌아갑니다', '돌아간다'), b.c, b.r, G.player, 1); }
   else if (res.captured !== undefined) { /* 차지한 일은 규칙 쪽에서 이미 기록한다 */ }
   else if (res.dead) logMsg(name + ' 불길 속에서 흩어짐', res.from[0], res.from[1], G.player, 2);
   else if (res.front !== undefined) { b = G.bases[res.front]; if (!(alive(u) && u.aim)) logMsg(name + ' ' + b.n + ' 앞에 도착 — 공격 명령을 내리세요', b.c, b.r, G.player, 2); }
@@ -2844,7 +2863,7 @@ function playMarch(done) {
 function playMarchShow(name, dn, vis, res, next) {
   var P = UI.play, mid = res.path[Math.floor(res.path.length / 2)], mc = mid % W;
   focus(mc, (mid - mc) / W, pg(function () {
-    var tail = res.entered !== undefined ? ' — <b>' + G.bases[res.entered].n + '</b> 입성' : (res.captured !== undefined ? ' — <b>' + G.bases[res.captured].n + '</b> 점령!' : (res.front !== undefined ? ' — <b>' + G.bases[res.front].n + '</b> 앞에 도착' : ''));
+    var tail = res.entered !== undefined ? ' — <b>' + G.bases[res.entered].n + '</b> 입성' + backSay(res) : (res.captured !== undefined ? ' — <b>' + G.bases[res.captured].n + '</b> 점령!' : (res.front !== undefined ? ' — <b>' + G.bases[res.front].n + '</b> 앞에 도착' : ''));
     setCaption(G.player, '<b>' + name + '</b> ' + dn + ' 방면으로 행군' + tail);
     animMove(vis, res.from, res.path, pg(function () {
       P.ans = []; if (res.captured !== undefined) { sfx('fall'); sfx('cheerlate'); fxFall(G.bases[res.captured], '점령'); }

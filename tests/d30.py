@@ -28,7 +28,7 @@ def steps(pg):
     print('1. 받아 온다')
     pg.wait_for_function('window.SCENES_READY === true', timeout=30000)
     st = pg.evaluate('({ n: Object.keys(SCENES).length, need: SCENARIO.officers.filter(function (o) { return !/^g[mcf]\\\\d/.test(o.por) && !SCENES[o.por]; }).map(function (o) { return o.n; }), ver: GAME_VERSION })')
-    ok(st['n'] == 265 and st['need'] == [] and st['ver'] == 'v0.18', '페이지가 뜬 뒤 큰 그림 %d장을 받아 왔다(제 초상이 있는 무장은 모두 큰 그림이 있다) %s' % (st['n'], st['need'][:3]))
+    ok(st['n'] == 265 and st['need'] == [] and st['ver'] == 'v0.18.1', '페이지가 뜬 뒤 큰 그림 %d장을 받아 왔다(제 초상이 있는 무장은 모두 큰 그림이 있다) %s' % (st['n'], st['need'][:3]))
     pg.evaluate('([f, s]) => { localStorage.clear(); newGame(f, s); saveGame(); }', [10, 1]); pg.reload(); pg.wait_for_function('window.R3 && R3.ready', timeout=60000)
     pg.wait_for_function('window.SCENES_READY === true', timeout=30000); pg.wait_for_timeout(400)
     tapsel(pg, '#tCont'); pg.wait_for_timeout(1300)

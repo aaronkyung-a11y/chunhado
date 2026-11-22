@@ -17,6 +17,10 @@ SW = int(sys.argv[8]) if len(sys.argv) > 8 else 320
 QB = int(sys.argv[9]) if len(sys.argv) > 9 else 72
 QS = int(sys.argv[10]) if len(sys.argv) > 10 else 56
 PAD_MAX, FADE, S_MIN, S_KEEP, TX_INK = 0.20, 0.13, 0.76, 0.86, 0.55
+# v0.19: 인물이 한쪽으로 몰린 장면을 다시 맞춘다. SKEW=<여백 차이의 문턱(그림 폭에 대한 비)> 를 주면 켜진다(안 주면 0.18까지와 똑같이 자른다).
+#   짙은 먹(인물)의 좌우 끝을 재서 한쪽 여백이 다른 쪽보다 문턱 넘게 넓으면, 그 좌우 끝의 한가운데가 틀의 가운데로 오게 좁혀 자른다(넓은 쪽 여백을 덜어 낸다).
+#   그동안의 셈(먹 전체의 무게중심 + 얼굴)은 옅은 붓 자국에 끌려, 인물이 오른쪽 끝에 붙고 왼쪽이 빈 그림을 '가운데'로 보았다.
+SKEW = float(os.environ.get('SKEW', '0') or 0); DENSE, S_MIN_SKEW = 0.32, 0.74
 KEEP = set(os.environ.get('KEEP', 'diaochan,lubu').split(','))     # 장면을 그대로 두는 인물(따로 견줘 고른 그림)
 FALLBACK = os.environ.get('FALLBACK', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'art', 'raw3'))
 os.makedirs(os.path.join(OUTDIR, 'bust'), exist_ok=True); os.makedirs(os.path.join(OUTDIR, 'scene'), exist_ok=True)
@@ -87,11 +91,27 @@ for k in used:
     wgt = ink(im); colp = wgt.sum(axis=0); rowp = wgt.sum(axis=1)
     xc = float((colp * np.arange(W)).sum() / max(1e-6, colp.sum()))
     tx = TX_INK * xc + (1 - TX_INK) * cx
-    w = min(W, 2 * min(tx, W - tx))
-    if w >= S_KEEP * W or k in KEEP: w = W                     # 이미 가운데에 가까운 그림(가운데서 7% 안쪽)은 그대로
-    w = max(w, S_MIN * W); h = w * H / W
-    cx0 = min(max(tx - w / 2, 0), W - w)
-    cx0 = min(max(cx0, cx - 0.80 * w), cx - 0.20 * w); cx0 = min(max(cx0, 0), W - w)      # 얼굴이 틀 가장자리에 붙지 않게
+    def frame(tx, smin, keep):
+        w = min(W, 2 * min(tx, W - tx))
+        if keep and (w >= S_KEEP * W or k in KEEP): w = W      # 이미 가운데에 가까운 그림(가운데서 7% 안쪽)은 그대로
+        w = max(w, smin * W)
+        x0 = min(max(tx - w / 2, 0), W - w)
+        x0 = min(max(x0, cx - 0.80 * w), cx - 0.20 * w); x0 = min(max(x0, 0), W - w)      # 얼굴이 틀 가장자리에 붙지 않게
+        return w, x0
+    w, cx0 = frame(tx, S_MIN, True)
+    skew = 0.0
+    if SKEW > 0 and k not in KEEP:                              # v0.19: 그렇게 자른 틀 안에서 인물이 한쪽으로 몰려 있으면 다시 자른다
+        dcol = np.where(wgt > DENSE, wgt, 0.0).sum(axis=0)
+        def margins(x0, w):                                     # 틀 [x0, x0 + w) 안에서 짙은 먹의 왼쪽 · 오른쪽 여백(틀 폭에 대한 비)
+            seg = dcol[int(round(x0)):int(round(x0 + w))]; tot = float(seg.sum())
+            if tot <= 0: return 0.0, 0.0
+            c = np.cumsum(seg); return float(np.searchsorted(c, tot * 0.03)) / len(seg), 1.0 - float(np.searchsorted(c, tot * 0.97)) / len(seg)
+        mL, mR = margins(cx0, w)
+        if abs(mL - mR) >= SKEW:
+            dtot = float(dcol.sum()); dc = np.cumsum(dcol); dl = float(np.searchsorted(dc, dtot * 0.03)); dr = float(np.searchsorted(dc, dtot * 0.97))
+            w2, x2 = frame((dl + dr) / 2.0, S_MIN_SKEW, False); nL, nR = margins(x2, w2)
+            if abs(nL - nR) <= abs(mL - mR) - 0.04: skew = mL - mR; w, cx0 = w2, x2       # 나아질 때만 바꾼다
+    h = w * H / W
     ytop = quant(rowp, 0.012)
     cy0 = min(max(ytop - 0.02 * H, 0), H - h)
     if (cy - cy0) / h > 0.62: cy0 = min(max(cy - 0.62 * h, 0), H - h)
@@ -100,7 +120,7 @@ for k in used:
     sc = im.crop(box).resize((SW, int(round(SW * H / W))), Image.LANCZOS).filter(ImageFilter.UnsharpMask(1.0, 30, 2))
     sc.save(os.path.join(OUTDIR, 'scene', k + '.webp'), 'WEBP', quality=QS, method=6)
     scenes[k] = webp(sc, QS); ts += len(scenes[k])
-    rows.append((k, W, H, cx / W, xc / W, (cx - old_x0) / side, (cx - x0) / side, max(padL, padR) / S, w / W, (cx - cx0) / w, (xc - cx0) / w, box))
+    rows.append((k, W, H, cx / W, xc / W, (cx - old_x0) / side, (cx - x0) / side, max(padL, padR) / S, w / W, (cx - cx0) / w, (xc - cx0) / w, box, skew))
 print('busts', len(busts), 'bytes', tb, 'avg', tb // max(1, len(busts)), '| scenes', len(scenes), 'bytes', ts, 'avg', ts // max(1, len(scenes)))
 if fb: print('fallback to previous square portraits:', len(fb))
 if noface: print('NO FACE BOX (centre guess used):', noface)

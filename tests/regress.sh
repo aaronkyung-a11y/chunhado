@@ -1,11 +1,14 @@
 #!/bin/bash
-# 전체 회귀: bash tests/regress.sh [로그 폴더=build/logs/v018/reg]     (먼저 tools/build.py, --embed, --pwa, --split 으로 네 판을 모두 만든 뒤)
+# 전체 회귀: bash tests/regress.sh [로그 폴더=build/logs/v0181/reg]     (먼저 tools/build.py, --embed, --pwa, --split 으로 네 판을 모두 만든 뒤)
 # 끝나면 <로그 폴더>/_summary.txt 에 시험마다 종료 코드가 한 줄씩, 마지막 줄에 DONE.
-cd "$(dirname "$0")/.."; L=${1:-build/logs/v018/reg}; mkdir -p $L; : > $L/_summary.txt
-run() { name=$1; shift; ( "$@" > $L/$name.log 2>&1 ); echo "$name exit $?" >> $L/_summary.txt; }
-sha256sum dist/index.html dist/offline.html dist/pwa/index.html dist/artifact/index.html dist/artifact/data/scenes.json > $L/_build.sha
+# v0.18.1: RESUME=1 이면 끊긴 곳부터 잇는다 — 이미 끝난 시험은 건너뛴다(판의 지문 _build.sha 가 그때와 같을 때만. 다르면 멈춘다)
+cd "$(dirname "$0")/.."; L=${1:-build/logs/v0181/reg}; mkdir -p $L
+if [ -n "$RESUME" ] && [ -f $L/_summary.txt ]; then sha256sum -c --status $L/_build.sha || { echo "BUILD CHANGED — 이어 돌릴 수 없다" >&2; exit 2; }; sed -i '/^DONE$/d' $L/_summary.txt
+else : > $L/_summary.txt; sha256sum dist/index.html dist/offline.html dist/pwa/index.html dist/artifact/index.html dist/artifact/data/scenes.json > $L/_build.sha; fi
+run() { name=$1; shift; grep -q "^$name exit " $L/_summary.txt && return; ( "$@" > $L/$name.log 2>&1 ); echo "$name exit $?" >> $L/_summary.txt; }
 # 규칙 시험(node). NODE_FROM=<폴더> 를 주면, 그 폴더의 _rules.sha(규칙 소스 core · ai · data 의 지문)가 지금과 같을 때 그때의 결과(_node.txt)를 그대로 쓴다 — 화면 쪽만 고쳐 다시 돌릴 때
-if [ -n "$NODE_FROM" ] && sha256sum -c --status "$NODE_FROM/_rules.sha"; then
+if [ -n "$RESUME" ] && [ -f $L/_node.txt ]; then :
+elif [ -n "$NODE_FROM" ] && sha256sum -c --status "$NODE_FROM/_rules.sha"; then
   cat "$NODE_FROM/_node.txt" >> $L/_summary.txt; echo "(규칙 시험은 $NODE_FROM 의 결과 — 규칙 소스가 같다)" > $L/_node_from.txt
 else
   run job8 node tests/job8.js
@@ -23,6 +26,7 @@ else
   run roster17 env OLD=build/logs/v017/src016 timeout 900 node tests/roster17.js
   run tac18 timeout 900 node tests/tac18.js
   run aim18 timeout 900 node tests/aim18.js
+  run back181 timeout 900 node tests/back181.js
   run exp91 timeout 900 node tests/exp91.js
   run peace91 node tests/peace91.js
   run corps10 timeout 900 node tests/corps10.js
@@ -41,7 +45,7 @@ else
   run zonecheck_9 timeout 900 node tests/zonecheck.js 360 9
   sha256sum src/core.js src/ai.js src/data.js src/roster.js > $L/_rules.sha; cp $L/_summary.txt $L/_node.txt
 fi
-for t in d1 d2 d2b d3 d4 d6 d7 d9 d10 d14 d15 d16 d17 d18 d19 d20 d21 d22 d23 d24 d25 d26 d27 d28 d29 d31; do run $t timeout 1800 python3 tests/$t.py; done
+for t in d1 d2 d2b d3 d4 d6 d7 d9 d10 d14 d15 d16 d17 d18 d19 d20 d21 d22 d23 d24 d25 d26 d27 d28 d29 d31 d32; do run $t timeout 1800 python3 tests/$t.py; done
 run d11_1_4 timeout 2400 python3 tests/d11.py 400 1 4
 run d11_2_0 timeout 2400 python3 tests/d11.py 300 2 0
 run d11_3_2 timeout 2400 python3 tests/d11.py 300 3 2
@@ -51,5 +55,5 @@ PAGE=pwa/index.html run d12_music timeout 1500 python3 tests/d12.py
 run d13 timeout 1500 python3 tests/d13.py
 run text92 timeout 900 python3 tests/text92.py
 run d30 timeout 900 python3 tests/d30.py                 # v0.17: 아티팩트에 올리는 판(dist/artifact/)
-for v in 0.17 0.16 0.15 0.14 0.13 0.12.1 0.12 0.11 0.10.1 0.10 0.9.3 0.9.2 0.9.1 0.9 0.8.1 0.8 0.7 0.6 0.5 0.4 0.3 0.2; do run d8_v$v timeout 900 python3 tests/d8.py chunhado-v$v-offline.html; done
+for v in 0.18 0.17 0.16 0.15 0.14 0.13 0.12.1 0.12 0.11 0.10.1 0.10 0.9.3 0.9.2 0.9.1 0.9 0.8.1 0.8 0.7 0.6 0.5 0.4 0.3 0.2; do run d8_v$v timeout 900 python3 tests/d8.py chunhado-v$v-offline.html; done
 echo DONE >> $L/_summary.txt

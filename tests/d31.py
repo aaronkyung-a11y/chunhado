@@ -63,7 +63,7 @@ def steps(pg):
     pg.evaluate('closeDialog()')
     # ---------- 2. 판을 시작한다 ----------
     B.start(pg, 0)
-    ok(pg.evaluate('GAME_VERSION') == 'v0.18' and pg.evaluate('UI.pct') is True, '판 번호 v0.18 · 시험 틀은 확률을 숫자로 켜 둔다')
+    ok(pg.evaluate('GAME_VERSION') == 'v0.18.1' and pg.evaluate('UI.pct') is True, '판 번호 v0.18 · 시험 틀은 확률을 숫자로 켜 둔다')
     T = pg.evaluate(SETUP); pg.wait_for_timeout(600)
     # ---------- 3. 부대 이름표: 얼굴이 판에 붙어 한 덩어리 ----------
     try: pg.wait_for_function('R3.units[T.a] && R3.units[T.a].hasFace', timeout=8000)      # 초상 그림은 처음 쓸 때 불러온다

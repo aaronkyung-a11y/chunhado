@@ -1028,15 +1028,21 @@ function hurtUnit(u, dmg, byF, byUnit) {
 }
 function addMerit(u, v) { for (var i = 0; i < u.off.length; i++) off(u.off[i]).merit += v; }
 
-function enterBase(u, b) {
+/* v0.18.1: 짐을 내리면 돌아가기로 한 수송대(u.back)가 돌아갈 거점 — 떠나온 거점(u.home)이 아직 제 것이고, 지금 들어가는 곳(b)이 아닐 때. 아니면 null(머문다) */
+function transHome(u, b) { if (!u || u.type !== 'trans' || !u.back) return null; var hb = G.bases[u.home]; return (hb && hb.owner === u.f && (!b || hb.id !== b.id)) ? hb : null; }
+function transSetBack(u, on) { if (!u || u.type !== 'trans') return false; if (on) u.back = true; else delete u.back; return true; }
+/* viaMove = 걸어서 아군 거점에 들어간 것(unitMove). 그때만 돌아가는 수송대의 무장이 길을 떠난다 → { to: 거점, turns } (빈 거점을 차지한 때는 머문다) */
+function enterBase(u, b, viaMove) {
   var nt = b.troops + u.troops;
   b.morale = nt > 0 ? Math.round((b.troops * b.morale + u.troops * u.morale) / nt) : u.morale;
   b.troops = nt; b.food += u.food; b.gold += u.gold;
   var wp = UNIT_TYPES[u.type].weapon;
   if (wp === 'ram') b.w.ram += 1; else if (wp) b.w[wp] += u.troops;
   if (u.cargo) for (var k in u.cargo) b.w[k] += u.cargo[k];
-  for (var i = 0; i < u.off.length; i++) { var o = off(u.off[i]); o.unit = null; o.loc = b.id; o.acted = true; }
+  var hb = viaMove ? transHome(u, b) : null, bt = hb ? travelTurns(b, hb) : 0;
+  for (var i = 0; i < u.off.length; i++) { var o = off(u.off[i]); o.unit = null; o.loc = b.id; o.acted = true; if (hb) { o.st = 'travel'; o.dest = hb.id; o.eta = bt; } }
   removeUnit(u);
+  return hb ? { to: hb.id, turns: bt } : null;
 }
 function captureBase(b, u) {
   var old = b.owner, i;
@@ -1649,6 +1655,7 @@ function cmdDeploy(b, spec) {
   var u = { id: G.nextUnit++, f: b.owner, c: spot[0], r: spot[1], type: spec.type, off: os.map(function (o) { return o.id; }), troops: troops, max: troops,
     morale: b.morale, food: food, gold: gold, cargo: cargo, status: null, stT: 0, done: false, moved: false, mp: 0, home: b.id, ox: -1, oy: -1, omp: 0, born: G.turn, ai: null, dest: -1 };
   for (var i = 0; i < os.length; i++) { os[i].unit = u.id; os[i].acted = true; }
+  if (spec.type === 'trans' && spec.back) u.back = true;       // v0.18.1: 짐을 내리면 돌아온다
   u.mp = uMaxMp(u);
   if (spec.dest !== undefined && spec.dest >= 0) u.dest = spec.dest;
   addUnit(u); jot('deploy', b, troops, spec.type);
@@ -1670,7 +1677,7 @@ function unitMove(u, c, r, rc) {
   if (b) {
     u.mp = 0; u.moved = true;
     ev({ t: 'move', id: u.id, f: u.f, n: uName(u), from: from, path: path, c: c, r: r, into: b.id });
-    if (b.owner === u.f) { enterBase(u, b); return { ok: true, path: path, from: from, entered: b.id }; }
+    if (b.owner === u.f) { var bk = enterBase(u, b, true), er = { ok: true, path: path, from: from, entered: b.id }; if (bk) er.back = bk; return er; }
     if (b.owner === -1) { placeUnit(u, c, r); captureBase(b, u); return { ok: true, path: path, from: from, captured: b.id }; }
     return ERR('적의 거점입니다');
   }
@@ -1725,7 +1732,9 @@ function cmdSupply(t, u, give) {
     u.troops += troops; t.troops -= troops; if (!(u.max >= u.troops)) u.max = u.troops;
   }
   t.done = true; t.ox = -1;
-  return { ok: true, food: food, troops: troops };
+  var sr = { ok: true, food: food, troops: troops }, hb = transHome(t, null);
+  if (hb) { t.dest = K(hb.c, hb.r); if (t.aim) delete t.aim; sr.home = hb.id; }      // v0.18.1: 돌아가기로 한 수송대는 보급을 마치면 떠나온 거점으로 행군한다
+  return sr;
 }
 
 function autoRetreat(u) {
