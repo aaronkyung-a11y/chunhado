@@ -55,7 +55,7 @@ def steps(pg):
     ok(t['js'] == 0 and t['inline'] == 0, '제목 그림은 한 번만 들어 있다(스크립트 쪽은 비었다)')
     ok(t['menuTop'] >= 0.76 and all(b[3] and b[4] for b in t['bs']) and len(t['bs']) == 5, '단추 다섯은 아래 %.0f%% 안에 두 줄로 — 발끝까지 보인다 %s' % ((1 - t['menuTop']) * 100, [b[0] for b in t['bs']]))
     ok(t['nameBottom'] < 0.36 and t['nameLeft'] > 0.70, '제목 글씨는 오른쪽 위 빈 종이에(아래 끝 %.0f%%, 왼쪽 끝 %.0f%%)' % (t['nameBottom'] * 100, t['nameLeft'] * 100))
-    ok(t['ver'].startswith('v0.18') and '삼국지 천하도' in t['ver'], '판 번호 줄: ' + t['ver'])
+    ok(t['ver'].startswith(B.VER) and '삼국지 천하도' in t['ver'], '판 번호 줄: ' + t['ver'])
     ok(t['shadow'] != 'none' and 'inset' in t['shadow'], '단추에 두께(그림자)가 있다')
     # 세력을 고르는 창의 얼굴에는 번호가 없다(판 밖)
     tapsel(pg, '#tNew'); pg.wait_for_timeout(400)
@@ -63,7 +63,7 @@ def steps(pg):
     pg.evaluate('closeDialog()')
     # ---------- 2. 판을 시작한다 ----------
     B.start(pg, 0)
-    ok(pg.evaluate('GAME_VERSION') == 'v0.18.1' and pg.evaluate('UI.pct') is True, '판 번호 v0.18 · 시험 틀은 확률을 숫자로 켜 둔다')
+    ok(pg.evaluate('GAME_VERSION') == B.VER and pg.evaluate('UI.pct') is True, '판 번호 ' + B.VER + ' · 시험 틀은 확률을 숫자로 켜 둔다')
     T = pg.evaluate(SETUP); pg.wait_for_timeout(600)
     # ---------- 3. 부대 이름표: 얼굴이 판에 붙어 한 덩어리 ----------
     try: pg.wait_for_function('R3.units[T.a] && R3.units[T.a].hasFace', timeout=8000)      # 초상 그림은 처음 쓸 때 불러온다

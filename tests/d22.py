@@ -46,7 +46,7 @@ FACSET = '''(() => {
 def steps(pg):
     # ================= 1. 공유 =================
     print('1. 공유')
-    ok(pg.evaluate('!!$("tShare") && !!$("tHelp") && $("tVer").textContent.indexOf("v0.18") === 0'), '제목 화면: [공유] 단추와 판 번호 v0.18 — ' + pg.evaluate('$("tVer").textContent'))
+    ok(pg.evaluate('(v) => !!$("tShare") && !!$("tHelp") && $("tVer").textContent.indexOf(v) === 0', B.VER), '제목 화면: [공유] 단추와 판 번호 — ' + pg.evaluate('$("tVer").textContent'))
     tapsel(pg, '#tShare'); pg.wait_for_timeout(600)
     sh = pg.evaluate('({ title: MODAL ? document.querySelector("#modal .dlg-h").textContent : "", url: $("shU") ? $("shU").value : "", want: SHARE_URL, qr: !!document.querySelector("#modal svg.qr path"), send: !!document.querySelector("#modal [data-a=send]"), nat: typeof navigator.share })')
     ok(sh['title'].startswith('공유') and sh['url'] == sh['want'] == 'https://aaronkyung-a11y.github.io/chunhado/', '공유 창: 공유 창이 없는 브라우저에서는 주소가 적힌 창이 뜬다 %s' % sh)
@@ -78,7 +78,7 @@ def steps(pg):
     print('2. 시설의 레벨 표시')
     fresh(pg, 13, 4242)
     pg.evaluate('showMenu()'); pg.wait_for_timeout(300)
-    ok('v0.18' in head(pg) and pg.evaluate('!!document.querySelector("#modal [data-a=share]")'), '메뉴: ' + head(pg) + ' · [공유]')
+    ok(B.VER in head(pg) and pg.evaluate('!!document.querySelector("#modal [data-a=share]")'), '메뉴: ' + head(pg) + ' · [공유]')
     pg.evaluate('closeDialog()')
     S = pg.evaluate(FACSET); print('   ', S); pg.wait_for_timeout(600)
     pg.locator('#sheet .tabs button').nth(3).tap(); pg.wait_for_timeout(1000)
@@ -134,7 +134,7 @@ def steps(pg):
     ok(a3[0]['lab'] == '창 극 노 기 병기' and max(x['h'] for x in a3) <= 84, '적성의 이름표(창 극 노 기 병기), 줄 높이 %s' % max(x['h'] for x in a3))
     pg.locator('#sheet .row[data-a=off]').nth(0).tap(); pg.wait_for_timeout(600)
     d3 = pg.evaluate('document.querySelector("#modal .dlg-b").innerText')
-    ok('병종 적성' in d3 and '×0.85' in d3 and '×1.15' in d3 and '전법' in d3, '무장 창: 적성 칸에 제목과 풀이')
+    ok('병종 적성' in d3 and '×0.85' not in d3 and '열전' in d3 and pg.evaluate('(document.querySelector("#modal .bio") || {}).textContent || ""').endswith('.'), '무장 창: 적성 칸에 제목, 그 아래 특기와 열전(v0.19: 적성의 계산법 글은 도움말로)')
     B.shot(pg, 'q3_officer', 200); pg.evaluate('closeDialog()'); pg.wait_for_timeout(300)
     pg.locator('#sheet .tabs button').nth(1).tap(); pg.wait_for_timeout(500)
     tapsel(pg, '#sheet [data-a=deploy]'); pg.wait_for_timeout(600)

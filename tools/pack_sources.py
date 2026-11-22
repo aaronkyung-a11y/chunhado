@@ -4,7 +4,7 @@ import os, sys
 root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 ver, out = sys.argv[1], sys.argv[2]
 FILES = '''README.md CHANGELOG.md
-src/index.html src/style.css src/data.js src/core.js src/ai.js src/ui3d.js src/fx.js src/voice.js src/duel.js src/ui_panels.js
+src/index.html src/style.css src/data.js src/core.js src/ai.js src/ui3d.js src/fx.js src/voice.js src/duel.js src/ui_panels.js src/bios.js src/cine.js
 build/patch_v04_ui3d.py build/patch_v04_panels.py build/v07/p1_core.py build/v07/p2_audio.py build/v07/p3_fx.py build/v07/p4_ui.py
 build/v071/p1_job.py build/v071/p2_job_ui.py build/v071/p3_trans.py build/v071/p4_edge.py build/v071/p5_zone.py build/v071/p5b_zone_ui.py build/v071/p5c_fac.py build/v071/p6_econ.py build/v071/p7_tactic.py build/v071/p7b_tactic_ui.py build/v071/p8_plots.py build/v071/p8b_plots_ui.py build/v071/p9_loyalty.py
 build/v081/p1_peace.py build/v081/p1b_peace_hook.py build/v081/p2_peace_ramp.py build/v081/p3_peace_ui.py build/v081/p4_status_core.py build/v081/p5_status_map.py build/v081/p6_status_ui.py build/v081/p7_touchup.py build/v081/p8_migrate.py
@@ -25,6 +25,7 @@ build/v017/p1_roster17.py build/v017/apply.sh tools/roster17.py tools/por17_prom
 build/v018/p1_tactics18.py build/v018/p2_unit18.py build/v018/p3_ui18.py build/v018/p4_title18.py build/v018/p5_fac18.py build/v018/p6_sound18.py build/v018/p7_ram18.py build/v018/p8_march18.py build/v018/p9_corps18.py build/v018/apply.sh
 tools/roster18.py tools/por18_prompt.py tools/make_title18.py tools/make_audio_v018.py tools/snap_split.py art/por18_scenes.tsv art/por18_ids.tsv tests/tac18.js tests/aim18.js tests/d31.py
 build/v0181/q1_back181.py build/v0181/apply.sh tests/back181.js tests/d32.py
+build/v019/p1_v019.py build/v019/apply.sh tests/bio19.js tests/d33.py
 pwa/manifest.webmanifest pwa/sw.js
 tools/geo.py tools/mapgen2.py tools/bake3d.py tools/bake3d_ink.py tools/make_sprites.py tools/make_sprites_ink.py tools/make_roster.py tools/make_portraits.py tools/make_assets_ink.py
 tools/build.py tools/pack_sources.py tools/fetch_art.py tools/contact.py tools/dl_por2.py tools/dl_por3.py

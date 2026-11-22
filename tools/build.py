@@ -4,7 +4,8 @@
   build.py --split    → dist/artifact/   : 아티팩트에 올리는 판(v0.17~). index.html(three.js는 CDN) + data/scenes.json(무장의 큰 그림) — 아티팩트의 페이지 하나는 16MiB 까지라서 떼어 냈다
   build.py --embed    → dist/offline.html: three.js까지 넣은 완전 단일 파일(오프라인·시험용)
   build.py --pwa      → dist/pwa/        : 앱으로 설치할 수 있는 판(GitHub Pages용). index.html(three.js 포함) + manifest·sw.js·아이콘·음악
-  음악(bgm/*.mp3)은 어느 판이든 HTML 옆의 bgm/ 폴더에서 읽는다. 없으면 코드로 만든 음악이 대신 나온다."""
+  음악(bgm/*.mp3)은 어느 판이든 HTML 옆의 bgm/ 폴더에서 읽는다. 없으면 코드로 만든 음악이 대신 나온다.
+  영상(video/*.mp4 · *.webm — v0.19)도 HTML 옆의 video/ 폴더에서 읽는다. --pwa 와 --split 은 그 폴더를 같이 놓는다. 없으면 영상 없이 돈다."""
 import os, sys, re, base64, shutil
 root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 src = os.path.join(root, 'src')
@@ -14,7 +15,7 @@ embed = '--embed' in sys.argv or pwa
 def rd(n): return open(os.path.join(src, n), encoding='utf-8').read()
 THREE_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js'
 terrain = "var TERRAIN_B64='" + base64.b64encode(open(os.path.join(root, 'build', 'terrain.jpg'), 'rb').read()).decode('ascii') + "';\n"
-CODE = ['mapdata.js', 'roster.js', 'data.js', 'core.js', 'ai.js', 'ui3d.js', 'fx.js', 'voice.js', 'duel.js', 'ui_panels.js']
+CODE = ['mapdata.js', 'roster.js', 'data.js', 'bios.js', 'core.js', 'ai.js', 'ui3d.js', 'fx.js', 'voice.js', 'duel.js', 'cine.js', 'ui_panels.js']      # v0.19: bios.js(열전) · cine.js(영상)
 assets = rd('assets.js')
 # v0.18: 제목 그림(TITLE_IMG)은 CSS 로 옮긴다 — 큰 스크립트를 다 읽기 전, 첫 화면부터 그려지게(앱을 열자마자 보이는 그림이다)
 _mt = re.search(r'^var TITLE_IMG="([^"]+)";$', assets, re.M)
@@ -98,6 +99,12 @@ html = rd('index.html').replace('/*__CSS__*/', rd('style.css') + TITLE_CSS).repl
 assert '<!--__PWA_HEAD__-->' in html and '<!--__PWA_JS__-->' in html
 html = html.replace('<!--__PWA_HEAD__-->', PWA_HEAD if pwa else '').replace('<!--__PWA_JS__-->', PWA_JS if pwa else '')
 os.makedirs(os.path.join(root, 'dist'), exist_ok=True)
+def copy_video(d):                                               # v0.19: 영상 파일을 판 옆에 놓는다
+    v = os.path.join(root, 'video')
+    if not os.path.isdir(v): return
+    os.makedirs(os.path.join(d, 'video'), exist_ok=True)
+    for n in sorted(os.listdir(v)):
+        if n.endswith('.mp4') or n.endswith('.webm'): shutil.copy(os.path.join(v, n), os.path.join(d, 'video', n))
 if pwa:
     d = os.path.join(root, 'dist', 'pwa')
     if os.path.isdir(d): shutil.rmtree(d)
@@ -107,6 +114,7 @@ if pwa:
     for n in sorted(os.listdir(os.path.join(root, 'pwa', 'icons'))): shutil.copy(os.path.join(root, 'pwa', 'icons', n), os.path.join(d, 'icons', n))
     for n in sorted(os.listdir(os.path.join(root, 'bgm'))):
         if n.endswith('.mp3'): shutil.copy(os.path.join(root, 'bgm', n), os.path.join(d, 'bgm', n))
+    copy_video(d)
     open(os.path.join(d, '.nojekyll'), 'w').close()                      # GitHub Pages: 파일을 그대로 내보내게
 else:
     out = os.path.join(root, 'dist', 'offline.html' if embed else 'index.html')
@@ -115,6 +123,7 @@ else:
         os.makedirs(os.path.join(root, 'dist', 'artifact', 'data'), exist_ok=True)
         out = os.path.join(root, 'dist', 'artifact', 'index.html')
         open(os.path.join(root, 'dist', 'artifact', 'data', 'scenes.json'), 'w', encoding='utf-8').write(scenes_json)
+        copy_video(os.path.join(root, 'dist', 'artifact'))
         assert len(html.encode('utf-8')) < 16 * 1024 * 1024, '아티팩트의 페이지는 16MiB 까지'
 open(out, 'w', encoding='utf-8').write(html)
 open(os.path.join(root, 'dist', 'code.js'), 'w', encoding='utf-8').write('\n'.join(rd(n) for n in CODE))   # 문법 검사용

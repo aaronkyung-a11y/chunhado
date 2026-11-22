@@ -16,7 +16,11 @@ src = open(os.path.join(ROOT, 'dist', 'artifact', 'index.html'), encoding='utf-8
 a, b = "fetch('data/scenes.json')", "fetch('chunhado-v%s.scenes.json')" % (borrow or ver)
 assert src.count(a) == 1, src.count(a)
 out = os.path.join(ROOT, 'versions', 'chunhado-v%s.html' % ver)
-open(out, 'w', encoding='utf-8', newline='\n').write(src.replace(a, b))
+src = src.replace(a, b)
+# v0.19: 영상은 스냅샷 옆이 아니라 한 칸 위의 video/ 에 있다(판마다 따로 두지 않는다 — 지금 올라 있는 영상을 같이 쓴다)
+for va, vb in (("a.src = 'video/' + name + '.mp4'", "a.src = '../video/' + name + '.mp4'"), ("b.src = 'video/' + name + '.webm'", "b.src = '../video/' + name + '.webm'")):
+    if va in src: assert src.count(va) == 1; src = src.replace(va, vb)
+open(out, 'w', encoding='utf-8', newline='\n').write(src)
 if borrow: print('snapshot', out, os.path.getsize(out), '· 큰 그림은 v%s 의 것(지문이 같다)' % borrow)
 else:
     shutil.copy(new, os.path.join(ROOT, 'versions', 'chunhado-v%s.scenes.json' % ver))

@@ -32,7 +32,7 @@ def steps(pg):
     B.start(pg, 0)
     T = pg.evaluate(SETUP); pg.wait_for_timeout(400)
     print('  준비:', T)
-    ok(pg.evaluate('GAME_VERSION') == 'v0.18.1' and T['tt'] >= 2, '판 번호 v0.18.1 · %s → %s 는 걸어서 %d턴' % (T['bn'], T['an'], T['tt']))
+    ok(pg.evaluate('GAME_VERSION') == B.VER and T['tt'] >= 2, '판 번호 %s · %s → %s 는 걸어서 %d턴' % (B.VER, T['bn'], T['an'], T['tt']))
 
     # ---------- ② '지금 할 일'의 군사 표시 ----------
     tips = pg.evaluate('''() => { var A = G.bases[T.a], os = idleOfficers(A), free = G.officers.filter(function (o) { return o.st !== 'active' && o.st !== 'captive' && o.f < 0; });

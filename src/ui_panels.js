@@ -285,8 +285,8 @@ function officerBody(o) {
   var where = o.st === 'free' ? '재야 (' + G.bases[o.loc].n + ')' : o.st === 'captive' ? '포로 (' + G.bases[o.loc].n + ')' : (o.unit !== null ? '출진 중' : G.bases[o.loc].n);
   return '<div class="card">' + sceneTag(o) + '<div class="bars">' + bars + '</div></div>' +
     '<div class="sec">병종 적성</div><div class="apt">' + a + '</div>' +
-    '<p class="note aptn">부대의 공격·방어에 곱해집니다 — C ×' + APT_MUL.C + ' · B ×' + APT_MUL.B + ' · A ×' + APT_MUL.A + ' · S ×' + APT_MUL.S + ' (주장·부장 가운데 가장 높은 적성). 전법은 C 하나 · B 둘 · A부터 셋을 쓰고, 높을수록 잘 통합니다.</p>' +
     (o.sk ? '<p class="skp"><b class="hi">특기 · ' + o.sk + '</b><br>' + SKILLS[o.sk] + '</p>' : '<p class="note">특기 없음</p>') +
+    (bioOf(o) ? '<div class="sec bioh">열전</div><p class="bio">' + bioOf(o) + '</p>' : '') +                  // v0.19: 어떤 사람인가(적성의 곱은 도움말로 옮겼다)
     '<div class="stats"><div><span>소재</span><b>' + where + '</b></div>' + (o.f >= 0 ? '<div><span>충성</span><b>' + (isLord(o) ? '군주' : o.loy + (bondOf(o) ? ' <em class="bond">' + bondOf(o) + '</em>' : '')) + '</b></div><div><span>지휘</span><b>' + fmt(cmdCap(o)) + '</b></div><div><span>공적</span><b>' + fmt(o.merit) + '</b></div>' : '') + '</div>' +
     (un ? '<p class="note ocu">' + (uLeader(un) === o ? '주장' : '부장') + ' — ' + UNIT_TYPES[un.type].name + ' <b>' + fmt(un.troops) + '</b>명 · 기력 ' + un.morale + (APT_IDX[un.type] !== undefined ? ' · 부대 적성 ' + uApt(un) : '') + '</p>' : '') +
     (servedF(o).length ? '<p class="note">섬겼던 세력 — ' + servedTxt(o) + '</p>' : '');
@@ -2039,6 +2039,7 @@ function flowFacility(b, pi) {
 /* 앱으로 설치해 열었을 때 휴대폰의 '뒤로' 단추: ×와 같은 규칙으로 한 단계 물러난다(tools/build.py 의 앱판 스크립트가 부른다).
    물러났으면 true, 더 물러날 곳이 없으면 false(그러면 앱이 '한 번 더 누르면 나갑니다'를 띄운다) */
 function appBack() {
+  if (cineSkip()) return true;                                // v0.19: 도는 영상부터 건너뛴다
   if (ocardOn()) { ocardClose(); return true; }               // v0.18: 겹쳐 뜬 무장 카드부터 닫는다
   if (!G || !$('title').classList.contains('off')) {       // 제목 화면: 떠 있는 창(군주 고르기·도움말)만 닫는다
     if (MODAL && !MODAL.lock) { backDialog(); return true; }
@@ -2321,6 +2322,9 @@ var HELP_HTML = '<div class="help">' +
   '<p>등용과 계략의 성패는 <b>대상마다 미리 정해져 있습니다</b>(계략과 재야·포로 등용은 턴마다, 다른 세력 무장의 등용은 달마다). 그래서 그동안에는 누구에게 다시 물어도 답이 같고, 가장 잘하는 무장이 안 되면 누구도 안 됩니다. 군사를 바꿔 물어도 새로 알 수 있는 것은 없습니다 — 지력이 더 높은 군사의 말이 더 자주 맞을 뿐입니다.</p>' +
   '<h3>무장 명부</h3><p>무장은 모두 ' + SCENARIO.officers.length + '명입니다(v0.17에서 124명이 늘었습니다 — 여성 ' + SCENARIO.women.length + '명). 194년에 이미 세력에 있는 사람 말고는 <b>등장 연도</b>가 되어야 나옵니다: 재야의 사람은 그 도시에서 <b>탐색</b>으로 찾고, 군주의 집안사람은 해가 바뀔 때 스스로 찾아옵니다. 예전 판의 저장을 불러오면 새 무장이 그 판에 덧붙습니다 — 세력에 있던 사람은 그 세력이 살아 있으면 그 세력으로, 망했으면 그 도시의 재야로 갑니다.</p>' +
   '<h3>무장 카드와 특기</h3><p>어느 창에서든 <b>무장의 얼굴을 누르면</b> 그 무장의 능력 · 병종 적성 · 특기 풀이 · 있는 곳이 겹쳐 뜹니다. ×나 바깥을 누르면 닫히고, 하던 일(무장 고르기 · 일기토 등)은 그대로 남습니다. 목록의 특기 이름 옆에는 무엇을 하는 특기인지 한 줄이 붙고, 무장을 고르는 표에는 줄마다 <b>병종 적성</b>(창 · 극 · 노 · 기 · 병기)과 특기가 함께 보입니다.</p>' +
+  '<p><b>병종 적성</b>은 부대의 공격 · 방어에 곱해집니다 — C ×' + APT_MUL.C + ' · B ×' + APT_MUL.B + ' · A ×' + APT_MUL.A + ' · S ×' + APT_MUL.S + '(주장 · 부장 가운데 가장 높은 적성). 전법은 C 하나 · B 둘 · A부터 셋을 쓰고, 높을수록 잘 통합니다.</p>' +
+  '<p><b>열전</b> — 무장 창과 무장 카드에는 그 사람이 누구인지 두세 문장이 붙습니다. 사서에 적힌 일을 바탕으로 했고, 연의나 민간 전승에만 나오는 사람 · 일은 그렇다고 적었습니다.</p>' +
+  '<h3>영상</h3><p>제목 화면의 그림이 움직이고, 새 판을 시작할 때와 판이 끝날 때(천하통일 · 패망) 짧은 영상이 나옵니다. <b>화면을 누르면 건너뜁니다.</b> 메뉴의 <b>영상</b>에서 끌 수 있고, 기기에서 「동작 줄이기」를 켜 두었으면 나오지 않습니다. 소리는 없습니다(음악이 그대로 흐릅니다).</p>' +
   '<h3>가늠 — 확률을 말로</h3><p>성공할 가능성은 숫자 대신 <b>매우 높음 · 높음 · 반반 · 낮음 · 매우 낮음</b>과 눈금 다섯 칸으로 보입니다. 가늠하는 이는 군사와 군주 가운데 지력이 높은 쪽입니다 — 그 지력이 ' + ODDS_FINE + ' 미만이면 <b>높은 듯 · 반반인 듯 · 낮은 듯</b> 셋으로만 어림합니다. 적을 고르면 뜨는 단추 가운데 <i class="rec" style="position:static;display:inline-flex;transform:none">薦</i>이 붙은 것은 <b>군사가 권하는 수</b>입니다(주는 피해에서 받는 반격을 뺀 기대값이 가장 큰 것 — 군사가 없으면 권하지 않습니다). 숫자로 보고 싶으면 <b>메뉴 → 확률 표시</b>. 어느 쪽으로 보든 규칙의 확률은 같습니다.</p>' +
   '<h3>충성과 인연</h3><p>군주와 <b>인연</b>(의형제·혈연·부부·인척·심복)이 있는 무장은 충성이 100이고 내려가지 않습니다 — 무장 창의 충성 옆에 그 사이가 적혀 있습니다. 포로가 되어도 주군의 세력이 남아 있는 한 등용에 거의 응하지 않습니다. 그 밖의 무장은 군주의 매력에 따라 80~98 사이에 자리를 잡습니다. 새로 등용한 무장은 70~85에서 시작해 분기마다 2씩 오르고, 포상으로 올린 충성은 천천히 제자리로 돌아옵니다.</p>' +
   '<h3>닫기(×)와 뒤로 가기</h3><p><b>×는 한 단계만 뒤로</b> 갑니다. 무장 정보를 닫으면 보던 목록으로, 무장 고르는 표를 닫으면 그 앞 창으로 돌아갑니다. 부대에서 대상이나 행군을 고르던 중이면 그것만 물립니다. 막 출진한 부대의 창을 닫으면 나온 성의 출진 탭으로 돌아갑니다.</p>' +
@@ -2595,7 +2599,7 @@ function showMenu() {
   showDialog({
     render: function () {
       return dlgHead('메뉴 — ' + GAME_VERSION) + '<div class="dlg-b"><div class="cmds"><button class="cmd" type="button" data-a="save"><b>저장</b></button><button class="cmd" type="button" data-a="load"><b>불러오기</b></button>' +
-        '<button class="cmd" type="button" data-a="talk"><b>대화창 ' + (UI.talk === false ? '꺼짐' : '켜짐') + '</b></button><button class="cmd" type="button" data-a="snd"><b>효과음 ' + (UI.sound ? '켜짐' : '꺼짐') + '</b></button><button class="cmd" type="button" data-a="voi"><b>음성 ' + (UI.voice === false ? '꺼짐' : '켜짐') + '</b><small>' + (UI.sound ? '중국어' : '효과음이 꺼져 있음') + '</small></button><button class="cmd" type="button" data-a="mus"><b>음악 ' + (UI.music ? '켜짐' : '꺼짐') + '</b>' + (UI.music && BGM.mode === 'file' ? '<small>연주곡</small>' : (UI.music && BGM.mode === 'syn' ? '<small>만든 음악</small>' : '')) + '</button><button class="cmd" type="button" data-a="spd"><b>열흘 재생</b><small>' + SPEEDS[UI.pspeed][0] + '</small></button><button class="cmd" type="button" data-a="pct"><b>확률 표시</b><small>' + (UI.pct ? '숫자(%)' : '말로 가늠') + '</small></button><button class="cmd" type="button" data-a="help"><b>도움말</b></button><button class="cmd" type="button" data-a="share"><b>공유</b></button>' +
+        '<button class="cmd" type="button" data-a="talk"><b>대화창 ' + (UI.talk === false ? '꺼짐' : '켜짐') + '</b></button><button class="cmd" type="button" data-a="snd"><b>효과음 ' + (UI.sound ? '켜짐' : '꺼짐') + '</b></button><button class="cmd" type="button" data-a="voi"><b>음성 ' + (UI.voice === false ? '꺼짐' : '켜짐') + '</b><small>' + (UI.sound ? '중국어' : '효과음이 꺼져 있음') + '</small></button><button class="cmd" type="button" data-a="mus"><b>음악 ' + (UI.music ? '켜짐' : '꺼짐') + '</b>' + (UI.music && BGM.mode === 'file' ? '<small>연주곡</small>' : (UI.music && BGM.mode === 'syn' ? '<small>만든 음악</small>' : '')) + '</button><button class="cmd" type="button" data-a="spd"><b>열흘 재생</b><small>' + SPEEDS[UI.pspeed][0] + '</small></button><button class="cmd" type="button" data-a="pct"><b>확률 표시</b><small>' + (UI.pct ? '숫자(%)' : '말로 가늠') + '</small></button><button class="cmd" type="button" data-a="vid"><b>영상 ' + (UI.video === false ? '꺼짐' : '켜짐') + '</b><small>제목 · 오프닝 · 끝</small></button><button class="cmd" type="button" data-a="help"><b>도움말</b></button><button class="cmd" type="button" data-a="share"><b>공유</b></button>' +
         '<button class="cmd" type="button" data-a="title"><b>처음으로</b></button></div><p class="note">턴마다 자동 저장 · 저장 칸 ' + SAVE_SLOTS + '개 · 이 기기에만 남습니다(다른 기기로는 공유 → 세이브 파일 보내기)</p></div>';
     },
     on: {
@@ -2606,6 +2610,7 @@ function showMenu() {
       voi: function () { UI.voice = UI.voice === false; if (UI.voice === false) voiceStop(true); saveOpts(); toast(UI.voice ? '음성 켬 — 무장이 중국어로 한마디 합니다' : '음성 끔', 2000); refreshDialog(); },
       mus: function () { UI.music = !UI.music; saveOpts(); if (UI.music) playBgm(bgmForState()); else stopBgm(); refreshDialog(); },
       spd: function () { UI.pspeed = (UI.pspeed + 1) % 4; saveOpts(); toast(UI.pspeed ? '열흘 재생: ' + SPEEDS[UI.pspeed][0] : '열흘 재생 끔 — 요약만', 2000); refreshDialog(); },
+      vid: function () { UI.video = UI.video === false; saveOpts(); toast(UI.video ? '영상 켬 — 제목 화면 · 새 판의 오프닝 · 끝' : '영상 끔', 2200); refreshDialog(); },
       pct: function () { UI.pct = !UI.pct; saveOpts(); toast(UI.pct ? '확률을 숫자(%)로 보여 줍니다' : '확률을 말로 가늠해 보여 줍니다 — 높음 · 반반 · 낮음', 2400); refreshDialog(); refreshSheet(); },
       help: function () { showHelp(); },
       share: function () { shareGame(); },
@@ -2615,7 +2620,7 @@ function showMenu() {
 }
 
 /* ---------- 저장 ---------- */
-function saveOpts() { try { localStorage.setItem('chunhado_opts', JSON.stringify({ sound: UI.sound, music: UI.music, pspeed: UI.pspeed, home: HOME.open, talk: UI.talk !== false, voice: UI.voice !== false, pct: !!UI.pct, tback: !!UI.tback })); } catch (e) { /* */ } }
+function saveOpts() { try { localStorage.setItem('chunhado_opts', JSON.stringify({ sound: UI.sound, music: UI.music, pspeed: UI.pspeed, home: HOME.open, talk: UI.talk !== false, voice: UI.voice !== false, pct: !!UI.pct, tback: !!UI.tback, video: UI.video !== false })); } catch (e) { /* */ } }
 function loadOpts() {
   try {
     var o = JSON.parse(localStorage.getItem('chunhado_opts') || '{}');
@@ -2625,6 +2630,7 @@ function loadOpts() {
     if (o.talk === false) UI.talk = false;
     if (o.voice === false) UI.voice = false;
     if (o.pct === true) UI.pct = true;                         // v0.18: 확률을 숫자로(기본은 말)
+    if (o.video === false) UI.video = false;                   // v0.19: 영상 끔
     if (o.tback === true) UI.tback = true;                     // v0.18.1: 수송 창의 '짐을 내린 뒤 돌아온다'
   } catch (e) { /* */ }
 }
@@ -3121,16 +3127,21 @@ function nextUnit() {
   gotoUnit(us[i]);
 }
 function showGameOver() {
+  if (UI.ending === G && (CINE.on || MODAL)) return;         // v0.19: 끝 화면은 한 번만 연다(영상이 도는 동안 다시 불려도)
+  UI.ending = G;
   dropSave();
   var win = G.over === 'win';
   playBgm(win ? 'victory' : 'defeat', true);
+  cinePlay(win ? 'win' : 'lose', { cap: win ? '天下統一' : '敗亡', hold: true }, function () { showOverDialog(win); });      // 영상이 끝나면 그 마지막 장면 위에 창이 뜬다
+}
+function showOverDialog(win) {
   showDialog({
     render: function () {
       return '<div class="dlg-h"><h2>' + (win ? '천하통일' : '패망') + '</h2></div><div class="dlg-b"><p>' + (win ? dateStr() + ', ' + josa(G.factions[G.player].name, '이가') + ' 천하를 하나로 만들었습니다.' : dateStr() + ', ' + G.factions[G.player].name + ' 세력은 역사 속으로 사라졌습니다.') + '</p></div>' +
         '<div class="dlg-f"><div class="pv">' + fmt(G.turn * 10) + '일째</div><button class="btn pri" type="button" data-a="t">처음으로</button></div>';
     },
     lock: true,                                                    // 바깥을 눌러도 닫히지 않는다(닫히면 끝난 판에 갇힌다)
-    on: { t: function () { closeDialog(); G = null; UI.ret = null; hideSheet(); showTitle(); playBgm('title'); } }
+    on: { t: function () { closeDialog(); cineHide(); UI.ending = null; G = null; UI.ret = null; hideSheet(); showTitle(); playBgm('title'); } }
   });
 }
 
@@ -3138,12 +3149,14 @@ function showGameOver() {
 function showTitle() {
   ocardClose();
   $('title').classList.remove('off');
+  titleVideo(true);                                           // v0.19: 제목 그림이 움직인다
   titleBtns(); talkHide();                                    // 제목 화면에는 대화창을 남기지 않는다
   $('tVer').textContent = GAME_VERSION + ' · 삼국지 천하도 · 194년 군웅할거';
 }
 function startGame() {
   ocardClose();
   $('title').classList.add('off');
+  titleVideo(false);
   resize();
   var L = off(G.factions[G.player].lord), b = L.unit !== null ? UMAP[L.unit] : G.bases[L.loc];
   var p = hexCenter(b.c, b.r);
@@ -3171,7 +3184,7 @@ function showFactionSelect() {
     },
     on: {
       f: function (el) { st.f = +el.getAttribute('data-v'); refreshDialog(); },
-      go: function () { if (st.f < 0) return; closeDialog(); keepPrev(); newGame(st.f); saveGame(); startGame(); sfx('gong'); showIntro(); }
+      go: function () { if (st.f < 0) return; closeDialog(); keepPrev(); newGame(st.f); saveGame(); startGame(); sfx('gong'); cinePlay('opening', { cap: '群雄割據', sub: '194년 — 천하는 어지럽고 영웅들이 일어선다' }, function () { showIntro(); }); }      // v0.19: 오프닝 영상(끄면 곧바로 다음 창)
     }
   });
 }
@@ -3207,10 +3220,12 @@ function boot(data) {
   $('ret').addEventListener('click', function () { if (!G || G.over || UI.busy || UI.play || MODAL) return; audioInit(); sfx('ui'); goRet(); });
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
+    if (cineSkip()) return;
     if (ocardOn()) { ocardClose(); return; }
     if (MODAL) { backDialog(); return; }
     if (G && !G.over && !UI.busy && !UI.play && SHEET && !SHEET.home) backSheet();
   });
+  titleVideo(true);                                           // v0.19: 처음 뜬 제목 화면
   $('tNew').addEventListener('click', function () { audioInit(); playBgm('title'); sfx('ui'); showFactionSelect(); });
   $('tCont').addEventListener('click', function () { audioInit(); if (loadGame()) { startGame(); toast(dateStr() + ' — 이어서 합니다'); } else toast('저장된 게임이 없습니다'); });
   $('tLoad').addEventListener('click', function () { audioInit(); playBgm('title'); sfx('ui'); showSaves('load'); });

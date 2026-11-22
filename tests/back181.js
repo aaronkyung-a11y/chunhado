@@ -95,7 +95,7 @@ const AI = JSON.parse(vm.runInContext(`JSON.stringify((function () {
 })())`, ctx));
 
 console.log('준비', JSON.stringify(R.setup));
-ok(R.ver === 'v0.18.1', '판 번호 v0.18.1 [' + R.ver + ']');
+ok(/^v0\.(18\.[1-9]|19|[2-9]\d)/.test(R.ver), '판 번호가 v0.18.1 이후 [' + R.ver + ']');
 ok(R.setup.idle >= 10 && R.setup.tt >= 3, '준비: 쉬는 무장 ' + R.setup.idle + '명 · 돌아오는 데 ' + R.setup.tt + '턴');
 ok(R.flag.back && R.flag.home, '① 돌아온다로 낸 수송대에는 back 이 붙는다(떠나온 거점 = home)');
 ok(R.in1.ok && R.in1.entered && R.in1.gone, '① 아군 거점에 들어간다(부대는 사라진다)');
