@@ -41,9 +41,15 @@ def steps(pg):
     ok(c1['on'] and c1['name'] == 'opening' and c1['disp'] == 'block' and int(c1['z']) >= 60 and c1['t'] > 0.3 and not c1['paused'], '새 판을 시작하면 오프닝 영상이 화면을 덮고 돈다(%s · %.1f초 가운데 %.1f초)' % (c1['src'], c1['dur'], c1['t']))
     ok(c1['cap'] == '群雄割據' and '194년' in c1['sub'] and c1['skip'], '글자는 영상 위에 얹는다: %s / %s · [건너뛰기]' % (c1['cap'], c1['sub']))
     ok(tv['paused'] and pg.evaluate('!MODAL && !!G && $("title").classList.contains("off")'), '그동안 제목의 영상은 멈추고, 판은 이미 시작되어 있다(창은 아직 없다)')
-    pg.touchscreen.tap(190, 400); pg.wait_for_timeout(500)
+    pg.touchscreen.tap(190, 400); pg.wait_for_timeout(120)
+    cm = pg.evaluate('''() => { var b = $('cine'), d = document.querySelector('#modal [data-a=close]'), r = d ? d.getBoundingClientRect() : null, e = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
+      return { cls: b.className, op: +getComputedStyle(b).opacity, pe: getComputedStyle(b).pointerEvents, dur: b.style.transitionDuration, on: CINE.on, modal: !!MODAL, hit: !!d && (e === d || d.contains(e)) }; }''')
+    print('  건너뛴 직후:', cm)
+    ok('out' in cm['cls'] and 0 < cm['op'] < 1 and cm['dur'] == '320ms' and not cm['on'] and cm['modal'] and '194년' in head(pg), 'v0.19.1 화면을 누르면 뚝 끊기지 않고 0.32초 동안 걷힌다 — 그 아래에 첫 창이 이미 떠 있다(불투명도 %.2f)' % cm['op'])
+    ok(cm['pe'] == 'none' and cm['hit'], '걷히는 동안 누름은 아래의 창이 받는다')
+    pg.wait_for_timeout(600)
     c2 = pg.evaluate(CINE)
-    ok(not c2['on'] and c2['cls'] == '' and c2['disp'] == 'none' and '194년' in head(pg), '화면을 누르면 건너뛰고 곧바로 첫 창이 뜬다 — %s' % head(pg))
+    ok(not c2['on'] and c2['cls'] == '' and c2['disp'] == 'none' and '194년' in head(pg), '다 걷히면 영상은 치워진다 — %s' % head(pg))
     tapsel(pg, '#modal [data-a=close]'); pg.wait_for_timeout(500)
 
     # ---------- 3. 열전 ----------
@@ -108,8 +114,17 @@ def steps(pg):
     tapsel(pg, '#modal [data-a=t]'); pg.wait_for_timeout(400)
     pg.evaluate('() => { UI.video = true; window.CN = null; cinePlay("opening", { cap: "群雄割據" }, function (s) { window.CN = s; }); }')
     pg.wait_for_function('$("cine").classList.contains("play")', timeout=8000); pg.wait_for_timeout(300)
-    r = pg.evaluate('appBack()'); pg.wait_for_timeout(200)
+    r = pg.evaluate('appBack()'); pg.wait_for_timeout(700)
     ok(r is True and pg.evaluate('window.CN') is True and pg.evaluate('$("cine").className') == '', '뒤로(appBack)는 도는 영상부터 건너뛴다')
+    # v0.19.1: 저절로 끝날 때 — 끝나기 0.9초 전부터 걷히기 시작하고, 그때 다음 일(done)이 불린다
+    pg.evaluate('() => { window.CN = null; window.CT = null; cinePlay("opening", { cap: "群雄割據" }, function (s) { var v = $("cine").querySelector("video"); window.CN = s; window.CT = v ? [v.currentTime, v.duration, v.paused] : null; }); }')
+    pg.wait_for_function('window.CN !== null', timeout=15000); pg.wait_for_timeout(300)
+    f1 = pg.evaluate('''() => { var b = $('cine'); return { cn: window.CN, ct: window.CT, cls: b.className, op: +getComputedStyle(b).opacity, dur: b.style.transitionDuration, on: CINE.on, disp: getComputedStyle(b).display }; }''')
+    pg.wait_for_timeout(500); f2 = pg.evaluate('+getComputedStyle($("cine")).opacity'); pg.wait_for_timeout(700); f3 = pg.evaluate('[$("cine").className, getComputedStyle($("cine")).display, $("cine").style.transitionDuration]')
+    print('  저절로 끝날 때:', f1, '→', f2, '→', f3)
+    ok(f1['cn'] is False and f1['ct'] and 0.3 < f1['ct'][1] - f1['ct'][0] <= 0.95 and f1['ct'][2] is False, '끝나기 %.2f초 전에 걷히기 시작한다(영상은 아직 도는 중 · 그때 다음 창을 띄운다)' % (f1['ct'][1] - f1['ct'][0]))
+    ok('out' in f1['cls'] and f1['dur'] == '900ms' and f1['disp'] == 'block' and not f1['on'] and 0 < f2 < f1['op'] < 1, '0.9초 동안 서서히 투명해진다(불투명도 %.2f → %.2f)' % (f1['op'], f2))
+    ok(f3 == ['', 'none', ''], '다 걷히면 치워진다')
 def nofile(pg):
     # 한 파일로 만든 판: 옆에 video/ 가 없다 — 조용히 건너뛴다
     pg.evaluate('() => { UI.video = true; titleVideo(true); }'); pg.wait_for_timeout(2500)

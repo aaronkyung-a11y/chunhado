@@ -26,6 +26,7 @@ build/v018/p1_tactics18.py build/v018/p2_unit18.py build/v018/p3_ui18.py build/v
 tools/roster18.py tools/por18_prompt.py tools/make_title18.py tools/make_audio_v018.py tools/snap_split.py art/por18_scenes.tsv art/por18_ids.tsv tests/tac18.js tests/aim18.js tests/d31.py
 build/v0181/q1_back181.py build/v0181/apply.sh tests/back181.js tests/d32.py
 build/v019/p1_v019.py build/v019/apply.sh tests/bio19.js tests/d33.py
+build/v0191/r1_fade191.py build/v0191/apply.sh
 pwa/manifest.webmanifest pwa/sw.js
 tools/geo.py tools/mapgen2.py tools/bake3d.py tools/bake3d_ink.py tools/make_sprites.py tools/make_sprites_ink.py tools/make_roster.py tools/make_portraits.py tools/make_assets_ink.py
 tools/build.py tools/pack_sources.py tools/fetch_art.py tools/contact.py tools/dl_por2.py tools/dl_por3.py

@@ -4,6 +4,7 @@
    · 틀지 않는 때: 메뉴에서 영상을 껐을 때(UI.video === false), 기기에서 '동작 줄이기'를 켰을 때.
    소리는 없다(무음 영상) — 음악은 전처럼 playBgm 이 튼다. */
 var CINE = { on: false, held: false, name: '', t: 0, fin: null, n: 0 };
+var CINE_FADE = { end: 900, skip: 320, lead: 0.9 };         // v0.19.1: 걷히는 시간(ms) — 저절로 끝날 때 · 눌러 건너뛸 때, 끝나기 몇 초 전부터 걷기 시작하는가
 function videoOk() {
   if (UI.video === false) return false;
   try { if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return false; } catch (e) { /* */ }
@@ -38,7 +39,8 @@ function cinePlay(name, opt, done) {
     if (called) return; called = true; clearTimeout(CINE.t); CINE.fin = null;
     if (my === CINE.n) {
       if (opt.hold && !bad && box) { var v0 = box.querySelector('video'); if (v0) { try { v0.pause(); } catch (e) { /* */ } } box.classList.add('held'); CINE.on = false; CINE.held = true; }
-      else cineHide();
+      else if (bad || !box || !box.classList.contains('play')) cineHide();      // 돌지 못했다 — 걷을 것이 없다
+      else cineFade(skipped ? CINE_FADE.skip : CINE_FADE.end, my);             // v0.19.1: 뚝 끊지 않고 서서히 걷는다(done 이 띄우는 다음 창이 그 아래에 먼저 선다)
     }
     if (done) done(!!skipped);
   }
@@ -53,15 +55,23 @@ function cinePlay(name, opt, done) {
     CINE.t = setTimeout(function () { fin(false); }, ((v.duration && isFinite(v.duration)) ? v.duration : 10) * 1000 + 1500);      // ended 가 오지 않을 때를 대비
   });
   v.addEventListener('ended', function () { fin(false); });
+  if (!opt.hold) v.addEventListener('timeupdate', function () { if (v.duration && isFinite(v.duration) && v.duration - v.currentTime <= CINE_FADE.lead) fin(false); });      // v0.19.1: 끝나기 조금 전부터 걷기 시작한다
   vidSet(v, name, function () { bad = true; fin(true); });
   CINE.t = setTimeout(function () { if (!box.classList.contains('play')) { bad = true; fin(true); } }, 3500);                      // 3.5초 안에 돌지 않으면 건너뛴다
   box.onclick = function () { if (!CINE.held) fin(true); };
   try { var p = v.play(); if (p && p.catch) p.catch(function () { bad = true; fin(true); }); } catch (e) { bad = true; fin(true); }
 }
 function cineSkip() { if (CINE.on && CINE.fin) { CINE.fin(true); return true; } return false; }      // Esc · 휴대폰의 뒤로
+/* 덮고 있던 영상을 ms 동안 투명하게 걷는다. 걷히는 동안 영상은 남은 만큼 더 돌고, 누름은 아래의 화면이 받는다 */
+function cineFade(ms, my) {
+  var box = $('cine'); clearTimeout(CINE.t); CINE.on = false; CINE.held = false; CINE.fin = null;
+  if (!box) return;
+  box.onclick = null; box.style.transitionDuration = ms + 'ms'; box.classList.add('out');
+  CINE.t = setTimeout(function () { if (my === CINE.n) cineHide(); }, ms + 80);
+}
 function cineHide() {
   var box = $('cine'); clearTimeout(CINE.t); CINE.on = false; CINE.held = false; CINE.fin = null;
   if (!box) return;
   var v = box.querySelector('video'); if (v) { try { v.pause(); } catch (e) { /* */ } }
-  box.onclick = null; box.className = ''; box.innerHTML = '';
+  box.onclick = null; box.className = ''; box.style.transitionDuration = ''; box.innerHTML = '';
 }
