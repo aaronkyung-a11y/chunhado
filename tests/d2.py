@@ -1,4 +1,4 @@
-# v0.4: 전투 연출 — 근접 공격, 화살, 전법(돌격·밀어내기), 계략(화계), 성 공격, 궤멸을 차례로 걸어 보고 도중 화면을 찍는다
+# v0.4: 전투 연출 — 근접 공격, 화살, 전법(축출·밀어내기), 계략(화계), 성 공격, 궤멸을 차례로 걸어 보고 도중 화면을 찍는다
 import sys, os, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import browser as B

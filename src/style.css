@@ -763,3 +763,81 @@ ul.plain { margin: 6px 0 12px 18px; padding: 0; font-size: 14px; line-height: 1.
 .row .ds.px em, .diph .ds.px em { font-style: normal; color: var(--seal); font-weight: 700; }
 .diph .ds.px { display: block; margin-top: 4px; font-size: 12.5px; color: var(--ink-2); }
 @media (max-width: 380px) { .dks { flex-direction: column; } .dks .vs { align-self: center; } }
+
+/* ── v0.18 전법: 한자 이름 · 효과 딱지 ── */
+.hj { font-style: normal; font-family: var(--font-display); font-weight: 600; font-size: .82em; color: var(--seal); letter-spacing: .04em; margin-left: 1px; }
+.act.pri .hj, .act:active .hj { color: inherit; }
+.act small.fx { display: block; color: var(--ink-2); font-size: 11px; font-weight: 700; line-height: 1.25; }
+.act.pri small.fx, .act:active small.fx { color: inherit; }
+.act.off small.fx { font-weight: 500; }
+.tac .tn .hj { font-size: 13px; }
+
+/* ── v0.18 무장 카드(얼굴을 누르면 겹쳐 뜬다) ── */
+[data-oid] { cursor: pointer; }
+#ocard { position: absolute; inset: 0; z-index: 70; display: none; align-items: center; justify-content: center; padding: max(14px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom)); background: #1b1a1885; }
+#ocard.on { display: flex; animation: ocIn .16s ease-out; }
+@keyframes ocIn { from { opacity: 0; } to { opacity: 1; } }
+.oc { width: 100%; max-width: 430px; max-height: 100%; display: flex; flex-direction: column; background-color: var(--paper); background-image: var(--hanji, none); border: 1.5px solid var(--ink); border-radius: 3px; box-shadow: 0 0 0 3px var(--paper), 0 0 0 4px var(--line-2), 6px 8px 0 #1b1a1833; }
+.oc .dlg-h { flex: none; }
+.oc-b { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px 14px 14px; }
+.oc-b > * + * { margin-top: 10px; }
+.oc-b .skp, .dlg-b .skp { line-height: 1.5; }
+.note.ocu b { color: var(--ink); }
+/* ── v0.18 특기의 짧은 풀이 · 고르는 표의 둘째 줄(병종 적성 + 특기) ── */
+.row .nm small.skg { font: 500 11px var(--font-body); color: var(--ink-2); margin-left: 5px; }
+.tr { grid-template-rows: auto auto; row-gap: 0; padding-top: 4px; padding-bottom: 5px; }
+.tr > .por { grid-row: 1 / 3; align-self: center; }
+.tr .c-2 { grid-column: 2 / -1; display: flex; align-items: baseline; gap: 10px; min-width: 0; margin-top: -3px; font-size: 11.5px; color: var(--dim); }
+.tr .c-2 .ap5 { display: inline-flex; gap: 7px; flex: none; }
+.tr .c-2 .sk2 { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
+.tr .c-2 .sk2 b { color: var(--seal); font-weight: 700; margin-right: 2px; }
+/* ── v0.18 가늠(확률을 말로): 눈금 다섯 칸 ── */
+.odg { display: inline-flex; gap: 2px; margin-left: 5px; vertical-align: 1px; }
+.odg u { width: 5px; height: 9px; border: 1px solid currentColor; border-radius: 1px; opacity: .45; text-decoration: none; }
+.odg u.on { background: currentColor; opacity: 1; }
+.odg.dim u.on { opacity: .62; }
+.odg.lv1 u.on, .odg.lv2 u.on { background: var(--seal); border-color: var(--seal); }
+.act.pri .odg u.on, .act:active .odg u.on { background: currentColor; border-color: currentColor; }
+.tacs .odds.w { display: grid; grid-template-columns: 1.3fr 1fr; }
+.tacs .odds.w b { font-size: 17px; }
+.tacs .odds i.odg { display: inline-flex; color: var(--ink); margin-left: 6px; vertical-align: 2px; }
+.tacs .odds i.odg u { width: 6px; height: 11px; }
+/* 군사의 추천 */
+.act { position: relative; }
+.act .rec { position: absolute; top: 3px; right: 3px; width: 17px; height: 17px; display: flex; align-items: center; justify-content: center; font: 900 11px var(--font-display); font-style: normal; color: var(--seal-ink); background: var(--seal); border: 1px solid var(--seal-2); border-radius: 2px; box-shadow: 1px 1px 0 #1b1a1833; }
+.act.pri .rec { background: var(--paper); color: var(--seal); }
+.say b.rc { color: var(--ink); }
+.note.eye { margin-top: 6px; }
+.note.eye small { display: block; color: var(--dim); }
+
+/* ── v0.18 제목 화면: 관우의 전신이 화면을 채운다. 제목은 세로 한 줄(三國志 + 낙관 天下圖), 단추는 낮게 두 줄 ── */
+#title { background-position: center top; background-size: cover; }
+.t-name { top: max(2.6%, env(safe-area-inset-top)); right: 5.5%; flex-direction: column; align-items: center; gap: 7px; }
+.t-han { font-size: clamp(38px, 11.2vw, 62px); letter-spacing: .05em; text-shadow: 0 0 14px #f4efe3, 0 0 5px #f4efe3, 0 0 2px #f4efe3; }
+.t-seal { margin-top: 0; font-size: clamp(19px, 5.6vw, 28px); padding: 9px 5px 10px; letter-spacing: .1em; box-shadow: inset 0 0 0 2px #fbf3e44d, 2px 3px 0 #1b1a1826; }
+.t-menu { gap: 8px; padding: 30px 18px calc(12px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(#f4efe300, #f4efe3c7 34%, #f4efe3eb); }
+.t-menu button { height: 46px; font-size: 16px; letter-spacing: .14em; background-color: #f4efe3f0; }
+.t-row { gap: 8px; }
+.t-row.t3 button { font-size: 15px; letter-spacing: .06em; }
+.t-ver { font-size: 11.5px; color: var(--ink-2); text-shadow: 0 0 4px #f4efe3; }
+@media (max-height: 620px) { .t-menu button { height: 42px; } .t-menu { padding-top: 22px; gap: 6px; } }
+
+/* ── v0.18 단추에 살짝 두께를: 윗면은 밝게, 아래에 먹빛 그림자 한 줄. 누르면 내려앉는다 ── */
+.cmd, .btn, .act, #bar button, .t-menu button, .du-mv, .x.fold {
+  background-image: linear-gradient(#ffffff6b, #ffffff00 48%, #1b1a180f);
+  box-shadow: 0 2px 0 #1b1a183d, 0 3px 5px #1b1a181a, inset 0 1px 0 #ffffffb3;
+  transition: transform .05s ease-out, box-shadow .05s ease-out;
+}
+.cmd:active, .btn:active, .act:active, #bar button:active, .t-menu button:active, .du-mv:active, .x.fold:active { transform: translateY(2px); box-shadow: 0 0 0 #1b1a1800, inset 0 2px 3px #00000040; background-image: none; }
+.cmd.pri, .btn.pri, .act.pri, #bar #btnEnd, .t-menu button.pri {
+  background-image: linear-gradient(#ffffff38, #ffffff00 52%, #00000024);
+  box-shadow: 0 2px 0 var(--seal-2), 0 3px 6px #1b1a1833, inset 0 0 0 2px #fbf3e440, inset 0 1px 0 #ffffff66;
+}
+.cmd.pri:active, .btn.pri:active, .act.pri:active, #bar #btnEnd:active, .t-menu button.pri:active { box-shadow: inset 0 2px 4px #00000059; background-image: none; }
+.btn.auto { background-image: linear-gradient(#ffffff2e, #ffffff00 52%); box-shadow: 0 2px 0 #000000a6, 0 3px 5px #1b1a1826, inset 0 1px 0 #ffffff47; }
+.cmd.off, .act.off, .btn:disabled, .btn.alt.off, .t-menu button:disabled { box-shadow: 0 1px 0 #1b1a1826; background-image: none; }
+
+/* ── v0.18 행군 · 공격 명령 ── */
+.acts.mfrom { margin: 0 0 8px; }
+.acts.mfrom .act { flex: 1 1 100%; }
+.note.aimn b { color: var(--seal); }

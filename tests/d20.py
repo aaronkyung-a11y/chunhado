@@ -39,7 +39,7 @@ def steps(pg):
     pg.evaluate('talkHide(); clearSel(); showHome()'); pg.wait_for_timeout(300)
     info = pg.evaluate('''(() => { var lb = G.bases[off(G.factions[G.player].lord).loc], cs = facCities(G.player); return { lord: lb.n, lordId: lb.id, others: cs.filter(function (b) { return b !== lb; }).map(function (b) { return [b.id, b.n]; }), ap: G.factions[G.player].ap, regen: apRegen(G.player), ver: GAME_VERSION }; })()''')
     print('  판:', info)
-    ok(info['ver'] == 'v0.17', '판 번호 v0.17 [%s]' % info['ver'])
+    ok(info['ver'] == 'v0.18', '판 번호 v0.18 [%s]' % info['ver'])
     st = pg.evaluate('''(() => { var s = document.querySelector("#sheet .hm-corps"); return s ? { n: s.querySelectorAll(".cpb").length, nw: s.querySelector(".cpb.new") ? s.querySelector(".cpb.new").innerText.replace(/\\n+/g, " / ") : "", before: s.previousElementSibling.className, after: s.nextElementSibling.textContent.slice(0, 5) } : null; })()''')
     ok(st and st['n'] == 1 and '+ 군단' in st['nw'] and 'hm-advp' in st['before'] and st['after'].startswith('지금 할'), 'STATUS 창: 군사의 자리 아래에 [+ 군단] 한 칸 [%s]' % (st and st['nw']))
     B.shot(pg, 'c01_home', 200)
@@ -97,7 +97,7 @@ def steps(pg):
     ok(pg.evaluate('document.querySelector("#modal .cpg").innerText').find('한 달에 한 번') >= 0, '군단 창에 보낼 곳과 "한 달에 한 번"')
     # 군비로
     tapsel(pg, '#modal .cpd .opt[data-v=arm]'); pg.wait_for_timeout(300)
-    ok(cp(pg)['dir'] == 'arm' and pg.evaluate('!document.querySelector("#modal .cpg")'), '군비로 돌리면 목표 줄이 사라진다')
+    ok(cp(pg)['dir'] == 'arm' and pg.evaluate('!document.querySelector("#modal .cpg:not(.cph)") && !!document.querySelector("#modal .cph [data-a=hold]")'), '군비로 돌리면 목표 줄이 사라진다(v0.18: 출격 허용 · 금지를 고르는 줄은 있다)')
 
     # ================= 3. 군단장 바꾸기 =================
     tapsel(pg, '#modal [data-a=lead]'); pg.wait_for_timeout(400)
@@ -129,7 +129,7 @@ def steps(pg):
     bid, bn = info['others'][0]
     pg.evaluate('(id) => { selectBase(G.bases[id]); }', bid); pg.wait_for_timeout(700)
     bs = pg.evaluate('''(() => { var s = document.getElementById("sheet"); return { bn: s.querySelector(".cpbn") ? s.querySelector(".cpbn").innerText.replace(/\\n+/g, " / ") : "", tabs: s.querySelectorAll(".tabs button").length, cmds: Array.prototype.map.call(s.querySelectorAll(".cmd"), function (e) { return e.getAttribute("data-a"); }), rows: s.querySelectorAll(".rows .row").length, spot: !!buildView() }; })()''')
-    ok('제1군단' in bs['bn'] and '군비' in bs['bn'] and c2['lead'] in bs['bn'] and bs['tabs'] == 0 and bs['cmds'] == ['corps', 'direct'] and bs['rows'] >= 1 and not bs['spot'], '맡긴 거점의 창: 명령 탭 대신 군단 띠 + [군단] · [직할로], 무장 목록은 그대로 [%s]' % bs['bn'])
+    ok('제1군단' in bs['bn'] and '군비' in bs['bn'] and c2['lead'] in bs['bn'] and bs['tabs'] == 0 and bs['cmds'] == ['corps', 'direct', 'trans'] and bs['rows'] >= 1 and not bs['spot'], '맡긴 거점의 창: 명령 탭 대신 군단 띠 + [군단] · [직할로] · [수송](v0.18), 무장 목록은 그대로 [%s]' % bs['bn'])
     B.shot(pg, 'c07_base', 200)
     plot = pg.evaluate('(id) => { var b = G.bases[id], p = b.plots.filter(function (q) { return !q.fac; })[0]; return [p.c, p.r]; }', bid)
     taphex(pg, *plot); pg.wait_for_timeout(400)

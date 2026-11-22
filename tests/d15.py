@@ -201,7 +201,7 @@ def steps(pg):
     ok('1만 미만이면 6개월' in pg.evaluate('document.querySelector("#modal .dlg-b").innerText'), '제목을 누르면 그 토막이 펼쳐진다')
     bad = re.findall(r'[^\n]{0,14}[0-9]\s*턴[^\n]{0,8}', hp)
     ok(bad == [], '도움말 어디에도 기간을 "N턴"으로 적은 곳이 없다 %s' % bad[:4])
-    ok('1만 미만이면 6개월, 2만 미만이면 4개월, 그 밖은 3개월' in hp and '교란으로 걸면 20일, 전법(나선첨 등)으로 걸면 10일' in hp, '도움말: 보호 기간은 개월로, 상태 이상은 날수로')
+    ok('1만 미만이면 6개월, 2만 미만이면 4개월, 그 밖은 3개월' in hp and '교란으로 걸면 20일, 전법(난진 등)으로 걸면 10일' in hp, '도움말: 보호 기간은 개월로, 상태 이상은 날수로')
     pg.evaluate('closeDialog()')
     # ---------- 6. 턴 재생 중의 알림(보호가 30일 남았을 때) ----------
     pg.evaluate('''() => { G.units.slice().forEach(function (u) { if (u.f === G.player) { u.status = null; u.done = true; } }); G.peace.until = G.turn + 4; G.peace.broken = {}; UI.pspeed = 2; clearSel(); showHome(); }''')

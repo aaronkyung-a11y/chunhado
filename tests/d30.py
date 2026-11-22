@@ -21,14 +21,14 @@ html = open(os.path.join(ART, 'index.html'), encoding='utf-8').read(); sj = json
 print('0. 파일')
 ok(len(html.encode('utf-8')) < 16 * 1024 * 1024, 'index.html %.2fMiB — 16MiB 아래' % (len(html.encode('utf-8')) / 1048576))
 ok('var SCENES={};' in html and 'var SCENES={"' not in html and "fetch('data/scenes.json')" in html, '큰 그림은 페이지에 없고 data/scenes.json 을 받아 오게 되어 있다')
-ok(len(sj) == 205 and all(isinstance(v, str) and len(v) > 1000 for v in sj.values()), 'data/scenes.json: 큰 그림 %d장(%.2fMiB)' % (len(sj), os.path.getsize(os.path.join(ART, 'data', 'scenes.json')) / 1048576))
+ok(len(sj) == 265 and all(isinstance(v, str) and len(v) > 1000 for v in sj.values()), 'data/scenes.json: 큰 그림 %d장(%.2fMiB)' % (len(sj), os.path.getsize(os.path.join(ART, 'data', 'scenes.json')) / 1048576))
 SHOW = '''(n) => { closeDialog(); showOfficer(G.officers.filter(function (o) { return o.n === n; })[0]); var c = document.querySelector('#modal .card'); return { sc: !!c.querySelector('.por.sc'), lg: !!c.querySelector('.por.lg'), bg: (c.querySelector('.por') || {}).style ? c.querySelector('.por').style.backgroundImage.slice(0, 12) : '' }; }'''
 IMG = '''(key) => new Promise(function (res) { var u = sceneUrl(key); if (!u) return res(0); var a = new Image(); a.onload = function () { res(a.naturalWidth); }; a.onerror = function () { res(-1); }; a.src = u; })'''
 def steps(pg):
     print('1. 받아 온다')
     pg.wait_for_function('window.SCENES_READY === true', timeout=30000)
     st = pg.evaluate('({ n: Object.keys(SCENES).length, need: SCENARIO.officers.filter(function (o) { return !/^g[mcf]\\\\d/.test(o.por) && !SCENES[o.por]; }).map(function (o) { return o.n; }), ver: GAME_VERSION })')
-    ok(st['n'] == 205 and st['need'] == [] and st['ver'] == 'v0.17', '페이지가 뜬 뒤 큰 그림 %d장을 받아 왔다(제 초상이 있는 무장은 모두 큰 그림이 있다) %s' % (st['n'], st['need'][:3]))
+    ok(st['n'] == 265 and st['need'] == [] and st['ver'] == 'v0.18', '페이지가 뜬 뒤 큰 그림 %d장을 받아 왔다(제 초상이 있는 무장은 모두 큰 그림이 있다) %s' % (st['n'], st['need'][:3]))
     pg.evaluate('([f, s]) => { localStorage.clear(); newGame(f, s); saveGame(); }', [10, 1]); pg.reload(); pg.wait_for_function('window.R3 && R3.ready', timeout=60000)
     pg.wait_for_function('window.SCENES_READY === true', timeout=30000); pg.wait_for_timeout(400)
     tapsel(pg, '#tCont'); pg.wait_for_timeout(1300)

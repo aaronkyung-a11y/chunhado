@@ -145,6 +145,10 @@ for _n, _w in R17.WOMEN.items():
     CHA[_n] = _w[4]; APT[_n] = _w[5]; SKILL[_n] = _w[6]
     if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'art', 'raw17', _w[7] + '.png')): PORTRAIT[_n] = _w[7]
 if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'art', 'raw17', 'daqiao.png')): PORTRAIT['대교'] = 'daqiao'      # 그동안 공용 그림(gf1)을 썼다
+import roster18 as R18                              # v0.18: 공용 초상을 쓰던 이름난 무장 60명에게 제 초상(그림이 있는 것만)
+for _n, _k in R18.PORTRAIT18.items():
+    assert _n not in PORTRAIT and _k not in PORTRAIT.values(), (_n, _k)
+    if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'art', 'raw18', _k + '.png')): PORTRAIT[_n] = _k
 
 L = 'CBAS'
 def jit(name, mod):

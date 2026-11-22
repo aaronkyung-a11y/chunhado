@@ -153,8 +153,8 @@ function run(N) {
   chk('성공 때 반격 = 보통 공격 반격의 ' + Math.round(TACTIC_K.okCounter / 0.55 * 100) + '%', t2.nCOk > 200 && Math.abs(cOk / bc - TACTIC_K.okCounter / 0.55) < 0.05, (cOk / bc).toFixed(3) + ' n=' + t2.nCOk);
   chk('실패 때 반격 = 보통 공격 반격의 ' + Math.round(TACTIC_K.failCounter / 0.55 * 100) + '%', t2.nCFail > 200 && Math.abs(cFl / bc - TACTIC_K.failCounter / 0.55) < 0.06, (cFl / bc).toFixed(3) + ' n=' + t2.nCFail);
   chk('실패 때 피해 = 보통 공격의 ' + Math.round(TACTIC_K.failDmg * 100) + '%', Math.abs(dFl2 / bd - TACTIC_K.failDmg) < 0.04, (dFl2 / bd).toFixed(3));
-  chk('성공하면 반격을 빠짐없이 받는다(이단첨)', t2.nCOk === t2.ok + t2.crit, t2.nCOk + ' / ' + (t2.ok + t2.crit));
-  rows.push('v0.8 조운 6천 → 하후돈 2만4천 이단첨: 보통 공격 ' + Math.round(bd) + ' / 반격 ' + Math.round(bc) + ' | 전법 성공 ' + Math.round(t2.dmgOk / Math.max(1, t2.ok)) + ' / 반격 ' + Math.round(cOk) + ' | 실패 ' + Math.round(dFl2) + ' / 반격 ' + Math.round(cFl) + ' | 상대 6천일 때 성공 피해 ' + Math.round(t1.dmgOk / Math.max(1, t1.ok)));
+  chk('성공하면 반격을 빠짐없이 받는다(탈기)', t2.nCOk === t2.ok + t2.crit, t2.nCOk + ' / ' + (t2.ok + t2.crit));
+  rows.push('v0.8 조운 6천 → 하후돈 2만4천 탈기: 보통 공격 ' + Math.round(bd) + ' / 반격 ' + Math.round(bc) + ' | 전법 성공 ' + Math.round(t2.dmgOk / Math.max(1, t2.ok)) + ' / 반격 ' + Math.round(cOk) + ' | 실패 ' + Math.round(dFl2) + ' / 반격 ' + Math.round(cFl) + ' | 상대 6천일 때 성공 피해 ' + Math.round(t1.dmgOk / Math.max(1, t1.ok)));
   placeUnit(A, kA[0], kA[1]); placeUnit(D, kD[0], kD[1]);
   return { rows: rows, fails: FAILS };
 }

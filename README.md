@@ -1,6 +1,6 @@
 # 삼국지 천하도 (三國志 天下圖)
 
-삼국지 11 PK식 시스템의 모바일 단일 HTML 게임. 현재 v0.12.1(Claude 앱 안에서 세이브 파일 내보내기). v0.12(쏘는 소리를 새로 만듦 · 전법 실패의 피해 85% · 시설 칸을 지나가고 설 수 있음 · 세이브 파일 보내기와 가져오기 · 나갈 자리 고르기 · 아래에 더 있다는 표시). v0.11(시설의 레벨 표시 · 무장 줄의 적성 · 치안 풀이 · 출진 군량 90~360일분 · 공유 · 등용과 옛 관계 · 수송대의 보급 · 군사의 헌책과 탐색 조언 · 확대한 지도). v0.10.1(고른 시설의 표시 · 군사의 적중률 = 지력 · 공사장 그림 · 세이브 칸). v0.10(군단에 맡기기). v0.9.3(부지 번호 · 대화창). v0.9.2(화면의 글을 덜어 냄 · 건설을 고르면 지도가 어두워지고 지을 수 있는 빈 부지만 밝게 — 규칙은 0.9.1 그대로) — 변경 내역은 `CHANGELOG.md`. v0.9.1(기간을 턴 수가 아니라 날짜·날수·개월로 적는다 · 초반 보호 6·4·3개월 · 전법: 성공해도 반격은 통상 공격만큼, 무장의 차이를 더 크게, 전법 풀이에 기대값). v0.9: 군사(軍師)를 두고 등용·계략 전에 조언을 듣는다 · 이웃 거점에 있는 다른 세력의 무장을 등용한다. v0.8.1: 초반 보호 · 혼란·위보·불길 표시. v0.8: 건설 담당 묶기·성역 멈춤 없앰·돈과 병량 약 2배·전법 균형·부지 10·13·16곳·충성과 인연·지도 끝·초상 가운데 맞춤.
+삼국지 11 PK식 시스템의 모바일 단일 HTML 게임. **현재 v0.18**(무장 카드 · 확률을 말로 · 전법의 한자 이름과 견인 · 관우 전신의 제목 화면 · 초상 60장 · 행군 단추 없이 누르면 행군 · 공격 명령 · 충차 · 군단의 출격 금지 — 아래 "v0.18에서 바뀐 것의 자리"). 그 앞의 판은 CHANGELOG.md 에. 아래는 v0.12.1 때의 머리말: v0.12.1(Claude 앱 안에서 세이브 파일 내보내기). v0.12(쏘는 소리를 새로 만듦 · 전법 실패의 피해 85% · 시설 칸을 지나가고 설 수 있음 · 세이브 파일 보내기와 가져오기 · 나갈 자리 고르기 · 아래에 더 있다는 표시). v0.11(시설의 레벨 표시 · 무장 줄의 적성 · 치안 풀이 · 출진 군량 90~360일분 · 공유 · 등용과 옛 관계 · 수송대의 보급 · 군사의 헌책과 탐색 조언 · 확대한 지도). v0.10.1(고른 시설의 표시 · 군사의 적중률 = 지력 · 공사장 그림 · 세이브 칸). v0.10(군단에 맡기기). v0.9.3(부지 번호 · 대화창). v0.9.2(화면의 글을 덜어 냄 · 건설을 고르면 지도가 어두워지고 지을 수 있는 빈 부지만 밝게 — 규칙은 0.9.1 그대로) — 변경 내역은 `CHANGELOG.md`. v0.9.1(기간을 턴 수가 아니라 날짜·날수·개월로 적는다 · 초반 보호 6·4·3개월 · 전법: 성공해도 반격은 통상 공격만큼, 무장의 차이를 더 크게, 전법 풀이에 기대값). v0.9: 군사(軍師)를 두고 등용·계략 전에 조언을 듣는다 · 이웃 거점에 있는 다른 세력의 무장을 등용한다. v0.8.1: 초반 보호 · 혼란·위보·불길 표시. v0.8: 건설 담당 묶기·성역 멈춤 없앰·돈과 병량 약 2배·전법 균형·부지 10·13·16곳·충성과 인연·지도 끝·초상 가운데 맞춤.
 
 - **바로 하기 / 앱으로 설치**: https://aaronkyung-a11y.github.io/chunhado/ — 휴대폰 크롬에서 열고 제목 화면의 **앱으로 설치**(또는 브라우저 메뉴의 *홈 화면에 추가*)를 누르면 앱처럼 전체 화면으로 열리고, 한 번 연 뒤에는 인터넷 없이도 된다.
 - 저장소에 올라 있는 것: 맨 위의 `index.html`·`manifest.webmanifest`·`sw.js`·`icons/`·`bgm/`가 게임(= `tools/build.py --pwa`의 결과), 나머지가 소스.
@@ -38,6 +38,23 @@
   - 움직이는 동안의 소리는 `sfxMove(병과, ms)`(보병 발소리·기병 말발굽·수레), 전투 연출 도중의 소리는 `src/fx.js`의 시간표(`tracks`)에 `on: function () { sfx(...) }`로, 타격 순간의 소리는 `ui_panels.js`의 `resultFx`에서.
 - **음악**: `BGM_TRACKS`가 장면(title·field·tense·battle·victory·defeat)마다 곡을 정한다. 여러 곡이면 끝날 때마다 다음 곡으로 돌아간다. 지금의 장면은 `bgmForState()` — 싸운 지 한 턴 안이거나 적이 내 성 2칸 안이면 전투, 적 부대가 내 성 7칸·내 부대 4칸 안이거나 내 부대가 남의 성역에 있으면 긴장, 아니면 평시.
   - 곡을 바꾸려면 `bgm/<이름>.mp3`를 바꿔 넣으면 된다(앱판은 `pwa/sw.js`의 `BGM` 번호도 올린다). 곡을 늘리려면 `BGM_TRACKS`에 이름을 더한다.
+
+## v0.18에서 바뀐 것의 자리
+- **무장 카드**(얼굴을 누르면 겹쳐 뜬다): `ui_panels.js`의 `oidAttr(o)`가 초상(`porTag` · `sceneTag` · `duel.js`의 `duPor`)에 `data-oid`를 달고, `ocardInit()`의 잡는 단계 누름 처리기가 `#ocard` 층에 `officerBody(o)`를 띄운다. 창(`MODAL`)의 흐름과 따로 논다 — 닫는 것은 × · 바깥 · Esc · 휴대폰의 뒤로(`appBack`). STATUS 창의 군주 초상 단추(`data-a=lord`)만은 제 일(무장 창)을 한다.
+- **특기 풀이 · 적성**: `data.js`의 `SKILL_TAG`(18자 안의 짧은 풀이) → `skTag(o)`가 이름 옆에 붙인다. 무장을 고르는 표(`pickOfficers`)는 줄마다 둘째 줄(`.c-2`)에 `apt5(o)`와 특기.
+- **가늠(확률을 말로)**: `ui_panels.js`의 `pcT`(한 마디) · `pcG`(말 + 눈금 다섯 칸) · `pcBest` · `pcWas` · `accT`(군사의 조언). 가늠하는 이는 `oddsEye()` — 군사와 군주 가운데 지력이 높은 쪽, `ODDS_FINE`(70) 미만이면 셋으로 어림. `UI.pct`(메뉴 → 확률 표시, `chunhado_opts`에 남는다)가 켜져 있으면 모두 예전의 `%` 글 그대로다. **시험 틀(`tests/browser.py`)은 `UI.pct`를 켜 둔다** — 말로 보는 화면은 `tests/d31.py`가 끄고 본다.
+- **군사의 추천(薦) · 공격 명령이 고르는 수**: `core.js`의 `bestStrike(u, d)` 한 곳 — 보통 공격과 쓸 수 있는 전법 가운데 `주는 피해 − 받는 반격`의 기대값(`attackExpect` · `tacticExpect`)이 가장 큰 것. 전법은 보통 공격보다 5% 넘게 나을 때만.
+- **전법의 이름**: `data.js`의 `TACTICS` — id는 그대로, `name`(새 이름) · `han`(한자) · `tag`(단추의 효과 한 줄). 화면(`fx.js` · `ui_panels.js`)은 이름 글자가 아니라 `tacIdOf(res)`로 가린다(`res.tacId`, 옛 기록은 `TACTIC_OLD`로). **견인**(`pull: true`)의 끌어당김은 `unitTactic0`, 미리 아는 것은 `pullRoom(u, d)`.
+- **부대 이름표**: `ui3d.js`의 `drawLabel(…, face)` — 얼굴 딱지(`faceAt`)를 판의 왼쪽 위 모서리에 걸쳐 한 장으로 그린다. 스프라이트의 기준점은 `L.ax · L.ay`(판의 윗변 가운데).
+- **제목 화면**: 그림은 `tools/make_title18.py`(`art/title18/guanyu_full.png` → `title.jpg`) → `TITLE=… tools/make_assets_v08.py`가 `src/assets.js`의 `TITLE_IMG`로. `tools/build.py`가 그것을 **CSS(`#title { background-image }`)로 옮겨** 큰 스크립트를 읽기 전에 그려지게 한다. 아이콘의 낙관은 `tools/make_icons.py`(天下圖) — 아이콘을 바꾸면 `pwa/sw.js`의 `SHELL` 번호를 올린다(지금 2).
+- **초상 60장**: `tools/roster18.py`(이름 → 키) · `art/por18_scenes.tsv`(장면) · `tools/por18_prompt.py` → `POR=18 tools/dl_por17.py` → `art/raw18/` → `tools/facebox.py` → `art/raw18m`(= `raw17m` + `raw18`) → `tools/make_assets_v08.py`. 명부는 `por`만 바뀐다(번호 · 능력치 그대로).
+- **레벨이 없는 시설**: `FAC[t].noLv`(공방 · 조폐 · 곡창) → `facHasLv(t)`. `mergeCandidates`가 내놓지 않아 합칠 수 없고(AI도), 화면은 `facLv(fc)`로 레벨을 적지 않는다. 옛 저장의 Lv2 · Lv3은 `deserialize`에서 1로.
+- **소리**: 북 둘(`drum` · `drums`)은 `tools/make_audio_v018.py`가 셈으로 만든다(`build/sfxdata.v017.js` → `src/sfxdata.js` = `build/sfxdata.v018.js`). 출진의 장면은 `CUES.deploy`.
+- **충차**: `UNIT_TYPES.ram`(이동력 10 · 공성 8) · `ROAD_COST`(길의 칸값은 셋 다 2). 재는 것은 `build/logs/v018/ramspeed.js`(이웃 거점 사이의 날수) · `capt18.js`(AI 끼리의 판에서 성이 넘어가는 빠르기).
+- **행군 · 공격 명령**: [행군] 단추가 없다. `ui_panels.js`의 `onTap` — 파란 칸 밖의 땅 → `orderMarch`(곧바로 `marchStep`), 닿지 않는 적 → `orderAim`(`core.js`의 `aimSet` + `aimApproach`), 내 성 · 빈 성 → 그 성의 창 + `[data-a=marchhere]`(`UI.mfrom`). [이동 취소]가 방금 내린 명령의 첫걸음을 물리면 명령도 되돌린다(`UI.mNew`). 규칙은 `core.js`: `u.aim = { k, id }` · `aimTarget` · `aimStep`(턴을 마칠 때 `turnStepper`가 행군 다음 · 군단보다 먼저 한 부대씩 — 단계의 `kind`는 `'aim'`).
+- **군단**: `corpsSortie(cp)`(공격 방침은 늘 · 내정 방침은 나가지 않는다 · 군비 · 지원은 `cp.hold`) · `corpsSetHold` · `corpsRecall`. `ai.js`의 `corpsOrders`가 `aiDefense`를 그에 따라 부르고, `aiUnitAct`가 `corpsHolds(u)`인 부대를 귀환시킨다. 군단의 거점 창의 [수송]은 `flowTransport`(군단장은 뺀다).
+- **스냅샷**: 한 파일이 20MiB를 넘어 `python3 tools/snap_split.py <버전>`이 `versions/chunhado-v<버전>.html` + `.scenes.json`으로 둔다(아티팩트에 올리는 판과 같은 꼴).
+- 시험: `node tests/tac18.js`(전법 · 견인 · 특기 풀이 · 시설) · `node tests/aim18.js`(공격 명령 · 충차 · 군단의 출격) · `python3 tests/d31.py`(화면).
 
 ## 무장 명부(v0.17 — 301 → 425명)
 - **명부**: `tools/make_roster.py <群雄割據 삼국지 index.html> src/roster.js`. 더한 124명은 `tools/roster17.py`에 있다 — `WOMEN`(여자 38명: 능력치 · 매력 · 적성 · 특기 · 초상 키, 모두 자체 산정) · `ACTIVE17`(194년에 세력에 있는 사람) · `FUTURE17`(재야 · 뒷날 나오는 사람: 이름 · 연도 · 도시 · 합류할 군주) · `CHA17` · `SKILL17`. 남자 86명의 능력치는 원본의 무장 표에서 온다.

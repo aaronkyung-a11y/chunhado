@@ -46,7 +46,7 @@ try:
         # ---------- 2. 저장(캐시) ----------
         ca = pg.evaluate('''async () => { var out = {}; var ks = await caches.keys(); for (var i = 0; i < ks.length; i++) { var c = await caches.open(ks[i]); out[ks[i]] = (await c.keys()).map(function (r) { return r.url.replace(location.origin, ''); }); } return out; }''')
         print('  저장:', {k: len(v) for k, v in ca.items()})
-        sh = ca.get('chunhado-shell-1', [])
+        sh = ca.get('chunhado-shell-2', [])
         check('화면·manifest·아이콘 5개가 저장됨', '/' in sh and '/manifest.webmanifest' in sh and len([x for x in sh if x.startswith('/icons/')]) == 5, sh)
         # 음악 미리 받기: 화면이 뜨고 6초 뒤에 시작한다
         n = 0

@@ -76,7 +76,8 @@ function aiUnitAct(u) {
 
   // 1) 공격 기회
   var best = null, bv = 0, rg = uRange(u);
-  if (mode !== 'supply') {
+  if (corpsHolds(u) && mode !== 'supply' && mode !== 'garrison') mode = 'return';      // v0.18: 싸우러 나가지 않는 군단의 부대 — 돌아간다
+  if (mode !== 'supply' && !corpsHolds(u)) {
     var en = enemyUnitsNear(f, u.c, u.r, 9);
     var onlyHere = (mode === 'return');
     for (i = 0; i < en.length; i++) {
@@ -184,7 +185,7 @@ function aiReport(u, res, tg) {
   if (tg && tg.f === G.player) {
     var txt = facName(u.f) + ' ' + uLeader(u).n + '대';
     if (res.kind === 'ploy') txt += '의 ' + res.ploy + (res.success ? ' 성공' : ' 실패') + ' → ' + (uLeaderSafe(tg)) + (res.dmg ? ' (-' + nf(res.dmg) + ')' : '') + (res.success && res.st ? ' — ' + statusName(res.st) + ' ' + res.stN * 10 + '일' : '');
-    else if (res.kind === 'tactic') txt += '의 ' + res.tac + (res.fail ? ' 실패' : (res.crit ? ' 대성공' : '')) + ' → ' + uLeaderSafe(tg) + ' (-' + nf(res.dmg) + ')' + (res.confused ? ' — 혼란 ' + res.stN * 10 + '일' : '');
+    else if (res.kind === 'tactic') txt += '의 ' + res.tac + (res.fail ? ' 실패' : (res.crit ? ' 대성공' : '')) + ' → ' + uLeaderSafe(tg) + ' (-' + nf(res.dmg) + ')' + (res.pulled ? ' — 끌어당김' : '') + (res.confused ? ' — 혼란 ' + res.stN * 10 + '일' : '');
     else txt += '의 공격 → ' + uLeaderSafe(tg) + ' (-' + nf(res.dmg) + ')';
     if (res.duel) txt += ' · 일기토 ' + (res.duel.draw ? '비김' : (res.duel.win ? res.duel.a : res.duel.d) + ' 승');
     if (res.killed) txt += ' 궤멸';
@@ -620,7 +621,7 @@ function corpsSupply(cp) {
 function corpsOrders(cp) {
   var f = G.player;
   cp.wait = null;                                                     // 공격인데 아직 나서지 못한 까닭: { need, have }(병력) · { ap: 1 }(행동력)
-  aiDefense(f);
+  if (corpsSortie(cp)) aiDefense(f);                                  // v0.18: 내정 방침 · 출격 금지에서는 막으러 나가지 않는다(성이 스스로 막는다)
   if (cp.dir === 'atk') aiOffense(f);                                 // 공격: 나설 수 있으면 내정보다 먼저 나선다
   if (cp.dir === 'sup') corpsSupply(cp);                              // 지원: 보낼 것부터 싣는다(내정에 무장을 다 쓰기 전에)
   var saving = cp.dir === 'atk' && cp.wait && cp.wait.ap;             // 병력은 찼는데 행동력이 모자라다 → 이번 턴은 내정을 쉬고 모은다

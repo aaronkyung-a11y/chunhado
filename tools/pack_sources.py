@@ -22,6 +22,8 @@ build/v014/p1_dip_core.py build/v014/p2_dip_ui.py build/v014/p3_touch.py build/v
 build/v015/p1_terrain.py build/v015/p2_terrain_ui.py build/v015/apply.sh tools/terrain15.py tests/terr15.js tests/d27.py
 build/v016/p1_core16.py build/v016/p2_ui16.py build/v016/apply.sh tests/ai16.js tests/d28.py
 build/v017/p1_roster17.py build/v017/apply.sh tools/roster17.py tools/por17_prompt.py tools/dl_por17.py art/por17_scenes.tsv art/por17_ids.tsv tests/roster17.js tests/d29.py tests/d30.py
+build/v018/p1_tactics18.py build/v018/p2_unit18.py build/v018/p3_ui18.py build/v018/p4_title18.py build/v018/p5_fac18.py build/v018/p6_sound18.py build/v018/p7_ram18.py build/v018/p8_march18.py build/v018/p9_corps18.py build/v018/apply.sh
+tools/roster18.py tools/por18_prompt.py tools/make_title18.py tools/make_audio_v018.py tools/snap_split.py art/por18_scenes.tsv art/por18_ids.tsv tests/tac18.js tests/aim18.js tests/d31.py
 pwa/manifest.webmanifest pwa/sw.js
 tools/geo.py tools/mapgen2.py tools/bake3d.py tools/bake3d_ink.py tools/make_sprites.py tools/make_sprites_ink.py tools/make_roster.py tools/make_portraits.py tools/make_assets_ink.py
 tools/build.py tools/pack_sources.py tools/fetch_art.py tools/contact.py tools/dl_por2.py tools/dl_por3.py

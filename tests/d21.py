@@ -54,14 +54,15 @@ def steps(pg):
     pg.evaluate('localStorage.clear()'); reload(pg)
     t0 = pg.evaluate('[$("tCont").disabled, $("tLoad").disabled, $("tLoad").textContent, getComputedStyle($("tLoad")).display !== "none"]')
     ok(t0 == [True, False, '불러오기', True], '저장이 없는 제목 화면: [이어하기]는 꺼져 있고 [불러오기]는 열린다(v0.12 — 받은 세이브 파일을 가져올 수 있다) %s' % t0)
-    r = pg.evaluate('(() => { var a = $("tCont").getBoundingClientRect(), b = $("tLoad").getBoundingClientRect(); return [Math.round(a.top) === Math.round(b.top), Math.round(a.width), Math.round(b.width), Math.round(b.right) <= window.innerWidth]; })()')
-    ok(r[0] and abs(r[1] - r[2]) <= 2 and r[3], '두 단추가 한 줄에 나란히 %s' % r)
+    # v0.18: 제목의 단추는 두 줄 — [새 게임 | 이어하기] · [불러오기 | 도움말 | 공유]
+    r = pg.evaluate('(() => { var n = $("tNew").getBoundingClientRect(), a = $("tCont").getBoundingClientRect(), b = $("tLoad").getBoundingClientRect(), h = $("tHelp").getBoundingClientRect(), s = $("tShare").getBoundingClientRect(); return [Math.round(n.top) === Math.round(a.top) && Math.round(b.top) === Math.round(h.top) && Math.round(h.top) === Math.round(s.top) && b.top > a.top, Math.round(n.width), Math.round(a.width), Math.round(s.right) <= window.innerWidth && Math.round(a.right) <= window.innerWidth, Math.round(b.width), Math.round(s.width)]; })()')
+    ok(r[0] and abs(r[1] - r[2]) <= 2 and r[3] and abs(r[4] - r[5]) <= 2, '제목의 단추가 두 줄에 나란히 %s' % r)
     pg.evaluate('() => { newGame(13, 4242); saveGame(); }'); reload(pg)
     tapsel(pg, '#tCont'); pg.wait_for_timeout(1500)
     if pg.evaluate('!!MODAL'): pg.evaluate('closeDialog()')
     pg.evaluate('talkHide()')
     info = pg.evaluate('(() => { var A = facAdv(G.player); return { ver: GAME_VERSION, f: G.factions[G.player].name, adv: A.n, int: A.int }; })()')
-    ok(info['ver'] == 'v0.17', '판 번호 v0.17 [%s]' % info['ver'])
+    ok(info['ver'] == 'v0.18', '판 번호 v0.18 [%s]' % info['ver'])
     ok(info['f'] == '왕랑', '(준비) 왕랑으로 시작 — 군사 %s(지력 %d)' % (info['adv'], info['int']))
 
     # ================= 1. 군사의 적중률 = 지력 =================

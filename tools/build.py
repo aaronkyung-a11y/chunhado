@@ -16,6 +16,10 @@ THREE_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.j
 terrain = "var TERRAIN_B64='" + base64.b64encode(open(os.path.join(root, 'build', 'terrain.jpg'), 'rb').read()).decode('ascii') + "';\n"
 CODE = ['mapdata.js', 'roster.js', 'data.js', 'core.js', 'ai.js', 'ui3d.js', 'fx.js', 'voice.js', 'duel.js', 'ui_panels.js']
 assets = rd('assets.js')
+# v0.18: 제목 그림(TITLE_IMG)은 CSS 로 옮긴다 — 큰 스크립트를 다 읽기 전, 첫 화면부터 그려지게(앱을 열자마자 보이는 그림이다)
+_mt = re.search(r'^var TITLE_IMG="([^"]+)";$', assets, re.M)
+TITLE_CSS = ('\n/* 제목 그림(tools/build.py 가 src/assets.js 의 TITLE_IMG 를 옮겨 넣는다) */\n#title { background-image: url(' + _mt.group(1) + '); }\n') if _mt else ''
+if _mt: assets = assets[:_mt.start()] + 'var TITLE_IMG="";' + assets[_mt.end():]
 scenes_json = None
 if split:
     import re, json
@@ -90,7 +94,7 @@ PWA_JS = """<script>
   });
 })();
 </script>"""
-html = rd('index.html').replace('/*__CSS__*/', rd('style.css')).replace('<!--__THREE__-->', tag).replace('/*__JS__*/', js)
+html = rd('index.html').replace('/*__CSS__*/', rd('style.css') + TITLE_CSS).replace('<!--__THREE__-->', tag).replace('/*__JS__*/', js)
 assert '<!--__PWA_HEAD__-->' in html and '<!--__PWA_JS__-->' in html
 html = html.replace('<!--__PWA_HEAD__-->', PWA_HEAD if pwa else '').replace('<!--__PWA_JS__-->', PWA_JS if pwa else '')
 os.makedirs(os.path.join(root, 'dist'), exist_ok=True)

@@ -226,71 +226,77 @@ function animAct(res, done, onImpact) {
     tracks.push({ a: hit, b: hit, on: impact });
     end = hit + 720;
   } else {
-    var tac = res.kind === 'tactic' ? res.tac : '', pre = 0;
+    var tac = tacIdOf(res), pre = 0;                         // v0.18: 전법은 id 로 가린다(이름은 바뀔 수 있다)
     if (res.kind === 'tactic') {                             // 전법: 먼저 기합(인주빛 고리)
       fxMark(tracks, 0, 420, 'enso', FX_SEAL, pa, 0.9, 2.3, Math.random() * 6.28, { dy: 0.35, spin: 1.6, fade: 1.2 });
       if (A) tracks.push({ a: 0, b: 240, step: function (u) { var s = 1 + 0.16 * Math.sin(Math.PI * u); A.sp.scale.set(A.sp.userData.w * s, A.sp.userData.h * s, 1); } });
       tracks.push({ a: 0, b: 0, on: function () { if (!voiced) sfx('shout'); } });      // 음성이 나가면 기합 효과음은 겹치지 않게 뺀다
       pre = 230;
     }
-    var bowLike = ranged || tac === '화시' || tac === '관시' || tac === '난사';
+    var bowLike = ranged || tac === 'hwasi' || tac === 'gwansi' || tac === 'nansa';
     if (bowLike) {
       // 쏘는 공격: 몸을 젖혔다가 화살 무리
       if (A) tracks.push({ a: pre, b: pre + 260, step: function (u) { fxPut(A, fxLerp(pa, pt, -0.10 * Math.sin(Math.PI * u))); } });
-      var n = tac === '난사' ? 14 : (tac === '관시' ? 1 : (big ? 9 : 6)), colA = tac === '화시' && !res.fail ? FX_FIRE : FX_INK;
+      var n = tac === 'nansa' ? 14 : (tac === 'gwansi' ? 1 : (big ? 9 : 6)), colA = tac === 'hwasi' && !res.fail ? FX_FIRE : FX_INK;
       tracks.push({ a: pre + 50, b: pre + 50, on: function () { sfx('bow'); if (n > 1) sfx('arrows'); } });
-      if (tac === '관시' && !res.fail) {                       // 꿰뚫는 한 줄기
+      if (tac === 'gwansi' && !res.fail) {                     // 꿰뚫는 한 줄기
         var far = fxLerp(pa, pt, 1.9);
         fxMark(tracks, pre + 120, 420, 'stroke', FX_SEAL, fxLerp(pa, far, 0.55), 4.2, 5.6, ang, { aspect: 0.11, fade: 1.4 });
         hit = pre + 200;
-      } else hit = fxVolley(tracks, pre + 60, pa, pt, n, colA, tac === '난사' ? 1.9 : 0.55) - 40;
-      fxMark(tracks, hit, 320, 'spark', tac === '화시' ? FX_FIRE : FX_INK, TH, 0.6, 1.5, Math.random() * 6.28, {});
-      if (tac === '화시' && !res.fail) for (i = 0; i < 3; i++) fxMark(tracks, hit + i * 80, 560, 'flame', 0xffffff, [pt[0] + (i - 1) * 0.4, pt[1], pt[2]], 0.5, 1.3, 0, { dy: 0.5, aspect: 1.5, rise: 0.4 });
-    } else if (tac === '선풍' && !res.fail) {                 // 주위를 한 바퀴 휩쓴다
+      } else hit = fxVolley(tracks, pre + 60, pa, pt, n, colA, tac === 'nansa' ? 1.9 : 0.55) - 40;
+      fxMark(tracks, hit, 320, 'spark', tac === 'hwasi' ? FX_FIRE : FX_INK, TH, 0.6, 1.5, Math.random() * 6.28, {});
+      if (tac === 'hwasi' && !res.fail) for (i = 0; i < 3; i++) fxMark(tracks, hit + i * 80, 560, 'flame', 0xffffff, [pt[0] + (i - 1) * 0.4, pt[1], pt[2]], 0.5, 1.3, 0, { dy: 0.5, aspect: 1.5, rise: 0.4 });
+    } else if (tac === 'seonpung' && !res.fail) {             // 주위를 한 바퀴 휩쓴다
       fxMark(tracks, pre, 620, 'enso', FX_INK, pa, 1.4, 4.3, 0, { dy: 0.45, spin: 5.5, fade: 1.1 });
       fxMark(tracks, pre + 60, 560, 'enso', FX_SEAL, pa, 1.0, 3.6, 2, { dy: 0.5, spin: 6.5, fade: 1.3, alpha: 0.8 });
       hit = pre + 230;
-    } else if ((tac === '돌격' || tac === '돌진' || tac === '돌파') && !res.fail) {
+    } else if ((tac === 'dolgyeok' || tac === 'doljin' || tac === 'dolpa') && !res.fail) {
       // 기병 돌격: 먼지를 일으키며 들이받는다. 밀려난 적과 따라 들어간 자리까지
-      var dashTo = tac === '돌파' ? pa1 : fxLerp(pa, pt, 0.62);
+      var dashTo = tac === 'dolpa' ? pa1 : fxLerp(pa, pt, 0.62);
       tracks.push({ a: pre, b: pre + 210, on: function () { sfx('charge'); fxDust(pa[0], pa[1], pa[2], 1.3); },
         step: function (u) { var p = fxLerp(pa, dashTo, easeIO(u)); if (A) fxPut(A, [p[0], p[1] + Math.abs(Math.sin(u * 9)) * 0.12, p[2]]); if (u > 0.3 && u < 0.36) fxDust(p[0], p[1], p[2], 1.2); } });
       fxMark(tracks, pre + 40, 460, 'stroke', FX_INK, fxLerp(pa, pt, 0.5), 2.6, 3.9, ang, { aspect: 0.2, fade: 1.5, dy: 0.35, alpha: 0.75 });
       hit = pre + 170;
-      if (A && tac !== '돌파') tracks.push({ a: hit + 60, b: hit + 330, step: function (u) { fxPut(A, fxLerp(dashTo, pa1, easeIO(u))); } });
+      if (A && tac !== 'dolpa') tracks.push({ a: hit + 60, b: hit + 330, step: function (u) { fxPut(A, fxLerp(dashTo, pa1, easeIO(u))); } });
     } else {
       // 근접: 달려들어 벤다
-      var k = (tac === '돌출' || tac === '나선첨' || tac === '이단첨') && !res.fail ? 0.5 : 0.4;
-      lunge(A, pa, TH, pre, k, tac !== '이단첨' || res.fail);
+      var k = (tac === 'dolchul' || tac === 'naseon' || tac === 'idan') && !res.fail ? 0.5 : 0.4;
+      lunge(A, pa, TH, pre, k, (tac !== 'idan' || res.fail) && !res.pulled);      // 견인으로 끌 때는 제자리로 돌아오지 않고 그대로 뒤로 물러선다(아래)
       hit = pre + 150;
-      if (tac === '이단첨' && !res.fail && A) {                // 두 번 찌른다
+      if (tac === 'idan' && !res.fail && A) {                  // 두 번 찌른다
         tracks.push({ a: pre + 190, b: pre + 300, step: function (u) { fxPut(A, fxLerp(pa, TH, k * (1 - 0.6 * easeIO(u)))); } });
         tracks.push({ a: pre + 300, b: pre + 420, step: function (u) { fxPut(A, fxLerp(pa, TH, k * (0.4 + 0.75 * easeOut(u)))); } });
         tracks.push({ a: pre + 440, b: pre + 680, step: function (u) { fxPut(A, fxLerp(pa, TH, k * 1.15 * (1 - easeIO(u)))); } });
         fxMark(tracks, pre + 400, 360, 'stroke', FX_SEAL, fxLerp(pa, TH, 0.9), 2.2, 3.4, ang, { aspect: 0.14, fade: 1.5 });
       }
-      if ((tac === '돌출' || tac === '나선첨' || tac === '이단첨') && !res.fail) fxMark(tracks, hit - 20, 380, 'stroke', FX_INK, fxLerp(pa, TH, 0.85), 2.2, 3.6, ang, { aspect: 0.15, fade: 1.5 });
-      if (tac === '나선첨' && !res.fail) fxMark(tracks, hit, 620, 'swirl', FX_SEAL, TH, 0.6, 2.2, 0, { spin: 7, fade: 1.2 });
-      if (tac === '횡치' && !res.fail) fxMark(tracks, hit - 30, 460, 'arc', FX_INK, TH, 2.6, 4.4, ang - 1.57, { fade: 1.4 });
-      if (tac === '갈퀴' && !res.fail) fxMark(tracks, hit - 40, 440, 'arc', FX_SEAL, [TH[0], TH[1] - 0.15, TH[2]], 1.5, 2.9, ang + 1.57, { fade: 1.5 });   // 발을 거는 갈고리 획
+      if ((tac === 'dolchul' || tac === 'naseon' || tac === 'idan') && !res.fail) fxMark(tracks, hit - 20, 380, 'stroke', FX_INK, fxLerp(pa, TH, 0.85), 2.2, 3.6, ang, { aspect: 0.15, fade: 1.5 });
+      if (tac === 'naseon' && !res.fail) fxMark(tracks, hit, 620, 'swirl', FX_SEAL, TH, 0.6, 2.2, 0, { spin: 7, fade: 1.2 });
+      if (tac === 'hoengchi' && !res.fail) fxMark(tracks, hit - 30, 460, 'arc', FX_INK, TH, 2.6, 4.4, ang - 1.57, { fade: 1.4 });
+      if (tac === 'galkwi' && !res.fail) fxMark(tracks, hit - 40, 440, 'arc', FX_SEAL, [TH[0], TH[1] - 0.15, TH[2]], 1.5, 2.9, ang + 1.57, { fade: 1.5 });   // 거는 갈고리 획
+      if (res.pulled && A) {                                   // v0.18 견인: 건 채로 뒷걸음질 — 나는 뒤 칸으로, 적은 내가 섰던 자리로(적은 아래 '자리 옮김'이 끈다)
+        var pull0 = fxLerp(pa, TH, k);
+        fxMark(tracks, hit + 40, 420, 'stroke', FX_SEAL, fxLerp(pa, TH, 0.5), 1.6, 2.6, ang, { aspect: 0.13, fade: 1.4 });
+        tracks.push({ a: hit + 60, b: hit + 400, on: function () { sfx('step'); fxDust(pa[0], pa[1], pa[2], 1.0); }, step: function (u) { fxPut(A, fxLerp(pull0, pa1, easeIO(u))); } });
+      }
     }
     // 타격
-    if (!bowLike && tac !== '선풍') slashAt(hit, TH, big || crit ? FX_SEAL : FX_INK, big ? 2.5 : (crit ? 2.3 : 1.8));
+    if (!bowLike && tac !== 'seonpung') slashAt(hit, TH, big || crit ? FX_SEAL : FX_INK, big ? 2.5 : (crit ? 2.3 : 1.8));
     if (TO) fxHurt(tracks, hit + 20, TO, TH, big || crit ? 0.2 : (B && !T ? 0.09 : 0.13));
     if (B && !T) for (i = 0; i < 3; i++) fxMark(tracks, hit + 40 + i * 70, 620, 'puff', FX_WASH, [TH[0] + (i - 1) * 0.9, TH[1], TH[2] + 0.2], 0.7, 1.8, 0, { dy: 0.25, rise: 0.5, alpha: 0.9, order: 2.6 });
     tracks.push({ a: hit, b: hit, on: function () { impact(); if (big || crit || res.fell) fxShake(big ? 5 : 3.5, 240); } });
     end = hit + 420;
-    // 부가 대상(횡치·선풍·관시·난사)
+    // 부가 대상(횡소·일소·관통·전우)
     if (res.extra) for (i = 0; i < res.extra.length; i++) (function (xh, i) {
       var p = hexPos(xh.c, xh.r), ou = UAT[K(xh.c, xh.r)], oo = ou ? R3.units[ou.id] : null;
       fxMark(tracks, hit + 60 + i * 70, 340, 'arc', FX_INK, p, 1.2, 2.0, Math.random() * 6.28, { fade: 1.6 });
       if (oo && !oo.anim) fxHurt(tracks, hit + 80 + i * 70, oo, p, 0.11);
       end = Math.max(end, hit + 460 + i * 70);
     })(res.extra[i], i);
-    // 밀려남
+    // 자리 옮김: 밀려남 · (v0.18) 끌려옴 — 끌려올 때는 조금 늦게, 끄는 쪽을 따라온다
     if (T && res.tAlive && (pt1[0] !== pt[0] || pt1[2] !== pt[2])) {
-      tracks.push({ a: hit + 40, b: hit + 300, on: function () { fxDust(pt[0], pt[1], pt[2], 1.1); }, step: function (u) { fxPut(T, fxLerp(pt, pt1, easeOut(u))); } });
-      end = Math.max(end, hit + 340);
+      var mv0 = hit + (res.pulled ? 130 : 40), mv1 = hit + (res.pulled ? 440 : 300);
+      tracks.push({ a: mv0, b: mv1, on: function () { fxDust(pt[0], pt[1], pt[2], 1.1); }, step: function (u) { fxPut(T, fxLerp(pt, pt1, res.pulled ? easeIO(u) : easeOut(u))); } });
+      end = Math.max(end, mv1 + 40);
     }
     if (res.slam) fxMark(tracks, hit + 120, 420, 'spark', FX_SEAL, pt1, 0.8, 1.9, 0.5, {});
     // 연전

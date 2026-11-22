@@ -6,7 +6,7 @@ var FOV = 32, K3 = 2 * Math.tan(FOV / 2 * Math.PI / 180), Z_MIN = 0.14, Z_MAX = 
 var INK = '#1b1a18', PAPER = '#f4efe3', SEAL = '#b5332a', NEUTRAL = '#8d877b';
 var cv, DPR = 1, CW = 0, CH = 0;
 var cam = { x: 200, y: 160, z: 1 };                 // x·y = 바라보는 지면(월드 x·z), z = 확대
-var UI = { sel: null, rc: null, atk: null, target: null, march: null, busy: false, anims: [], floats: [], dirty: true, render: true, sound: true, music: true, hide: -1, play: null, pspeed: 1 };
+var UI = { sel: null, rc: null, atk: null, target: null, march: null, busy: false, anims: [], floats: [], dirty: true, render: true, sound: true, music: true, hide: -1, play: null, pspeed: 1, pct: false };      // pct(v0.18): 확률을 숫자로 보는가 — 기본은 말
 var POR_URL = {}, POR_IMG = {}, SCENE_URL = {}, HMAP = null, R3 = null, TEX = {}, TEXF = {};
 
 function $(id) { return document.getElementById(id); }
@@ -386,7 +386,7 @@ function flameTexture() {
 function loadAssets() {
   var k;
   for (k in PORTRAITS) POR_URL[k] = URL.createObjectURL(b64blob(PORTRAITS[k], 'image/webp'));
-  $('title').style.backgroundImage = 'url(' + TITLE_IMG + ')';
+  if (typeof TITLE_IMG === 'string' && TITLE_IMG) $('title').style.backgroundImage = 'url(' + TITLE_IMG + ')';      // v0.18: 만든 판에서는 CSS 에 들어 있다(첫 화면부터 그려지게 — tools/build.py)
   if (typeof HANJI_IMG === 'string') document.documentElement.style.setProperty('--hanji', 'url(' + HANJI_IMG + ')');
   function img(src, done) { var im = new Image(); R3.loading++; im.onload = function () { done(im); R3.loading--; if (!R3.loading) { R3.ready = true; requestDraw(); } }; im.onerror = function () { R3.loading--; }; im.src = src; }
   img(URL.createObjectURL(b64blob(TERRAIN_B64, 'image/jpeg')), function (im) {
@@ -432,13 +432,16 @@ function mkLabel() {
 function labelSize(L, k) { L.sp.scale.set(L.w / 2 / CH * K3 * k, L.h / 2 / CH * K3 * k, 1); }
 /* lines: [{t, px, font, color, bold}], 판 색 bg, 테두리 색 */
 function corpsMark(cp) { return cp.n >= 1 && cp.n <= 20 ? String.fromCharCode(0x245F + cp.n) : String(cp.n); }      // ① ② ③ …
-function drawLabel(L, lines, bg, border, badge, badgeBg) {
+function drawLabel(L, lines, bg, border, badge, badgeBg, face) {
   var x = L.cv.getContext('2d'), i, w = 0, h = 10, S = 2;
   for (i = 0; i < lines.length; i++) { x.font = (lines[i].bold || 700) + ' ' + lines[i].px * S + 'px ' + (lines[i].font || FONT_B); lines[i].w = x.measureText(lines[i].t).width; w = Math.max(w, lines[i].w); h += lines[i].px * S * 1.18; }
   w = Math.ceil(w + 22 * S / 2 + (badge ? 30 : 8)); h = Math.ceil(h);
-  L.cv.width = w; L.cv.height = h; L.w = w; L.h = h;
-  x = L.cv.getContext('2d');
-  var bw = w - (badge ? 22 : 0), sel = border === SEAL;
+  // v0.18: 얼굴 딱지 — 판 밖으로 왼쪽 ox · 위 oy 만큼 나와 모서리에 걸친다. 글씨는 얼굴에 가리지 않게 오른쪽으로 조금 민다
+  var FD = face ? FACE_D : 0, ox = face ? Math.round(FD * 0.40) : 0, oy = face ? Math.round(FD * 0.46) : 0, tsh = face ? Math.round(FD * 0.13) : 0;
+  if (face) w += tsh * 2;
+  L.cv.width = w + ox; L.cv.height = h + oy; L.w = w + ox; L.h = h + oy; L.ax = (ox + w / 2) / (w + ox); L.ay = h / (h + oy);
+  x = L.cv.getContext('2d'); x.save(); x.translate(ox, oy);
+  var bw = w - (badge ? 22 : 0), sel = border === SEAL, tcx = bw / 2 + tsh;
   // 석채(石彩) 빛 판에 종이 빛 글씨, 가는 먹선. 고른 것은 인주색 겹테
   rr(x, 3, 3, bw - 6, h - 6, 3); x.fillStyle = bg; x.fill();
   x.lineWidth = sel ? 4 : 1.6; x.strokeStyle = sel ? SEAL : border; x.stroke();
@@ -447,10 +450,12 @@ function drawLabel(L, lines, bg, border, badge, badgeBg) {
   x.textAlign = 'center'; x.textBaseline = 'top';
   for (i = 0; i < lines.length; i++) {
     var ln = lines[i]; x.font = (ln.bold || 700) + ' ' + ln.px * S + 'px ' + (ln.font || FONT_B);
-    x.fillStyle = 'rgba(20,18,16,0.38)'; x.fillText(ln.t, bw / 2 + 1, y + 1.5);
-    x.fillStyle = ln.color || '#fbf6ea'; x.fillText(ln.t, bw / 2, y); y += ln.px * S * 1.18;
+    x.fillStyle = 'rgba(20,18,16,0.38)'; x.fillText(ln.t, tcx + 1, y + 1.5);
+    x.fillStyle = ln.color || '#fbf6ea'; x.fillText(ln.t, tcx, y); y += ln.px * S * 1.18;
   }
   if (badge) { rr(x, w - 31, 3, 28, 28, 4); x.fillStyle = badgeBg || SEAL; x.fill(); x.lineWidth = 1.5; x.strokeStyle = '#fbf6ea'; x.stroke(); x.fillStyle = '#fbf6ea'; x.font = '800 19px ' + FONT_B; x.textBaseline = 'middle'; x.fillText(badge, w - 17, 18); }
+  x.restore();
+  if (face) { x.globalAlpha = face.dim ? 0.78 : 1; faceAt(x, face.img, face.ring, 0, 0, FD); x.globalAlpha = 1; }
   L.tex.dispose(); L.tex.needsUpdate = true;
 }
 /* 상태 딱지(부대 머리 위): segs = [{t, bg}] 를 옆으로 나란히. 종이 빛 테두리를 둘러 어떤 땅 위에서도 읽힌다 */
@@ -480,15 +485,19 @@ function statusSegs(u) {
   if (unitOnFire(u)) segs.push({ t: '불길', bg: ST_COL.fire });
   return segs;
 }
-/* 부대 왼쪽 위에 붙는 주장 얼굴 딱지(둥근 초상). 테두리는 세력 색 */
-function drawFace(L, img, ring) {
-  var S = 60, x; L.cv.width = L.cv.height = S; L.w = L.h = S; x = L.cv.getContext('2d');
-  x.save(); x.beginPath(); x.arc(S / 2, S / 2, S / 2 - 4, 0, 6.3); x.clip(); x.fillStyle = '#f6f1e6'; x.fillRect(0, 0, S, S);
+/* 주장 얼굴 딱지(둥근 초상). 테두리는 세력 색. v0.18: 이름·병력 판의 왼쪽 위 모서리에 붙여 한 덩어리로 그린다(drawLabel 의 face) */
+var FACE_D = 60;
+function faceAt(x, img, ring, X, Y, S) {                     // (X, Y) 에서 한 변 S 인 네모 안에
+  x.save(); x.beginPath(); x.arc(X + S / 2, Y + S / 2, S / 2 - 4, 0, 6.3); x.clip(); x.fillStyle = '#f6f1e6'; x.fillRect(X, Y, S, S);
   x.globalCompositeOperation = 'multiply';
-  try { var iw = img.naturalWidth, ih = img.naturalHeight; x.drawImage(img, iw * 0.25, ih * 0.13, iw * 0.50, ih * 0.50, 3, 3, S - 6, S - 6);    /* v0.5 흉상: 얼굴 중심이 가로 50%·세로 41% */ } catch (e) { /* 바탕만 */ }
+  try { var iw = img.naturalWidth, ih = img.naturalHeight; x.drawImage(img, iw * 0.25, ih * 0.13, iw * 0.50, ih * 0.50, X + 3, Y + 3, S - 6, S - 6);    /* v0.5 흉상: 얼굴 중심이 가로 50%·세로 41% */ } catch (e) { /* 바탕만 */ }
   x.restore();
-  x.beginPath(); x.arc(S / 2, S / 2, S / 2 - 4, 0, 6.3); x.lineWidth = 5; x.strokeStyle = ring; x.stroke();
-  x.beginPath(); x.arc(S / 2, S / 2, S / 2 - 1.3, 0, 6.3); x.lineWidth = 1.4; x.strokeStyle = 'rgba(27,26,24,0.9)'; x.stroke();
+  x.beginPath(); x.arc(X + S / 2, Y + S / 2, S / 2 - 4, 0, 6.3); x.lineWidth = 5; x.strokeStyle = ring; x.stroke();
+  x.beginPath(); x.arc(X + S / 2, Y + S / 2, S / 2 - 1.3, 0, 6.3); x.lineWidth = 1.4; x.strokeStyle = 'rgba(27,26,24,0.9)'; x.stroke();
+}
+function drawFace(L, img, ring) {
+  var S = FACE_D; L.cv.width = L.cv.height = S; L.w = L.h = S;
+  faceAt(L.cv.getContext('2d'), img, ring, 0, 0, S);
   L.tex.dispose(); L.tex.needsUpdate = true;
 }
 function mixHex(a, b, t) { var x = rgbOf(a), y = rgbOf(b); return 'rgb(' + Math.round(x[0] + (y[0] - x[0]) * t) + ',' + Math.round(x[1] + (y[1] - x[1]) * t) + ',' + Math.round(x[2] + (y[2] - x[2]) * t) + ')'; }
@@ -634,7 +643,7 @@ function syncScene() {
       if (!fc) { if (fo) { R3.objs.remove(fo.sp); fo.sp.material.dispose(); delete R3.facs[fk]; } continue;      }
       var sk = fc.done ? '' : siteTexKey(fc.t, siteStage(fc)), onU = UAT[K(pl.c, pl.r)] ? 1 : 0, fs = fc.t + fc.lv + (fc.done ? 'd' : 'c' + sk) + (onU ? 'u' : '');      // 짓는 중: 공사장 그림(단계가 오르면 바뀐다)
       if (!fo) { p = hexPos(pl.c, pl.r); fo = R3.facs[fk] = { sp: spriteObj(fc.t, FAC_W, 2), sig: '' }; fo.sp.position.set(p[0], p[1], p[2]); R3.objs.add(fo.sp); }
-      if (fo.sig !== fs) { fo.sig = fs; setSprite(fo.sp, sk || fc.t, FAC_W * (0.94 + 0.10 * (fc.lv - 1))); fo.sp.material.opacity = ((fc.done || sk) ? 1 : 0.5) * (onU ? 0.38 : 1); }      // v0.12: 부대가 올라선 시설은 흐리게
+      if (fo.sig !== fs) { fo.sig = fs; setSprite(fo.sp, sk || fc.t, FAC_W * (0.94 + 0.10 * ((facHasLv(fc.t) ? fc.lv : 1) - 1))); fo.sp.material.opacity = ((fc.done || sk) ? 1 : 0.5) * (onU ? 0.38 : 1); }      // v0.12: 부대가 올라선 시설은 흐리게
     }
   }
   // 부대
@@ -671,12 +680,11 @@ function syncScene() {
       if (o.stOn) { drawChips(o.st, segs); o.stY = o.sp.userData.top * 0.97; o.st.sp.position.set(0.06, o.stY, 0); }
       o.sw.visible = !!o.stK;
       if (o.stK) { o.sw.material.color.set(ST_COL[o.stK] || ST_COL.confuse); o.sw.scale.set(1.18, 1.18, 1); o.sw.position.set(0.02, o.sp.userData.top * 0.72, 0); }
-      o.lab.sp.center.set(0.5, 1); o.lab.sp.position.set(0, -0.16, 0);
+      o.lab.sp.position.set(0, -0.16, 0);
       var mark = cpU ? corpsMark(cpU) + ' ' : ((!u.status && u.dest >= 0) ? '▸ ' : ''), lns = [{ t: mark + fmt(u.troops), px: 12, bold: 800, color: '#fbf6ea' }];      // 상태는 머리 위 딱지가 알린다(0.8까지는 여기에 '혼란 ' 글자를 붙였다)
       if (showName) lns.unshift({ t: L.n, px: 10.5, font: FONT_D, bold: 900, color: '#fbf6ea' });
-      drawLabel(o.lab, lns, dim ? mixHex(fcol, '#8d877b', 0.6) : shade(fcol, 0.84), isSel ? SEAL : INK);
-      o.fcOn = !!fim;
-      if (fim) { drawFace(o.fc, fim, isSel ? SEAL : fcol); o.fc.sp.position.set(-0.74, o.sp.userData.top * 0.80, 0); o.fc.sp.material.opacity = dim ? 0.7 : 1; }
+      drawLabel(o.lab, lns, dim ? mixHex(fcol, '#8d877b', 0.6) : shade(fcol, 0.84), isSel ? SEAL : INK, undefined, undefined, fim ? { img: fim, ring: isSel ? SEAL : fcol, dim: dim } : null);      // v0.18: 얼굴 · 이름 · 병력이 한 덩어리
+      o.lab.sp.center.set(o.lab.ax, o.lab.ay); o.fcOn = false; o.hasFace = !!fim;
       R3.labelK = 0;
     }
     o.g.visible = o.ring.visible = (u.id !== UI.hide) || o.anim;
@@ -711,7 +719,8 @@ function rebuildOverlay() {
     }
     if (b.owner === G.player && b.kind === 'city') for (j = 0; j < b.plots.length; j++) if (!b.plots[j].fac) ovPut(K(b.plots[j].c, b.plots[j].r), [176, 124, 34], 88);
   }
-  if (UI.march && UI.march.path) for (i = 0; i < UI.march.path.length; i++) ovPut(UI.march.path[i], [47, 79, 111], 96);
+  var mpv = UI.mpath && UI.mpath.path ? UI.mpath.path : null;      // v0.18: 고른 부대가 행군(또는 공격 명령) 중이면 갈 길을 보여 준다
+  if (mpv) for (i = 0; i < mpv.length; i++) ovPut(mpv[i], [47, 79, 111], 96);
   var su = selUnit();
   if (su && UI.rc && !UI.busy) {
     for (var ks in UI.rc.stop) { k = +ks; if (BAT[k] !== undefined) ovPut(k, [176, 124, 34], 170); else ovPut(k, [47, 79, 111], 122); }
@@ -1057,7 +1066,7 @@ var CUES = {
   drum:     { s: [['drum', 0.85, 0.03]], gap: 150, syn: 'drum' },
   drums:    { s: [['drums', 0.9, 0.02]], gap: 400, syn: 'drum' },
   horn:     { s: [['horn', 0.7, 0.01]], gap: 800, syn: 'drum' },
-  deploy:   { s: [['drums', 0.85, 0.02], ['horn', 0.5, 0.01, 0.3]], gap: 600, syn: 'drum' },
+  deploy:   { s: [['drums', 0.85, 0.02], ['horn', 0.42, 0.01, 0.9]], gap: 600, syn: 'drum' },      // v0.18: 북 "둥 — 둥 — 둥둥둥"의 마지막 센 박에 뿔나팔
   gong:     { s: [['gong', 0.8, 0.01]], gap: 500, syn: 'drum' },
   fall:     { s: [['fall', 0.95, 0]], gap: 3500, syn: 'fall' },          // 함락 장면이 곧바로 한 번 더 불러도 겹치지 않게
   cheerlate: { s: [['cheer', 0.6, 0.02, 1.0]], gap: 3500, syn: '' },

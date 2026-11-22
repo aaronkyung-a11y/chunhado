@@ -46,7 +46,7 @@ FACSET = '''(() => {
 def steps(pg):
     # ================= 1. 공유 =================
     print('1. 공유')
-    ok(pg.evaluate('!!$("tShare") && !!$("tHelp") && $("tVer").textContent.indexOf("v0.17") === 0'), '제목 화면: [공유] 단추와 판 번호 v0.17 — ' + pg.evaluate('$("tVer").textContent'))
+    ok(pg.evaluate('!!$("tShare") && !!$("tHelp") && $("tVer").textContent.indexOf("v0.18") === 0'), '제목 화면: [공유] 단추와 판 번호 v0.18 — ' + pg.evaluate('$("tVer").textContent'))
     tapsel(pg, '#tShare'); pg.wait_for_timeout(600)
     sh = pg.evaluate('({ title: MODAL ? document.querySelector("#modal .dlg-h").textContent : "", url: $("shU") ? $("shU").value : "", want: SHARE_URL, qr: !!document.querySelector("#modal svg.qr path"), send: !!document.querySelector("#modal [data-a=send]"), nat: typeof navigator.share })')
     ok(sh['title'].startswith('공유') and sh['url'] == sh['want'] == 'https://aaronkyung-a11y.github.io/chunhado/', '공유 창: 공유 창이 없는 브라우저에서는 주소가 적힌 창이 뜬다 %s' % sh)
@@ -78,14 +78,14 @@ def steps(pg):
     print('2. 시설의 레벨 표시')
     fresh(pg, 13, 4242)
     pg.evaluate('showMenu()'); pg.wait_for_timeout(300)
-    ok('v0.17' in head(pg) and pg.evaluate('!!document.querySelector("#modal [data-a=share]")'), '메뉴: ' + head(pg) + ' · [공유]')
+    ok('v0.18' in head(pg) and pg.evaluate('!!document.querySelector("#modal [data-a=share]")'), '메뉴: ' + head(pg) + ' · [공유]')
     pg.evaluate('closeDialog()')
     S = pg.evaluate(FACSET); print('   ', S); pg.wait_for_timeout(600)
     pg.locator('#sheet .tabs button').nth(3).tap(); pg.wait_for_timeout(1000)
     rows = pg.evaluate('Array.from(document.querySelectorAll("#sheet .row[data-a=plot]")).map(function (r) { return r.querySelector(".nm").textContent.replace(/^\\d+/, "") + " | " + r.querySelector(".ds").textContent; })')
     for r in rows: print('     ', r)
     want = ['시장 Lv2 | 금 +300/월 · Lv3 +440', '시장 Lv1 | 금 +180/월 · Lv2 +300', '농장 Lv3 | 병량 +4,400/분기 · 최고 레벨', '병영 Lv1 | 징병 가능 · Lv2 징병량 ×1.3', '병영 Lv2 | 징병량 ×1.3 · Lv3 ×1.6',
-            '대장간 Lv1 | 창·극·노 생산 · Lv2 생산량 ×1.3', '마구간 Lv3 | 군마 생산량 ×1.6 · 최고 레벨', '조폐 Lv1 | 옆 시장의 수입 +50% · 레벨은 영향 없음', '공방 Lv1 | 충차 생산 · 레벨은 영향 없음']
+            '대장간 Lv1 | 창·극·노 생산 · Lv2 생산량 ×1.3', '마구간 Lv3 | 군마 생산량 ×1.6 · 최고 레벨', '조폐 | 옆 시장의 수입 +50%', '공방 | 충차 생산']      # v0.18: 레벨이 없는 시설(조폐 · 곡창 · 공방)에는 레벨을 적지 않는다
     miss = [w for w in want if w not in rows]
     ok(not miss, '지은 시설의 줄: 지금 레벨의 값이 먼저 — 빠진 것 %s' % miss)
     ok(not any('180 (Lv2' in r or 'Lv2 300, Lv3 440' in r for r in rows), '줄에 Lv1 기준의 옛 글(180 (Lv2 300, Lv3 440))이 없다')
@@ -117,7 +117,7 @@ def steps(pg):
         open_fac(S['gran']); t2 = txt(pg, '#modal .fcn')
         ok('농장이 없어' in t2 and '보탬이 없습니다' in t2, '곡창(옆에 농장 없음): ' + t2)
     open_fac(S['mint']); t3 = txt(pg, '#modal .dlg-b > p.note:last-of-type')
-    ok('조폐는 레벨을 올려도 효과가 같습니다' in t3, '조폐: ' + t3)
+    ok('조폐는 레벨이 없는 시설입니다' in t3 and pg.evaluate('!document.querySelector("#modal [data-a=merge]") && !!document.querySelector("#modal [data-a=demo]")') and 'Lv' not in pg.evaluate('document.querySelector("#modal .dlg-h h2").textContent'), '조폐(v0.18: 레벨도 합병 단추도 없다): ' + t3)
     pg.evaluate('closeDialog()'); pg.wait_for_timeout(300)
     # 새로 지을 때의 카드는 Lv1 기준 그대로
     e0 = pg.evaluate('(bid) => { var b = G.bases[bid]; for (var i = 0; i < b.plots.length; i++) if (!b.plots[i].fac) return i; return -1; }', S['id'])

@@ -113,20 +113,20 @@ function run(N) {
     ['황충(노·궁신)→문추 · 두 칸 밖',         { a: ['황충', 'bow', 6000], d: ['문추', 'cav', D24], dist: 2 }]
   ];
   for (var i = 0; i < scenes.length; i++) runScene(scenes[i][0], sp, scenes[i][1], N);
-  // 모양 확인(주사위 없이): 밀려난 적은 반격하지 못한다 / 뒤가 막히면 반격을 받는다 / 갈퀴·돌파는 성공하면 반격이 없다
+  // 모양 확인(주사위 없이): 밀려난 적은 반격하지 못한다 / 뒤가 막히면 반격을 받는다 / 견인·관진는 성공하면 반격이 없다
   var St = stage(sp, { a: ['조운', 'spear', 6000], d: ['하후돈', 'halberd', D24] }), dol = TACTICS.spear[0], idan = TACTICS.spear[2];
   var x1 = tacticExpect(St.a, St.d, dol), x2 = tacticExpect(St.a, St.d, idan), p = x1.ok / 100, cf = dmgBase(St.d, St.a, 1, false) * TACTICS_FAILC();
-  chk('돌출: 뒤가 비어 있으면 반격은 실패했을 때뿐', Math.abs(x1.recv - (1 - p) * cf) < 1e-6, x1.recv + ' / ' + (1 - p) * cf);
-  chk('이단첨: 성공해도 보통 공격만큼 반격', Math.abs(x2.recv - (p * dmgBase(St.d, St.a, 1, false) * TACTIC_K.okCounter + (1 - p) * cf)) < 1e-6);
+  chk('격퇴: 뒤가 비어 있으면 반격은 실패했을 때뿐', Math.abs(x1.recv - (1 - p) * cf) < 1e-6, x1.recv + ' / ' + (1 - p) * cf);
+  chk('탈기: 성공해도 보통 공격만큼 반격', Math.abs(x2.recv - (p * dmgBase(St.d, St.a, 1, false) * TACTIC_K.okCounter + (1 - p) * cf)) < 1e-6);
   chk('성공했을 때의 반격 = 보통 공격의 반격(0.55)', TACTIC_K.okCounter === 0.55);
   park(St);
   St = stage(sp, { a: ['조운', 'spear', 6000], d: ['하후돈', 'halberd', D24], others: [['원소', 'spear', [0, 1, 'd']]] });
   var x3 = tacticExpect(St.a, St.d, dol);
-  chk('돌출: 뒤가 막히면 성공해도 반격을 받고 피해가 는다', x3.recv > x1.recv + 1 && x3.dealt > x1.dealt * 1.1, x3.recv.toFixed(1) + ' > ' + x1.recv.toFixed(1) + ' · ' + x3.dealt.toFixed(1) + ' > ' + x1.dealt.toFixed(1));
+  chk('격퇴: 뒤가 막히면 성공해도 반격을 받고 피해가 는다', x3.recv > x1.recv + 1 && x3.dealt > x1.dealt * 1.1, x3.recv.toFixed(1) + ' > ' + x1.recv.toFixed(1) + ' · ' + x3.dealt.toFixed(1) + ' > ' + x1.dealt.toFixed(1));
   park(St);
   St = stage(sp, { a: ['장합', 'halberd', 9000], d: ['유비', 'spear', D24] });
   var g = tacticExpect(St.a, St.d, TACTICS.halberd[0]), pg = g.ok / 100;
-  chk('갈퀴: 반격은 실패했을 때뿐', Math.abs(g.recv - (1 - pg) * dmgBase(St.d, St.a, 1, false) * TACTIC_K.failCounter) < 1e-6);
+  chk('견인: 반격은 실패했을 때뿐', Math.abs(g.recv - (1 - pg) * dmgBase(St.d, St.a, 1, false) * TACTIC_K.failCounter) < 1e-6);
   // 강 위에서: 내 부대가 물에 있으면 −30% 가 기대값에도 들어간다(v0.9 까지 공격 단추의 '예상'에는 빠져 있었다)
   var wh = null; for (var kk = 0; kk < NHEX && wh === null; kk++) { if (TCH[kk] !== 119) continue; var wc = kk % W, wr = (kk - wc) / W, ns = nbrs(wc, wr); for (var n = 0; n < ns.length; n++) if (inMap(ns[n][0], ns[n][1]) && terr(ns[n][0], ns[n][1]) === 'p' && !UAT[K(ns[n][0], ns[n][1])] && BAT[K(ns[n][0], ns[n][1])] === undefined && !UAT[kk]) { wh = [wc, wr, ns[n][0], ns[n][1]]; break; } }
   if (wh) {

@@ -877,8 +877,10 @@ function turnStepper() {
   var f = -1, st = null, stage = 0;
   var cps = (!G.aiOnly && G.corps && G.corps.length) ? G.corps.slice() : [], ci = 0, cur = null;      // 군단(v0.10): 내 차례의 끝에, 다른 세력보다 먼저
   if (cps.length) stage = -1;
+  var aims = G.aiOnly ? [] : G.units.filter(function (u) { return u.f === G.player && u.aim && !u.corps; }).map(function (u) { return u.id; }), ai0 = 0;      // v0.18: 공격 명령을 받은 내 부대 — 행군 다음, 군단보다 먼저
   return function () {
     if (G.over) { JOT = null; return null; }
+    while (ai0 < aims.length) { var au = UMAP[aims[ai0++]]; if (au && au.aim && !au.corps) { aimStep(au); if (G.over) { JOT = null; return null; } return { kind: 'aim', f: G.player, id: au.id }; } }
     if (stage === -1) {
       if (st) { if (st()) return { kind: 'step', f: G.player, corps: cur.id }; st = null; corpsEnd(cur); if (G.over) return null; }
       while (ci < cps.length) {
@@ -904,7 +906,7 @@ function turnStepper() {
   };
 }
 function marchList(f) {
-  return facUnits(f).filter(function (u) { return UMAP[u.id] && !u.done && u.dest >= 0; }).sort(function (a, b) { return a.id - b.id; });
+  return facUnits(f).filter(function (u) { return UMAP[u.id] && !u.done && u.dest >= 0 && !u.aim; })      /* v0.18: 공격 명령을 받은 부대는 제 차례(aimStep)에 움직인다 */.sort(function (a, b) { return a.id - b.id; });
 }
 function endTurn() {
   if (G.over) return;
@@ -1107,6 +1109,16 @@ function corpsDirText(cp) {
   var T = (cp.target !== undefined && cp.target >= 0) ? G.bases[cp.target] : null;
   return CORPS_DIR[cp.dir] + ((cp.dir === 'atk' || cp.dir === 'sup') && T ? ' → ' + T.n : '');
 }
+/* v0.18 출격: 군단이 성 밖으로 부대를 내어 싸워도 되는가. 공격 방침은 늘 · 내정 방침은 나가지 않는다 · 군비 · 지원은 cp.hold(출격 금지)를 따른다 */
+function corpsSortie(cp) { return !!cp && (cp.dir === 'atk' || (cp.dir !== 'dev' && !cp.hold)); }
+function corpsHolds(u) { var cp = (u && u.f === G.player && u.corps) ? corpsById(u.corps) : null; return !!cp && !corpsSortie(cp); }      // 이 부대의 군단은 싸우러 나가지 않는가
+function corpsRecall(cp) {                                 // 나가 있는 싸움 부대를 불러들인다(수송대는 가던 길을 간다)
+  if (corpsSortie(cp)) return 0;
+  var n = 0;
+  corpsUnits(cp).forEach(function (u) { if (u.type !== 'trans' && u.ai && (u.ai.mode === 'defend' || u.ai.mode === 'attack')) { u.ai = { mode: 'return', home: u.home }; n++; } });
+  return n;
+}
+function corpsSetHold(cp, on) { if (!cp) return ERR('없는 군단'); cp.hold = !!on; return { ok: true, back: corpsRecall(cp) }; }
 function corpsDirOk(cp, dir, target) {
   if (!CORPS_DIR[dir]) return '없는 방침';
   if (dir === 'atk') { var T = G.bases[target]; if (!T || T.owner === G.player) return '칠 거점을 고르세요'; }
@@ -1121,6 +1133,7 @@ function corpsSetDir(cp, dir, target) {
     if (dir === 'atk') u.ai = { mode: 'attack', target: cp.target, home: u.home };
     else if (u.ai && u.ai.mode === 'attack') u.ai = { mode: 'return', home: u.home };
   });
+  corpsRecall(cp);                                                   // v0.18: 나가 싸우지 않는 방침이면 막으러 나간 부대도 불러들인다
   return { ok: true };
 }
 function corpsSetLead(cp, id) {
@@ -1286,9 +1299,11 @@ function cmdDevelop(b, pi, type, ids) {
   markActed(os, 30);
   return { ok: true, turns: Math.ceil(F.build / rate) };
 }
+/* v0.18: 레벨이 있는 시설인가 — 공방 · 조폐 · 곡창은 레벨이 효과에 쓰이지 않으므로 레벨이 없다(적지 않고, 합치지도 못한다) */
+function facHasLv(t) { return !(FAC[t] && FAC[t].noLv); }
 function mergeCandidates(b, pi) {
   var p = b.plots[pi], f = p.fac, out = [];
-  if (!f || !f.done || f.lv >= 3) return out;
+  if (!f || !f.done || f.lv >= 3 || !facHasLv(f.t)) return out;
   var ns = nbrs(p.c, p.r);
   for (var i = 0; i < ns.length; i++) { var q = PAT[K(ns[i][0], ns[i][1])]; if (q && q.b === b.id) { var g = b.plots[q.i].fac; if (g && g.done && g.t === f.t && g.lv <= f.lv) out.push(q.i); } }
   return out;
@@ -1755,6 +1770,79 @@ function unitMarch(u) {
     if (db1 && db1.owner >= 0 && db1.owner !== u.f && hdist(u.c, u.r, dc1, dr1) <= 1) { u.dest = -1; res.front = db1.id; }
   }
   return res;
+}
+
+/* ---------- v0.18 공격 명령: 적(부대 · 거점)을 찍어 두면 닿을 때까지 턴마다 다가가고, 닿으면 알아서 친다 ----------
+   u.aim = { k: 'base' | 'unit', id, n(부대일 때 그 이름) }. 내 차례가 끝날 때(행군하는 부대가 움직인 뒤, 군단보다 먼저) 한 부대씩 aimStep.
+   치는 수는 '주는 피해 − 받는 반격'의 기대값이 가장 큰 것(bestStrike). 계략 · 일기토는 걸지 않는다. 출진한 턴에는 거점을 치지 못한다(규칙 그대로).
+   대상이 사라지거나(궤멸 · 입성) 내 것이 되거나 협정을 맺으면 명령은 끝난다. 내가 직접 움직이거나 쳐도 명령은 남는다(거두는 것은 aimClear) */
+function bestStrike(u, d) {                                // { tac(전법 또는 null = 보통 공격), v(그 수의 기대값) } — 전법은 보통 공격보다 5% 넘게 나을 때만
+  var N = attackExpect(u, d), best = null, bv = (N.dealt - N.recv) * 1.05, tl = tacticList(u);
+  for (var i = 0; i < tl.length; i++) {
+    var tac = tl[i];
+    if (u.morale < tac.cost || !tacticTargets(u, tac).some(function (x) { return x.u === d; })) continue;
+    var X = tacticExpect(u, d, tac), v = X.dealt - X.recv;
+    if (v > bv) { bv = v; best = tac; }
+  }
+  return { tac: best, v: best ? bv : N.dealt - N.recv };
+}
+function aimTarget(u) {
+  var a = u.aim; if (!a) return null;
+  if (a.k === 'base') { var b = G.bases[a.id]; return (b && b.owner >= 0 && b.owner !== u.f && !pactOn(u.f, b.owner)) ? { kind: 'base', b: b, c: b.c, r: b.r } : null; }
+  var d = UMAP[a.id]; return (d && d.f !== u.f && !pactOn(u.f, d.f)) ? { kind: 'unit', u: d, c: d.c, r: d.r } : null;
+}
+function aimName(u) { var a = u.aim; if (!a) return ''; if (a.k === 'base') return G.bases[a.id] ? G.bases[a.id].n : ''; var d = UMAP[a.id]; return d ? uName(d) : (a.n || ''); }
+function aimSet(u, t) {                                    // t = { kind: 'base', b } | { kind: 'unit', u }
+  var of = t.kind === 'base' ? t.b.owner : (t.kind === 'unit' ? t.u.f : -1);
+  if (of < 0 || of === u.f) return ERR('적이 아닙니다');
+  var pk = pactOf(u.f, of); if (pk) return ERR(facName(of) + '군과 ' + PACT_NAME[pk.t] + ' 중 — 칠 수 없습니다');
+  u.aim = t.kind === 'base' ? { k: 'base', id: t.b.id } : { k: 'unit', id: t.u.id, n: uName(t.u) };
+  aimDest(u);
+  return { ok: true };
+}
+function aimClear(u) { if (u.aim) { delete u.aim; u.dest = -1; } }
+function aimInRange(u, t) { var d = hdist(u.c, u.r, t.c, t.r); return d >= 1 && d <= uRange(u); }
+/* 다가갈 곳(u.dest): 거점이면 그 칸(행군이 성 앞에서 멈춘다), 부대면 그 둘레의 빈 칸 가운데 나와 가까운 곳. 없으면 -1 */
+function aimDest(u) {
+  var t = aimTarget(u); if (!t) return -1;
+  if (t.kind === 'base') { u.dest = K(t.c, t.r); return u.dest; }
+  var ns = nbrs(t.c, t.r), best = -1, bd = 1e9, ci = clsIdx(u);
+  for (var i = 0; i < ns.length; i++) {
+    var c = ns[i][0], r = ns[i][1]; if (!inMap(c, r)) continue;
+    var k = K(c, r); if (MC[ci][k] >= 99 || BAT[k] !== undefined || (UAT[k] && UAT[k] !== u)) continue;
+    var dd = hdist(u.c, u.r, c, r); if (dd < bd) { bd = dd; best = k; }
+  }
+  u.dest = best; return best;
+}
+/* 이번 턴에 닿을 수 있으면 칠 자리로 간다(멀리서 쏘는 부대는 사거리 끝에, 숲 · 구릉을 좋아하고 물은 피한다). 못 닿으면 대상 쪽으로 한 구간 행군한다.
+   돌려주는 값은 unitMove 의 결과(움직이지 않았으면 null) */
+function aimApproach(u) {
+  var t = aimTarget(u); if (!t || u.done || u.status || aimInRange(u, t)) return null;
+  var rc = unitReach(u), rg = uRange(u), best = -1, bv = -1e9, k;
+  for (k in rc.stop) {
+    k = +k; if (BAT[k] !== undefined || G.fires[k]) continue;
+    var c = k % W, r = (k - c) / W, d = hdist(c, r, t.c, t.r);
+    if (d < 1 || d > rg) continue;
+    var tt = terr(c, r), v = (d === rg ? 30 : 0) + (tt === 'f' || tt === 'h' ? 12 : 0) - (tt === 'w' ? 60 : 0) - hdist(u.c, u.r, c, r) * 2;
+    if (v > bv) { bv = v; best = k; }
+  }
+  if (best >= 0) { var bc = best % W, res = unitMove(u, bc, (best - bc) / W, rc); if (res.ok && UMAP[u.id]) u.dest = -1; return res.ok ? res : null; }
+  if (aimDest(u) < 0) return null;
+  var m = unitMarch(u);                                    // 한 구간. 적 거점 앞에 닿으면 dest 가 풀린다(명령은 남는다)
+  return m && m.ok ? m : null;
+}
+/* 한 부대의 공격 명령을 한 번 수행한다: 다가가고, 닿으면 친다. { moved(unitMove 의 결과), res(친 결과), end('gone' = 대상이 없어짐 · 'done' = 해냄) } */
+function aimStep(u) {
+  if (!alive(u) || !u.aim) return null;
+  var out = {}, me = uName(u), nm = aimName(u), t = aimTarget(u);
+  if (!t) { aimClear(u); out.end = 'gone'; logMsg(me + ' — ' + (nm ? josa(nm, '을를') : '대상을') + ' 칠 수 없게 되어 공격 명령을 거둠', u.c, u.r, u.f, 1); return out; }
+  if (u.done || u.status) return out;
+  if (!aimInRange(u, t)) { var mv = aimApproach(u); if (mv) out.moved = mv; if (!alive(u)) return out; t = aimTarget(u); if (!t) { aimClear(u); out.end = 'gone'; return out; } }
+  if (!aimInRange(u, t) || u.done) return out;
+  if (t.kind === 'base') { if (justOut(u)) return out; out.res = unitAttack(u, { kind: 'base', b: t.b, c: t.c, r: t.r }); }
+  else { var bs = bestStrike(u, t.u), tg = { kind: 'unit', u: t.u, c: t.c, r: t.r }; out.res = bs.tac ? unitTactic(u, bs.tac, tg) : unitAttack(u, tg); }
+  if (alive(u) && u.aim && !aimTarget(u)) { aimClear(u); out.end = 'done'; logMsg(me + ' — ' + (nm ? josa(nm, '을를') : '대상을') + ' 쳐서 공격 명령을 마침', u.c, u.r, u.f, 1); }
+  return out;
 }
 
 /* 출진 전에 목적지까지 걸릴 턴 수를 재 본다: 실제로 나가게 될 성 밖 칸에서 출발하는 임시 부대로 잰다.
@@ -2305,6 +2393,12 @@ function tacticOthers(u, d, tac, e) {
   if (tac.splash) { ns = nbrs(d.c, d.r); for (i = 0; i < ns.length; i++) { q = UAT[K(ns[i][0], ns[i][1])]; if (q && q.f !== u.f && q !== d) others.push([q, e.side || 0.6]); } }
   return others;
 }
+/* v0.18 견인: 지금 자리에서 d 를 끌어당길 수 있는가 — unitTactic0 의 조건과 같다 */
+function pullRoom(u, d) {
+  if (hdist(u.c, u.r, d.c, d.r) !== 1) return false;
+  var dx = cubeX(d.c, d.r) - cubeX(u.c, u.r), dz = d.r - u.r, bk = stepDir(u.c, u.r, -dx, -dz);
+  return canPushInto(bk[0], bk[1], u) && moveCost(u, bk[0], bk[1]) < 99 && !G.fires[K(bk[0], bk[1])] && moveCost(d, u.c, u.r) < 99;
+}
 /* 적 뒤로 n 칸까지 가운데 밀어낼 수 있는 칸 수 */
 function pushRoom(u, d, n) {
   var dx = cubeX(d.c, d.r) - cubeX(u.c, u.r), dz = d.r - u.r, c = d.c, r = d.r, room = 0;
@@ -2319,7 +2413,7 @@ function attackExpect(u, d) {
     recv: dmgBase(d, u, 1, ranged) * (uHas(u, '금강') ? 0.65 : 1) * cN * (uHas(u, '급습') ? 0.5 : 1) };
 }
 /* 전법 한 번의 기대값(v0.9.1): 성공·대성공·실패를 확률대로 섞은 '주는 피해 · 받는 반격', 그리고 같은 자리에서 보통 공격을 했을 때의 값.
-   넣은 것: 전법 배수 · 병력 비 · 대성공 배수 · 막힌 적을 밀 때의 +20% · 함께 맞는 적(extra) · 실패 때의 피해와 반격 · 반격을 받지 않는 경우(갈퀴·돌파, 멀리서 쏜 전법, 밀려나 떨어진 적, 혼란·위보 중인 적, 이 전법으로 혼란에 빠진 적) · 금강·철벽
+   넣은 것: 전법 배수 · 병력 비 · 대성공 배수 · 막힌 적을 밀 때의 +20% · 함께 맞는 적(extra) · 실패 때의 피해와 반격 · 반격을 받지 않는 경우(견인·관진, 멀리서 쏜 전법, 밀려나 떨어진 적, 혼란·위보 중인 적, 이 전법으로 혼란에 빠진 적) · 금강·철벽
    넣지 않은 것: 맞은 뒤 줄어든 병력으로 반격이 약해지는 몫, 일기토, 혼란·기력 깎기 같은 효과의 값어치 */
 function tacticExpect(u, d, tac) {
   var ranged = hdist(u.c, u.r, d.c, d.r) > 1, quiet = d.status === 'confuse' || d.status === 'rumor', bow = d.type === 'bow';
@@ -2338,7 +2432,7 @@ function tacticExpect(u, d, tac) {
   extra *= p;
   var away = n0 > 0 && !tac.follow && room >= 1;                                               // 밀려나 한 칸 떨어진 적은 반격하지 못한다
   var cOk = (quiet || tac.noCounter || ranged || away) ? 0 : TACTIC_K.okCounter * (bow ? 0.6 : 1);
-  cOk *= (1 - g) * (1 - confuseOdds(tac, d) / 100) + g * (1 - confuseOdds(e1, d) / 100);         // 이 전법으로 혼란에 빠진 적은 반격하지 못한다(나선첨·돌진)
+  cOk *= (1 - g) * (1 - confuseOdds(tac, d) / 100) + g * (1 - confuseOdds(e1, d) / 100);         // 이 전법으로 혼란에 빠진 적은 반격하지 못한다(난진·유린)
   var cFl = quiet ? 0 : (ranged ? (bow ? 0.4 : 0) : TACTIC_K.failCounter * (bow ? 0.6 : 1));
   var N = attackExpect(u, d);
   return { ok: od.ok, crit: od.crit, dealt: dealt + extra, extra: extra, others: os0.length, recv: dmgBase(d, u, 1, ranged) * (uHas(u, '금강') ? 0.65 : 1) * (p * cOk + (1 - p) * cFl), nDealt: N.dealt, nRecv: N.recv };
@@ -2347,7 +2441,7 @@ function unitTactic0(u, tac, t) {
   if (u.done) return ERR('이미 행동을 마쳤습니다');
   if (u.morale < tac.cost) return ERR('기력이 부족합니다');
   var d = t.u, ranged = hdist(u.c, u.r, d.c, d.r) > 1;
-  var res = { ok: true, kind: 'tactic', tac: tac.name, c: d.c, r: d.r, ac: u.c, ar: u.r, tname: uName(d), extra: [] };
+  var res = { ok: true, kind: 'tactic', tac: tac.name, tacId: tac.id, c: d.c, r: d.r, ac: u.c, ar: u.r, tname: uName(d), extra: [] };
   u.done = true; u.ox = -1; u.morale -= tac.cost;
   var od = tacticOdds(u, d), roll = rnd() * 100;
   res.pOk = od.ok; res.pCrit = od.crit;
@@ -2379,6 +2473,12 @@ function unitTactic0(u, tac, t) {
         if (tac.follow) placeUnit(u, pc, pr);
       } else { dmg = Math.round(dmg * 1.2); res.slam = true; break; }
     }
+  }
+  // v0.18 견인(牽引): 한 칸 물러서며 적을 내가 섰던 자리로 끌어당긴다. 내 뒤가 막혔거나(산·물목·부대·거점) 불타고 있으면 끌지 못한다 — 피해와 '반격 없음'은 그대로
+  if (e.pull && !ranged) {
+    var bk = stepDir(u.c, u.r, -dx, -dz), uc0 = u.c, ur0 = u.r;
+    if (canPushInto(bk[0], bk[1], u) && moveCost(u, bk[0], bk[1]) < 99 && !G.fires[K(bk[0], bk[1])] && moveCost(d, uc0, ur0) < 99) { placeUnit(u, bk[0], bk[1]); placeUnit(d, uc0, ur0); res.pulled = true; }
+    else res.noPull = true;
   }
   res.dmg = dmg; res.tc = d.c; res.tr = d.r;
   var dead = hurtUnit(d, dmg, u.f, u);
@@ -2687,6 +2787,7 @@ function deserialize(s) {
   }
   if (g.seed0 === undefined) g.seed0 = (g.seed ^ 0x2545F491) | 0;        // v0.9: 미리 정해 두는 결과의 고정 씨앗(옛 저장에는 없다 — 열 때 한 번 정해 저장본에 남는다)
   if (!g.corps) { g.corps = []; g.nextCorps = 1; }                         // v0.10: 군단(옛 저장에는 없다)
+  for (var fb = 0; fb < g.bases.length; fb++) (g.bases[fb].plots || []).forEach(function (pq) { if (pq.fac && !facHasLv(pq.fac.t) && pq.fac.lv !== 1) pq.fac.lv = 1; });      // v0.18: 레벨이 없는 시설(공방 · 조폐 · 곡창)
   var grown = rosterGrow(g);                                             // v0.17: 무장이 늘었다 — 옛 저장에 새 무장을 덧붙인다
   G = g; reindex(); REPORT = []; EVQ = []; JOT = null;
   if (grown) {

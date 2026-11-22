@@ -23,7 +23,7 @@ function duEl() {
   if (!e) { e = document.createElement('div'); e.id = 'duel'; $('app').appendChild(e); e.addEventListener('click', duClick); }
   return e;
 }
-function duPor(o) { var u = sceneUrl(o.por) || POR_URL[o.por] || ''; return '<i class="du-por' + (sceneUrl(o.por) ? ' sc' : '') + '"' + (u ? ' style="background-image:url(' + u + '),var(--porbg)"' : '') + '></i>'; }
+function duPor(o) { var u = sceneUrl(o.por) || POR_URL[o.por] || ''; return '<i class="du-por' + (sceneUrl(o.por) ? ' sc' : '') + '"' + (typeof oidAttr === 'function' ? oidAttr(o) : '') + (u ? ' style="background-image:url(' + u + '),var(--porbg)"' : '') + '></i>'; }
 function duPips(n) { var s = ''; for (var i = 0; i < DUEL_K.momMax; i++) s += '<i' + (i < n ? ' class="on"' : '') + '></i>'; return s; }
 function duSide(side) {
   var S = DU.S, K = DUEL_KIND[S.kind], P = S[side], o = off(P.id), me = DU.human ? DU.human === side : (DU.rec && o.f === G.player);
@@ -63,7 +63,7 @@ function duRound() {
   ['a', 'd'].forEach(function (s) { $('duG' + s).className = 'du-glyph'; $('duG' + s).textContent = ''; $('duS' + s).className = 'du-say'; $('duS' + s).textContent = ''; $('duF' + s).classList.remove('win', 'hit', 'lunge', 'rest'); });
   if (DU.auto) { DU.busy = true; setTimeout(function () { if (!DU) return; var p = S.plan, ma = p.a || duelPick(S, 'a'), md = p.d || duelPick(S, 'd'); duResolve(ma, md); }, DU.human ? 260 : 420); return; }
   var h = S.hint, op = off(S[duelOther(DU.human)].id);
-  $('duHint').innerHTML = h ? '<b>' + op.n + '의 기색</b> ' + DU_HINT[h.move] + ' <em>' + K.moves[h.move].name + '?</em><small>읽기 ' + h.p + '%</small>' : '';
+  $('duHint').innerHTML = h ? '<b>' + op.n + '의 기색</b> ' + DU_HINT[h.move] + ' <em>' + K.moves[h.move].name + '?</em><small>읽기 ' + (typeof pcT === 'function' ? pcT(h.p) : h.p + '%') + '</small>' : '';
   $('duMoves').classList.remove('off'); DU.busy = false;
 }
 /* 다시 보기: 적혀 있는 합을 하나씩 꺼내 그대로 그린다(주사위는 굴리지 않는다) */

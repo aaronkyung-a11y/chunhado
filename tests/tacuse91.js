@@ -17,6 +17,6 @@ const T = ctx.T, NA = ctx.NA;
 console.log(path.basename(root) + ' seed ' + seed + ' ' + turns + '턴');
 console.log('보통 공격 ' + NA.n + '회: 피해 ' + Math.round(NA.d / NA.n) + ' · 반격 ' + Math.round(NA.c / NA.n) + ' (반격 받은 비율 ' + Math.round(100 * NA.cn / NA.n) + '%) | 근접만 ' + NA.melee + '회: 피해 ' + Math.round(NA.md / NA.melee) + ' · 반격 ' + Math.round(NA.mc / NA.melee));
 let tn = 0, td = 0, tc = 0;
-for (const k of ['돌출', '나선첨', '이단첨', '갈퀴', '횡치', '선풍', '화시', '관시', '난사', '돌격', '돌파', '돌진']) { const x = T[k]; if (!x) { console.log(k.padEnd(4) + ' 0회'); continue; } tn += x.n; td += x.d; tc += x.c;
+for (const k of ['격퇴', '난진', '탈기', '견인', '횡소', '일소', '화전', '관통', '전우', '축출', '관진', '유린']) { const x = T[k]; if (!x) { console.log(k.padEnd(4) + ' 0회'); continue; } tn += x.n; td += x.d; tc += x.c;
   console.log(k.padEnd(4) + String(x.n).padStart(5) + '회  성공 ' + String(Math.round(100 * x.ok / x.n)).padStart(3) + '%  피해 ' + String(Math.round(x.d / x.n)).padStart(5) + (x.ex ? ' (+딸린 ' + Math.round(x.ex / x.n) + ')' : '') + '  반격 ' + String(Math.round(x.c / x.n)).padStart(4) + '  반격 받은 비율 ' + String(Math.round(100 * x.cn / x.n)).padStart(3) + '%  원거리 ' + Math.round(100 * x.rg / x.n) + '%'); }
 console.log('전법 합계 ' + tn + '회: 피해 ' + Math.round(td / tn) + ' · 반격 ' + Math.round(tc / tn) + ' | 부대끼리의 공격 가운데 전법 ' + Math.round(100 * tn / (tn + NA.n)) + '%');

@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""v0.17 여성 초상 내려받기: jobs_wait 가 준 결과 줄(번호,job_id,상태,…,"url")을 표준입력으로 받아 art/raw17/<key>.png 로 저장하고 확인용 시트를 만든다.
+"""초상 내려받기(v0.17 여성 39장 · v0.18 무장 60장 — POR=18 처럼 판을 고른다. 기본 17): jobs_wait 가 준 결과 줄(번호,job_id,상태,…,"url")을 표준입력으로 받아 art/raw<POR>/<key>.png 로 저장하고 확인용 시트를 만든다.
 usage: dl_por17.py <sheet.jpg> < jobs_wait_lines.txt      (주소는 저장소에 남기지 않는다 — 로컬 전용 기록은 PRIV_LOG 로 준 파일에만)"""
 import sys, os, re, subprocess
 from PIL import Image, ImageDraw, ImageFont
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+POR = os.environ.get('POR', '17')
 ids = {}; names = {}
-for l in open(os.path.join(ROOT, 'art/por17_ids.tsv'), encoding='utf8'):
+for l in open(os.path.join(ROOT, 'art/por%s_ids.tsv' % POR), encoding='utf8'):
     if l.strip() and not l.startswith('#'): a = l.split(); ids[a[2]] = a[1]
-for l in open(os.path.join(ROOT, 'art/por17_scenes.tsv'), encoding='utf8'):
+for l in open(os.path.join(ROOT, 'art/por%s_scenes.tsv' % POR), encoding='utf8'):
     if l.strip() and not l.startswith('#'): a = l.rstrip('\n').split('\t'); names[a[1]] = a[2]
-RAW = os.path.join(ROOT, 'art/raw17'); os.makedirs(RAW, exist_ok=True)
+RAW = os.path.join(ROOT, 'art/raw%s' % POR); os.makedirs(RAW, exist_ok=True)
 log = open(os.environ['PRIV_LOG'], 'a', encoding='utf8') if os.environ.get('PRIV_LOG') else None
 got = []
 def base():
@@ -19,7 +20,7 @@ def base():
     return m.group(1)
 def probe(job, hms, span=12):
     import datetime
-    t0 = datetime.datetime.strptime(os.environ.get('DATE', '20261121') + hms, '%Y%m%d%H%M%S')
+    t0 = datetime.datetime.strptime(os.environ.get('DATE', {'17': '20261121', '18': '20261122'}.get(POR, '20261122')) + hms, '%Y%m%d%H%M%S')
     for d in sorted(range(-span, span + 1), key=abs):
         url = '%s/hf_%s_%s.png' % (base(), (t0 + datetime.timedelta(seconds=d)).strftime('%Y%m%d_%H%M%S'), job)
         r = subprocess.run(['curl', '-sS', '-I', '-o', '/dev/null', '-w', '%{http_code}', url], capture_output=True, text=True)

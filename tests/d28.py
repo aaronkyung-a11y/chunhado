@@ -64,7 +64,7 @@ def open_fac(pg, f):
     open_dip(pg); pg.locator('#modal .row[data-a=f][data-v="%d"]' % f).tap(); pg.wait_for_timeout(400)
 def steps(pg):
     fresh(pg, 0, 1)
-    ok(pg.evaluate('GAME_VERSION') == 'v0.17', '판 번호 v0.17')
+    ok(pg.evaluate('GAME_VERSION') == 'v0.18', '판 번호 v0.18')
     S = pg.evaluate(SETUP); print('     ', S)
     ok(S['ask'] == 0 and S['pact'] == [0, 0], '시험 기본값: AI 의 일기토 신청 · AI 끼리의 협정은 꺼 둔다(이 시험이 제 손으로 켠다)')
     # ================= 1. 걸어온 일기토 — 할 일과 답하는 창 =================

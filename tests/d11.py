@@ -130,7 +130,7 @@ def steps(pg):
         pg.evaluate('MPAINT = 0')
         if c[0] in ('modal', 'sheet'):
             if c[0] == 'modal' and c[2] == 'close' and s['depth'] > 0: STAT['stack_pops'] += 1
-            pg.evaluate('([root, i]) => { var es = Array.prototype.filter.call($(root).querySelectorAll("[data-a]"), function () { return true; }); if (es[i]) es[i].click(); }', [c[0], c[1]])
+            pg.evaluate('([root, i]) => { var es = Array.prototype.filter.call($(root).querySelectorAll("[data-a]"), function () { return true; }); if (!es[i]) return; if (typeof es[i].click === "function") es[i].click(); else es[i].dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })); }', [c[0], c[1]])   # SVG 칸(나갈 자리 고리)은 .click() 이 없다 — 눌림 사건을 직접 보낸다
         elif c[0] == 'bar': pg.evaluate('(id) => $(id).click()', c[1])
         elif c[0] == 'ret': STAT['chip_used'] += 1; pg.evaluate('() => $("ret").click()')
         elif c[0] == 'outside': pg.evaluate('() => $("modal").click()')

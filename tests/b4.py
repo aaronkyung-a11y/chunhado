@@ -19,7 +19,7 @@ def steps(pg):
       G.fires[K(near[1][0], near[1][1])] = 3; G.fires[K(near[2][0], near[2][1])] = 3;
       var p = hexCenter(t.c, t.r); cam.x = p[0]; cam.y = p[1] + 2; cam.z = 1.25; clampCam(); requestDraw(); refreshHud();
       selectUnit(u1);
-      floatText(e1.c, e1.r, "-1,234", "#ff6a55", 0, false); floatText(t.c, t.r, "돌출 크리티컬!", "#ffd76a", 0, true); flashHex(e2.c, e2.r, "#fff");
+      floatText(e1.c, e1.r, "-1,234", "#ff6a55", 0, false); floatText(t.c, t.r, "격퇴 크리티컬!", "#ffd76a", 0, true); flashHex(e2.c, e2.r, "#fff");
       UI.floats.forEach(function (f) { f.dur = 600000; f.t0 = performance.now() - (f.ring ? 200000 : 100000); });
       return 1;
     })()''')

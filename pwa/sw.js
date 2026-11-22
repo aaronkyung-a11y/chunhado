@@ -1,11 +1,11 @@
 /* 삼국지 천하도 — 서비스 워커: 한 번 연 뒤에는 인터넷이 없어도 열린다.
    · 화면(index.html): 저장해 둔 것을 바로 연다. 인터넷이 되면 먼저 서버의 것이 바뀌었는지만 짧게 묻고(HEAD, 2.5초까지),
      바뀌었으면 새 화면을 받아 저장한 뒤 그것을 연다. 그래서 새 판을 올리면 다음에 열 때 바로 바뀐다.
-   · 아이콘·manifest: 저장해 둔 것을 쓴다. 바꾸면 SHELL 의 번호를 올린다.
+   · 아이콘·manifest: 저장해 둔 것을 쓴다. 바꾸면 SHELL 의 번호를 올린다(v0.18: 아이콘의 낙관이 天下圖 로 바뀌어 2).
    · 음악(bgm/*.mp3): 화면이 뜬 뒤에 차례로 받아 둔다(페이지가 'warm' 을 보낸다). 받아 둔 곡은 구간 요청(Range)에도 잘라서 답한다.
      곡을 바꾸면 BGM 의 번호를 올린다.
    · 글꼴(Google Fonts): 받은 것을 저장해 두고 쓴다. */
-var SHELL = 'chunhado-shell-1', BGM = 'chunhado-bgm-1', FONT = 'chunhado-font-1';
+var SHELL = 'chunhado-shell-2', BGM = 'chunhado-bgm-1', FONT = 'chunhado-font-1';
 var HOME = new URL('./', self.registration.scope).href;
 var SHELL_FILES = [HOME, 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-48.png'];
 var BGM_FILES = ['title', 'field1', 'field2', 'tense', 'battle1', 'battle2', 'victory', 'defeat'].map(function (n) { return new URL('bgm/' + n + '.mp3', self.registration.scope).href; });

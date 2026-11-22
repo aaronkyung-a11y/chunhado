@@ -6,7 +6,7 @@
  ② 장면(3:4): 먹의 무게중심과 얼굴 사이(TX_INK : 1-TX_INK)를 틀의 가운데로. 그 점을 가운데 두고 그림 안에 들어가는 가장 큰 3:4 틀로 자른다(틀은 원본의 S_MIN 배보다 작아지지 않는다).
     위쪽(머리·무기)은 남기고 아래쪽(마른 붓으로 풀리는 하반신)을 덜어 낸다. 이미 가운데에 가까운 그림(틀이 원본의 S_KEEP 배 이상 = 가운데서 7% 안쪽)과 KEEP 에 적은 인물은 그대로.
 usage: make_assets_v08.py <raw_dir> <faces.tsv> <out_dir> <out_js> <prev_assets.js> <roster_js> [bust=256] [sceneW=320] [qBust=72] [qScene=56]
- - 환경 변수 FOCUS=<손으로 고친 얼굴 상자.tsv>, FALLBACK=<raw 에 없는 키의 정사각 그림 폴더>
+ - 환경 변수 FOCUS=<손으로 고친 얼굴 상자.tsv>, FALLBACK=<raw 에 없는 키의 정사각 그림 폴더>, TITLE=<제목 화면 그림.jpg>(v0.18 — 없으면 앞 판의 것 그대로)
  - <out_dir>/crops.tsv 에 인물마다 자른 틀과 전후 수치를 남긴다."""
 import sys, os, io, re, base64
 import numpy as np
@@ -115,6 +115,8 @@ print('장면 얼굴 x: 전 평균 %.3f, 0.55 넘음 %d · 0.65 넘음 %d · 0.4
 print('장면 먹 중심 x: 전 평균 %.3f, 0.45~0.55 밖 %d → 후 평균 %.3f, 밖 %d | 자른 그림 %d장, 틀 크기 평균 %.2f(최소 %.2f)' % (A[:, 1].mean(), cnt(A[:, 1], 0.45, 0.55), A[:, 7].mean(), cnt(A[:, 7], 0.45, 0.55), int((A[:, 5] < 0.999).sum()), A[:, 5].mean(), A[:, 5].min()))
 prev = open(PREV, encoding='utf8').read()
 title = re.search(r'^var TITLE_IMG=.*$', prev, re.M).group(0); hanji = re.search(r'^var HANJI_IMG=.*$', prev, re.M).group(0)
+if os.environ.get('TITLE'):                                    # v0.18: 제목 그림을 바꾼다(TITLE=<jpg>)
+    title = 'var TITLE_IMG="data:image/jpeg;base64,' + base64.b64encode(open(os.environ['TITLE'], 'rb').read()).decode() + '";'
 with open(OUTJS, 'w', encoding='utf8') as f:
     f.write('var PORTRAITS={' + ','.join('"%s":"%s"' % (k, base64.b64encode(b).decode()) for k, b in sorted(busts.items())) + '};\n')
     f.write('var SCENES={' + ','.join('"%s":"%s"' % (k, base64.b64encode(b).decode()) for k, b in sorted(scenes.items())) + '};\n')

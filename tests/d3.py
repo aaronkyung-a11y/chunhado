@@ -29,11 +29,14 @@ def steps(pg):
     print('deploy dialog has destination list:', pg.locator('#modal .dests').count(), '| note:', pg.locator('#modal .note').last.inner_text()[:40])
     tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(1300)
     print('deployed', pg.evaluate('JSON.stringify(facUnits(G.player).map(function(u){return [u.c,u.r,u.dest,u.mp,u.done]}))'), 'sel', pg.evaluate('UI.sel'), 'busy', pg.evaluate('UI.busy'), 'reach', pg.evaluate('UI.rc ? Object.keys(UI.rc.stop).length : -1'))
-    # 닿지 않는 곳을 누르면 행군이 뜨지 않고 안내만
+    # v0.18: 닿지 않는 땅을 누르면 곧바로 그곳으로 행군 → [이동 취소]로 제자리 · 명령도 거둔다
     hc = pg.evaluate('(function(){ var b = G.bases[baseByName("허창")]; return [b.c, b.r]; })()')
     far = pg.evaluate('(function(){ var u = selUnit(); return [u.c + 7, u.r + 3]; })()')
-    pg.evaluate('([c,r]) => onTap(c, r)', far); pg.wait_for_timeout(200)
-    print('far tap → march?', pg.evaluate('!!UI.march'), '| toast:', pg.evaluate('$("toast").textContent'), '| still selected', pg.evaluate('!!selUnit()'))
+    at0 = pg.evaluate('(function(){ var u = selUnit(); return [u.c, u.r, u.dest]; })()')
+    pg.evaluate('([c,r]) => onTap(c, r)', far); pg.wait_for_timeout(1600)
+    print('far tap → march', pg.evaluate('(function(){ var u = selUnit(); return [u.c, u.r, u.dest >= 0, u.ox >= 0]; })()'), '| toast:', pg.evaluate('$("toast").textContent'), '| still selected', pg.evaluate('!!selUnit()'))
+    tapsel(pg, '#sheet [data-a=undo]'); at1 = pg.evaluate('(function(){ var u = selUnit(); return [u.c, u.r, u.dest]; })()')
+    print('undo → back', at1, '(was', at0, ')'); assert at1 == at0, ('이동 취소가 행군 명령을 거두지 못했다', at0, at1)
     # 파란 칸(성역 안)으로 이동 → 이동 취소 → 성역 밖으로 이동(그 턴 이동 끝)
     inz = pg.evaluate('(function(){ var u = selUnit(), z = zoneAt(u.c, u.r), ks = Object.keys(UI.rc.stop).map(Number), a = null, o = null; ks.forEach(function (k) { var c = k % W, r = (k - c) / W; if (BAT[k] !== undefined) return; if (ZONE[k] === z) { if (!a) a = [c, r]; } else o = [c, r]; }); return { a: a, o: o, mp: u.mp }; })()')
     taphex(pg, *inz['a']); pg.wait_for_timeout(1200)
@@ -41,11 +44,12 @@ def steps(pg):
     tapsel(pg, '#sheet [data-a=undo]'); print('undo', pg.evaluate('(function(){ var u = selUnit(); return [u.c, u.r, u.mp]; })()'))
     taphex(pg, *inz['o']); pg.wait_for_timeout(1500)
     print('move across zone edge', inz['o'], pg.evaluate('(function(){ var u = selUnit(); return [u.c, u.r, u.mp, zoneAt(u.c, u.r), Object.keys(UI.rc.stop).length]; })()'), '| toast:', pg.evaluate('$("toast").textContent'))
-    # [행군] 단추 → 목적지(허창) → 행군 시작
-    tapsel(pg, '#sheet [data-a=pickmarch]'); print('pickMarch', pg.evaluate('UI.pickMarch'))
-    pg.evaluate('([c,r]) => onTap(c, r)', hc); pg.wait_for_timeout(300)
-    print('march proposal', pg.evaluate('UI.march && [UI.march.name, UI.march.turns]'), pg.evaluate('document.querySelector("#sheet .tgt").innerText'))
-    tapsel(pg, '#sheet [data-a=march]'); pg.wait_for_timeout(1500)
+    # v0.18: 목적지(허창)를 누른다 — 적의 성이면 공격 명령, 내 성 · 빈 성이면 그 성의 창에서 [이 성으로 행군]
+    pg.evaluate('([c,r]) => onTap(c, r)', hc); pg.wait_for_timeout(400)
+    if pg.locator('#sheet [data-a=marchhere]').count():
+        print('base sheet → march here:', pg.locator('#sheet [data-a=marchhere]').inner_text().replace('\n', ' / ')); tapsel(pg, '#sheet [data-a=marchhere]')
+    else: print('aim order:', pg.evaluate('(function(){ var u = facUnits(G.player)[0]; return [u.aim, aimName(u)]; })()'))
+    pg.wait_for_timeout(1600)
     print('after march', pg.evaluate('JSON.stringify(facUnits(G.player).map(function(u){return [u.c,u.r,u.dest,u.mp,u.done]}))'), '|', pg.evaluate('(document.querySelector("#sheet .note") || {}).innerText'))
     dt = end_turn(pg); print('turn1 %.1fs' % dt, pg.evaluate('[dateStr(), UI.busy, MODAL && document.querySelector("#modal h2").innerText]'))
     dt = end_turn(pg); print('turn2 %.1fs' % dt, pg.evaluate('JSON.stringify(facUnits(G.player).map(function(u){return [u.c,u.r,u.dest,u.mp,u.done]}))'), pg.evaluate('REPORT.filter(function (e) { return e.f === G.player && e.imp >= 1; }).map(function (e) { return e.t; })'))

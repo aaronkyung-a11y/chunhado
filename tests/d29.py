@@ -28,7 +28,7 @@ def steps(pg):
     print('     ', info)
     # ================= 1. 명부 =================
     print('1. 명부')
-    ok(info['ver'] == 'v0.17', '판 번호 v0.17 [%s]' % info['ver'])
+    ok(info['ver'] == 'v0.18', '판 번호 v0.18 [%s]' % info['ver'])
     ok(info['n'] == 425 and info['w'] == 42, '무장 %d명 · 여성 %d명' % (info['n'], info['w']))
     ok(info['noPor'] == [] and info['wGen'] == [], '초상이 없는 무장이 없고, 여성은 모두 제 초상을 쓴다 %s %s' % (info['noPor'][:4], info['wGen'][:4]))
     ok(sorted(info['mine']) == sorted(['서곤', '오국태']), '손책군(%s)에 새 무장 — %s' % (info['city'], info['mine']))

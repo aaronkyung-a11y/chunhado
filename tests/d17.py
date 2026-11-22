@@ -30,7 +30,7 @@ def steps(pg):
     ok('194년 6월 하순까지(6개월)' in intro and not TURNS.search(intro), '시작 안내: 194년 6월 하순까지(6개월), "N턴" 없음')
     tapsel(pg, '#modal [data-a=close]'); pg.wait_for_timeout(600)
     home = pg.evaluate('''(() => { var pz = document.querySelector("#sheet .pz"); return { pz: pz ? pz.className + ":" + pz.innerText : "", all: document.querySelector("#sheet").innerText, v: GAME_VERSION, until: G.peace.until, pv: G.peace.v }; })()''')
-    ok(home['v'] == 'v0.17', '판 번호 v0.17 [%s]' % home['v'])
+    ok(home['v'] == 'v0.18', '판 번호 v0.18 [%s]' % home['v'])
     ok(home['pz'] == 'pz:6월 하순까지 보호' and home['until'] == 19 and home['pv'] == 2, 'STATUS 창 날짜 옆: [6월 하순까지 보호] (%s)' % home['pz'])
     ok('초반 보호 —' not in home['all'] and not TURNS.search(home['all']), 'STATUS 창: v0.9.2 부터 초반 보호 줄은 없고(이름 옆 표만), 창 어디에도 "N턴" 없음')
     tapsel(pg, '#sheet .pz'); pg.wait_for_timeout(400)
@@ -88,26 +88,26 @@ def steps(pg):
     w1, l1, d1 = look(st['u'], '강한 쪽(관우)')
     ok('성공해도 반격은 통상 공격만큼 받습니다' in d1 and '85%' in d1 and '1.55배' in d1, '풀이 창의 설명: 성공해도 반격은 통상 공격만큼 · 실패 피해 85%(v0.12 — 전에는 40%) · 실패 반격 1.55배')
     ok('× 0.8 (-30 ~ +15)' in d1, '풀이 창의 설명: 무장 항 × 0.8 (-30 ~ +15)')
-    ok(any(t[0] == '갈퀴' and t[2] < w1['n'][1] for t in w1['t']), '관우의 갈퀴: 받는 반격이 보통 공격보다 적다(성공하면 반격 없음)')
-    ok(any(any(m.startswith('good:−') for m in l[2]) for l in l1 if l[0] == '갈퀴'), '줄어든 반격은 좋은 쪽 빛(good)으로 적는다')
+    ok(any(t[0] == '견인' and t[2] < w1['n'][1] for t in w1['t']), '관우의 견인: 받는 반격이 보통 공격보다 적다(성공하면 반격 없음)')
+    ok(any(any(m.startswith('good:−') for m in l[2]) for l in l1 if l[0] == '견인'), '줄어든 반격은 좋은 쪽 빛(good)으로 적는다')
     B.shot(pg, 'b1_tacinfo_strong', 300)
     pg.evaluate('closeDialog()'); pg.wait_for_timeout(300)
     w2, l2, d2 = look(st['u2'], '약한 쪽(%s)' % st['names'][1])
-    ok(all(t[4] < 0 for t in w2['t']) and all(t[5] is None or t[5] > 0 for t in w2['t'] if t[0] != '돌출'), '약한 쪽이 강한 쪽을 치면: 어느 전법이든 기대 피해는 보통 공격보다 적고(반격은 더 받는다) %s' % [(t[0], t[4], t[5]) for t in w2['t']])
+    ok(all(t[4] < 0 for t in w2['t']) and all(t[5] is None or t[5] > 0 for t in w2['t'] if t[0] != '격퇴'), '약한 쪽이 강한 쪽을 치면: 어느 전법이든 기대 피해는 보통 공격보다 적고(반격은 더 받는다) %s' % [(t[0], t[4], t[5]) for t in w2['t']])
     ok(len(l2) >= 1 and all(any(m.startswith('bad:−') for m in l[2]) for l in l2), '줄어든 피해는 나쁜 쪽 빛(bad)으로 적는다')
     ok(w1['t'][0][3] - w2['t'][0][3] >= 25, '성공률: 관우 %d%% · %s %d%% — 무장의 차이가 크게 든다' % (w1['t'][0][3], st['names'][1], w2['t'][0][3]))
     B.shot(pg, 'b2_tacinfo_weak', 300)
     pg.evaluate('closeDialog()'); pg.wait_for_timeout(300)
-    # 실제로 써 본다: 관우의 갈퀴(성공하도록 주사위를 고정) — 반격이 없고, 알림에 기간이 날수로 적힌다
+    # 실제로 써 본다: 관우의 견인(성공하도록 주사위를 고정) — 반격이 없고, 알림에 기간이 날수로 적힌다
     pg.evaluate('(id) => { window._rnd = rnd; var n = 0; rnd = function () { n++; return n === 1 ? 0.001 : window._rnd(); }; gotoUnit(UMAP[id]); }', st['u']); pg.wait_for_timeout(600)
     taphex(pg, *st['ep']); pg.wait_for_timeout(500)
     acts = [pg.locator('#sheet [data-a=act]').nth(i).inner_text().replace('\n', ' / ') for i in range(pg.locator('#sheet [data-a=act]').count())]
-    gi = [i for i, a in enumerate(acts) if a.startswith('갈퀴')]
+    gi = [i for i, a in enumerate(acts) if a.startswith('견인')]
     before = pg.evaluate('([a, b]) => [UMAP[a].troops, UMAP[b].troops]', [st['u'], st['e']])
     tapsel(pg, '#sheet [data-a=act]', gi[0]); pg.wait_for_timeout(3800)
     after = pg.evaluate('([a, b]) => { rnd = window._rnd; return [UMAP[a] ? UMAP[a].troops : 0, UMAP[b] ? UMAP[b].troops : 0, $("toast").textContent]; }', [st['u'], st['e']])
-    print('  갈퀴:', before, '→', after)
-    ok(after[0] == before[0] and after[1] < before[1], '갈퀴 성공: 적 병력만 줄고 내 병력은 그대로(반격 없음)')
+    print('  견인:', before, '→', after)
+    ok(after[0] == before[0] and after[1] < before[1], '견인 성공: 적 병력만 줄고 내 병력은 그대로(반격 없음)')
     ok(not TURNS.search(after[2]), '알림에 "N턴"이 없다 [%s]' % after[2][-40:])
     # ---------- 3. 0.9 에서 하던 판을 이어 하기 ----------
     made = pg.evaluate('''() => { newGame(2, 4242); for (var i = 0; i < 24; i++) endTurn(); delete G.peace.v; G.peace.until = 37;      // 0.9 의 저장 모양으로(화면을 떠날 때 다시 저장되므로 G 자체를 바꿔 둔다)

@@ -145,12 +145,12 @@ def steps(pg):
 
     mg = pg.evaluate('''() => { var b = G.bases[baseByName("업")], i, j;
       for (i = 0; i < b.plots.length; i++) for (j = 0; j < b.plots.length; j++) { if (i === j || b.plots[i].fac || b.plots[j].fac) continue;
-        b.plots[i].fac = { t: 'mint', lv: 1, done: true, prog: 0, need: 0, rate: 0, hp: FAC_HP }; b.plots[j].fac = { t: 'mint', lv: 1, done: true, prog: 0, need: 0, rate: 0, hp: FAC_HP };
+        b.plots[i].fac = { t: 'market', lv: 1, done: true, prog: 0, need: 0, rate: 0, hp: FAC_HP }; b.plots[j].fac = { t: 'market', lv: 1, done: true, prog: 0, need: 0, rate: 0, hp: FAC_HP };      // v0.18: 조폐는 레벨이 없어 합칠 수 없다 → 시장으로
         if (mergeCandidates(b, i).length) { syncScene(); refreshSheet(); return [i, j]; }
         b.plots[i].fac = null; b.plots[j].fac = null; }
       return null; }''')
     if mg:
-        tap(pg, '#sheet .row[data-a=plot][data-v="%d"]' % mg[0]); s = st(pg); t1 = s['modal']; check('시설 창(조폐소)', s['modal'] is not None, s)
+        tap(pg, '#sheet .row[data-a=plot][data-v="%d"]' % mg[0]); s = st(pg); t1 = s['modal']; check('시설 창(시장)', s['modal'] is not None, s)
         tap(pg, '#modal [data-a=merge]'); s = st(pg); check('흡수합병 → 담당 무장 표가 그 위에', s['modal'] and '흡수합병' in s['modal'] and s['depth'] == 1, s)
         X(pg); s = st(pg); check('담당 무장 표 × → 시설 창으로', s['modal'] == t1, s)
         X(pg); s = st(pg); check('시설 창 × → 거점 창 시설 탭', s['modal'] is None and s['tab'] == 'fac', s)
@@ -240,17 +240,17 @@ def steps(pg):
     SX(pg); s = st(pg); check('막 출진한 부대 창 × → 나온 성의 군사 탭', s['sheet'] == 'base:%d' % info['id'] and s['tab'] == 'mil', s)
     SX(pg); s = st(pg); check('  … 거점 창 × → STATUS 창', s['sheet'] == 'home', s)
 
-    # 부대를 고르고: 행군 고르기 / 행군 제안 → 거점 보기 / 대상
+    # v0.18: [행군] 단추가 없어졌다 — 부대를 고른 채 내 성을 누르면 그 성의 창 + [이 성으로 행군], ×는 부대 창으로
     pg.evaluate('(id) => gotoUnit(UMAP[id])', uid); pg.wait_for_timeout(700)
-    tap(pg, '#sheet [data-a=pickmarch]'); s = st(pg); check('행군 → 목적지 고르기', s['pick'], s)
-    SX(pg); s = st(pg); check('목적지 고르기에서 × → 고르기만 그만두고 부대 창 그대로', (not s['pick']) and s['sheet'] == 'unit:%d' % uid, s)
-    tgt = pg.evaluate('''(id) => { var u = UMAP[id], bs = G.bases.filter(function (b) { return b.kind === 'city' && b.owner !== G.player && b.owner >= 0; }).sort(function (x, y) { return hdist(u.c, u.r, x.c, x.r) - hdist(u.c, u.r, y.c, y.r); });
-      for (var i = 0; i < bs.length; i++) if (proposeMarch(u, bs[i].c, bs[i].r)) return { id: bs[i].id, n: bs[i].n }; return null; }''', uid)
-    pg.wait_for_timeout(300); s = st(pg); check('행군 제안(%s)' % (tgt and tgt['n']), s['march'], s)
-    B.shot(pg, TAG + '_04_march', 300)
-    tap(pg, '#sheet [data-a=viewbase]', 0, 800); s = st(pg); check('거점 보기 → 그 성의 창', tgt is not None and s['sheet'] == 'base:%d' % tgt['id'], s)
-    SX(pg); pg.wait_for_timeout(500); s = st(pg); check('그 성의 창 × → 부대 창 + 행군 제안 그대로', s['sheet'] == 'unit:%d' % uid and s['march'], s)
-    SX(pg); s = st(pg); check('행군 제안에서 × → 제안만 물리고 부대 창 그대로', s['sheet'] == 'unit:%d' % uid and not s['march'], s)
+    check('부대 창에 [행군] 단추가 없다', pg.locator('#sheet [data-a=pickmarch]').count() == 0 and pg.locator('#sheet [data-a=undo]').count() == 1)
+    own = pg.evaluate('''(id) => { var u = UMAP[id], rc = unitReach(u), bs = G.bases.filter(function (b) { return b.owner === G.player && !rc.stop[K(b.c, b.r)] && marchPath(u, K(b.c, b.r)); }).sort(function (x, y) { return hdist(u.c, u.r, x.c, x.r) - hdist(u.c, u.r, y.c, y.r); });
+      if (!bs.length) return null; onTap(bs[0].c, bs[0].r); return { id: bs[0].id, n: bs[0].n }; }''', uid)
+    pg.wait_for_timeout(500); s = st(pg)
+    if own:
+        check('부대를 고른 채 먼 내 성(%s)을 누름 → 그 성의 창 + [이 성으로 행군]' % own['n'], s['sheet'] == 'base:%d' % own['id'] and pg.locator('#sheet [data-a=marchhere]').count() == 1, s)
+        B.shot(pg, TAG + '_04_march', 300)
+        SX(pg); pg.wait_for_timeout(500); s = st(pg); check('그 성의 창 × → 부대 창으로', s['sheet'] == 'unit:%d' % uid, s)
+    else: NOTE.append('이 성으로 행군: 닿지 않는 내 성이 없어 건너뜀')
 
     foe = pg.evaluate('''(id) => { var u = UMAP[id], e = G.bases.filter(function (b) { return b.kind === 'city' && b.owner >= 0 && b.owner !== G.player && idleOfficers(b).length; })[0];
       G.factions[e.owner].ap = 200; e.troops = Math.max(e.troops, 9000);

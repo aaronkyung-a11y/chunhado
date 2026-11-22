@@ -1,0 +1,61 @@
+# v0.18 초상 60장(공용 초상을 쓰던 이름난 무장): 번호 <TAB> key <TAB> 이름 <TAB> 포인트색 <TAB> 장면(영문). 프롬프트 = 머리말 + 장면 + 맺음말(tools/por18_prompt.py)
+1	caozhen	조진	deep blue	Cao Zhen, a burly grand general of Wei in heavy armor, twisting in the saddle of a galloping horse to loose an arrow.
+2	caoxiu	조휴	blue	Cao Xiu, a young cavalry general of Wei, leaning far forward on a galloping horse with his spear leveled.
+3	xiahoushang	하후상	indigo	Xiahou Shang, a Wei general directing a night river raid, torch raised in one hand, cloak blowing.
+4	xiahouba	하후패	dark red	Xiahou Ba, a fierce young general, one foot on a rock, raising his saber with a roar.
+5	caozhi	조식	purple	Cao Zhi, a poet prince, striding forward with a wine cup in one hand and a writing brush in the other, sleeves flying.
+6	zhuhuan	주환	crimson	Zhu Huan, a proud general of Wu, standing on a fortress wall with arms crossed, laughing at a vast enemy host below.
+7	zhuran	주연	orange red	Zhu Ran, a short but fierce general of Wu, defending a city wall with sword drawn, pointing forward.
+8	dingfeng	정봉	red	Ding Feng, a veteran of Wu who has thrown off his armor, charging bare-armed through falling snow with a short blade.
+9	quancong	전종	teal	Quan Cong, a general of Wu standing on the prow of a warship, pointing ahead with a command flag.
+10	buzhi	보즐	olive green	Bu Zhi, a calm scholar-general of Wu in a plain robe, holding a scroll and a walking staff on a riverbank.
+11	wutugu	올돌골	rust orange	Wutugu, a giant barbarian king covered in woven rattan armor, lifting a huge club over his shoulder.
+12	mulu	목록대왕	golden yellow	King Mulu, a southern chieftain riding an elephant and ringing a bell, a tiger running alongside.
+13	duosi	타사대왕	poison green	King Duosi, a cunning southern chieftain in a feathered headdress, grinning beside a steaming poisonous spring.
+14	mangyachang	망아장	yellow ochre	Mangyachang, a fierce southern warrior riding a great ox, swinging a huge broad-bladed polearm.
+15	kebineng	가비능	sky blue	Kebineng, a steppe chieftain in furs and a fur hat, drawing a composite bow from the back of a steppe horse.
+16	guansuo	관색	green	Guan Suo, a handsome young warrior with a flower-patterned headband, whirling a long glaive.
+17	zhoucang	주창	green	Zhou Cang, a dark-faced burly retainer with a curly beard, carrying a great crescent blade on his shoulder, glaring loyally.
+18	qiaoxuan	교현	warm red	Elder Qiao, a dignified white-bearded gentleman with a walking cane, smiling proudly.
+19	chenjiao	진교	dark blue	Chen Jiao, an upright minister of Wei holding a ceremonial tablet in both hands, stern-faced.
+20	cuiyan	최염	indigo	Cui Yan, an imposing official with a magnificent very long beard, standing tall with his hands behind his back.
+21	litong	이통	crimson	Li Tong, a chivalrous commander leading a night river crossing, shield raised against arrows.
+22	sunyi	손익	red	Sun Yi, a hot-tempered young lord of the Sun clan, drawing his sword with a fierce shout.
+23	guanhai	관해	yellow	Guan Hai, a rebel chieftain with a yellow headscarf, brandishing a great saber on horseback.
+24	futong	부동	dark red	Fu Tong, a general fighting to the last, surrounded, gripping a broken spear and shouting defiance.
+25	yangyi	양의	purple	Yang Yi, a sharp-tongued staff officer with an impatient scowl, counting rods in one hand and a ledger scroll in the other.
+26	panjun	반준	brown	Pan Jun, a stern provincial official pointing an accusing finger, a scroll of charges in his other hand.
+27	liaohua	요화	green	Liao Hua, a weathered veteran general with graying temples, breaking out on horseback with spear in hand.
+28	sunqian	손건	blue	Sun Qian, an affable envoy in a traveling cloak, bowing slightly with a letter held in both hands.
+29	mifang	미방	amber	Mi Fang, a nervous garrison commander with his helmet under his arm, looking back over his shoulder.
+30	caimao	채모	teal	Cai Mao, a naval commander on the deck of a warship, pointing with a command baton, sails behind him.
+31	lihui	이회	emerald	Li Hui, a clever official-general of the south riding hard as an envoy, cloak streaming, a confident smile.
+32	dengzhi	등지	red	Deng Zhi, a bold envoy walking calmly past a boiling cauldron, laughing.
+33	zhangni	장억	ochre	Zhang Ni, a tough frontier general with a bandaged arm and a short sword, steady gaze, mountains behind.
+34	jiakui	가규	dark blue	Jia Kui, a stern governor-general standing on a river dike, a law scroll in one hand and a sword at his side.
+35	tianyu	전예	steel blue	Tian Yu, a frugal northern frontier general on horseback, directing wagons into a circle against nomad riders.
+36	qianzhao	견초	brown	Qian Zhao, a frontier commander facing down mounted nomads, bow in hand and arm outstretched.
+37	lvfan	여범	purple	Lu Fan, an elegant general of Wu in fine robes over armor, placing a stone on a go board with a smile.
+38	lingcao	능조	red	Ling Cao, a daring vanguard officer charging ahead in a light boat, sword raised.
+39	zhuzhi	주치	olive	Zhu Zhi, an elder statesman-general of Wu with a gray beard, leaning on his sword, kindly but stern.
+40	zhangji2	장제	rust	Zhang Ji, a cavalry warlord of the northwest in fur-trimmed armor, leading riders through dust.
+41	fanchou	번조	orange	Fan Chou, a brawny cavalry general of the northwest, thrusting his spear from a charging horse.
+42	guotu	곽도	violet	Guo Tu, a scheming adviser whispering behind a feather fan, sly sidelong eyes.
+43	xinping	신평	gray blue	Xin Ping, an anxious loyal adviser unrolling a map with knitted brows.
+44	chunyuqiong	순우경	wine red	Chunyu Qiong, a drunken general with loosened armor, hugging a wine jar and laughing.
+45	gaogan	고간	dark teal	Gao Gan, an ambitious governor standing on a mountain pass, cloak in the wind, hand on his sword.
+46	yuanshang	원상	gold	Yuan Shang, a handsome proud young heir in ornate armor, plumed helmet under his arm.
+47	caochun	조순	leopard gold	Cao Chun, commander of elite heavy cavalry in black lamellar armor, charging on a horse with a leopard-pelt saddle.
+48	wuyi	오의	crimson	Wu Yi, a dignified steady general with his spear planted beside him, a banner behind.
+49	wulan	오란	orange	Wu Lan, a bold vanguard officer charging on foot with saber and shield.
+50	lengbao	냉포	blue	Leng Bao, a general breaking a river dike at night, torch in one hand and a spade in the other.
+51	mazhong	마충	green	Ma Zhong, a genial general of the south, laughing heartily with one hand on his belt.
+52	sunben	손분	red	Sun Ben, an elder cousin of the Sun clan, a mounted general leading troops across a river under a banner.
+53	huzhen	호진	rust	Hu Zhen, an arrogant general of the northwest raising a whip and shouting orders.
+54	wuanguo	무안국	iron blue	Wu Anguo, a hero swinging a heavy iron hammer, one wrist bandaged.
+55	hanhao	한호	dark green	Han Hao, a resolute officer with clenched teeth, sword pointed forward and shield on his arm.
+56	yanpu	염포	sky blue	Yan Pu, a prudent adviser in a Daoist cap, calmly sealing a granary door with a strip of paper.
+57	yangfeng	양봉	pale gold	Yang Feng, a bandit turned general escorting an imperial carriage, saber in hand.
+58	gongsunkang	공손강	ice blue	Gongsun Kang, a cold-eyed northern lord in a fur-lined robe seated on a tiger skin, one hand on a lacquered box.
+59	zhangmiao	장막	warm brown	Zhang Miao, a generous gallant governor offering a wine cup with an open hand, conflicted eyes.
+60	chendao	진도	silver blue	Chen Dao, a loyal guard commander with a white feather plume on his helmet, spear held at guard.
