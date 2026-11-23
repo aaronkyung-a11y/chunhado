@@ -98,10 +98,10 @@ def steps(pg):
     # 시설에 지르는 불(상대의 지력이 없다): 전에는 100% 였다
     fr = pg.evaluate('''(() => { var A = facAdv(G.player), u = { off: [A.id], f: G.player, type: "spear", troops: 3000, morale: 100 }; var a = advise(G.player, 10, 10, 92, 0); return [a.acc, A.int]; })()''')
     ok(fr[0] == fr[1], '상대의 지력이 없는 일(시설에 불)도 지력 그대로 %d%%' % fr[0])
-    # 실제로 그만큼 맞는가: 이 군사가 재야 무장 한 사람에 대해 턴마다 내는 조언 3,000번
-    hit = pg.evaluate('''((tid) => { var b = facCities(G.player)[0], t = off(tid), o = idleOfficers(b)[0], t0 = G.turn, n = 0, right = 0;
-      for (var k = 1; k <= 3000; k++) { G.turn = 5000 + k; var a = recruitAdvice(b, o, t), real = recruitRoll(t) < recruitChance(b, o, t); n++; if (a.says === real) right++; }
-      G.turn = t0; return [n, right]; })''', rc['lo']['id'])
+    # 실제로 그만큼 맞는가: 이 군사가 재야 무장 한 사람에 대해 달마다 내는 조언 3,000번(v0.21: 재야의 마음도 달마다 한 번 정해진다 — 전에는 턴마다)
+    hit = pg.evaluate('''((tid) => { var b = facCities(G.player)[0], t = off(tid), o = idleOfficers(b)[0], y0 = G.year, m0 = G.month, n = 0, right = 0;
+      for (var k = 1; k <= 3000; k++) { G.year = 300 + Math.floor(k / 12); G.month = 1 + k % 12; var a = recruitAdvice(b, o, t), real = recruitRoll(t) < recruitChance(b, o, t); n++; if (a.says === real) right++; }
+      G.year = y0; G.month = m0; return [n, right]; })''', rc['lo']['id'])
     pct = 100.0 * hit[1] / hit[0]
     ok(abs(pct - I) < 3.0, '3,000번 가운데 맞힌 것 %.1f%% (적중률 %d%%)' % (pct, I))
 

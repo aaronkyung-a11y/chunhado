@@ -264,7 +264,8 @@ def steps(pg):
     pg.evaluate('(() => { flowTransport(facCities(G.player)[0]); })()'); pg.wait_for_timeout(400)
     ok(pg.evaluate('document.querySelectorAll("#fx .mk").length') == 0 and '1/2' in pg.evaluate('document.querySelector("#modal .dlg-h").innerText'), '수송 ①단계(호송 무장 · 짐)')
     tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(800)
-    ok(pg.evaluate('document.querySelectorAll("#fx .mk.ex").length') == 6 and pg.evaluate('!!document.querySelector("#modal .seg.tbk")') and pg.evaluate('!!document.querySelector("#modal [data-a=ok]")'), '수송 ②단계: 내린 뒤 · 지도 위 나갈 자리')
+    # v0.21: 수송의 ②단계는 '어디로'(갈 곳을 지도에서) — 나갈 자리 · '내린 뒤'를 고르지 않는다(자세한 것은 d35)
+    ok(pg.evaluate('document.querySelectorAll("#fx .mk.ex.src").length') == 1 and not pg.evaluate('!!document.querySelector("#modal .seg.tbk")') and pg.evaluate('!!document.querySelector("#modal [data-a=ok]")') and '어디로' in pg.evaluate('document.querySelector("#modal .dlg-h").innerText') and pg.evaluate('!!document.querySelector("#modal [data-a=to][data-v=x0]")'), "수송 ②단계: 어디로 — 지도에 떠나는 성의 딱지 · '성 앞에 나가 기다린다'")
     pg.evaluate('closeDialog()')
 
     # ================= 7. 아래에 더 있다는 표시 =================

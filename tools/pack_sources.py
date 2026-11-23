@@ -28,6 +28,7 @@ build/v0181/q1_back181.py build/v0181/apply.sh tests/back181.js tests/d32.py
 build/v019/p1_v019.py build/v019/apply.sh tests/bio19.js tests/d33.py
 build/v0191/r1_fade191.py build/v0191/apply.sh
 build/v020/s1_map.py build/v020/s2_scene.py build/v020/s3_css.py build/v020/s4_ui.py build/v020/s5_flow.py build/v020/s6_staff.py build/v020/s7_duel.py build/v020/s8_fx.py build/v020/apply.sh build/v020/terrain.sh tools/add_base20.py tools/terrain20.py tests/v20.js tests/d34.py
+build/v021/s1_gates.py build/v021/s2_rules.py build/v021/s3_trans.py build/v021/s4_ui.py build/v021/s5_css.py build/v021/apply.sh build/v021/terrain.sh build/v021/measure_recruit.js build/v021/gates.log tools/gates21.py tools/terrain21.py tests/v21.js tests/d35.py
 pwa/manifest.webmanifest pwa/sw.js
 tools/geo.py tools/mapgen2.py tools/bake3d.py tools/bake3d_ink.py tools/make_sprites.py tools/make_sprites_ink.py tools/make_roster.py tools/make_portraits.py tools/make_assets_ink.py
 tools/build.py tools/pack_sources.py tools/fetch_art.py tools/contact.py tools/dl_por2.py tools/dl_por3.py

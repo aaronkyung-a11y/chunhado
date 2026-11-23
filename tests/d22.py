@@ -199,16 +199,17 @@ def steps(pg):
     for x in r6[:4]: print('     ', x)
     ok(all('옛 여포군 · 멸망' in x['rt'] for x in r6), '포로 줄마다 출신(옛 여포군 · 멸망)')
     cmp6 = pg.evaluate('''(() => { var fb = G.bases[%d], L = off(G.factions[G.player].lord), out = [];
-      fb.captives.forEach(function (id) { var t = off(id); idleOfficers(fb).forEach(function (o) { var x = recruitTerms(fb, o, t), old = 35 + (o.cha - 50) * 0.7 + (o.pol - 50) * 0.2 + (L.cha - 70) * 0.4 + (o.sk === '논객' ? 20 : 0) + (bondWith(t, G.player) ? 30 : 0) - 15;
-        out.push({ t: t.n, lord: G.factions[1].lord === t.id, p: x.p, old: clamp(Math.round(old), 3, 95), exp: clamp(Math.round(old + (G.factions[1].lord === t.id ? 0 : 25)), 3, 95) }); }); });
+      fb.captives.forEach(function (id) { var t = off(id); idleOfficers(fb).forEach(function (o) { var x = recruitTerms(fb, o, t), old = RECRUIT.base + (o.cha - 50) * RECRUIT.cha + (o.pol - 50) * RECRUIT.pol + (L.cha - 70) * RECRUIT.lord + (o.sk === '논객' ? 20 : 0) + (bondWith(t, G.player) ? 30 : 0) - RECRUIT.cap;      // v0.21: 값은 RECRUIT 에서
+        out.push({ t: t.n, lord: G.factions[1].lord === t.id, p: x.p, old: clamp(Math.round(old), RECRUIT.min, RECRUIT.max), exp: clamp(Math.round(old + (G.factions[1].lord === t.id ? 0 : RECRUIT.cap + TIES.fallen)), RECRUIT.min, RECRUIT.max) }); }); });
       return out; })()''' % G6['fb'])
-    ok(all(x['p'] == x['exp'] for x in cmp6) and any(x['p'] > x['old'] for x in cmp6), '멸망한 세력 출신의 포로: 전보다 +25(옛 군주는 그대로) — %d조합' % len(cmp6))
+    FALL = pg.evaluate('RECRUIT.cap + TIES.fallen')                                     # v0.21: 15 + 10 → 6 + 10
+    ok(all(x['p'] == x['exp'] for x in cmp6) and any(x['p'] > x['old'] for x in cmp6), '멸망한 세력 출신의 포로: 전보다 +%d(옛 군주는 그대로) — %d조합' % (FALL, len(cmp6)))
     zl = next((x for x in r6 if x['n'] == '장료'), r6[1])
     idx = pg.evaluate('(id) => Array.from(document.querySelectorAll("#modal .row[data-a=t]")).findIndex(function (r) { return +r.getAttribute("data-v") === id; })', zl['id'])
     pg.locator('#modal .row[data-a=t]').nth(idx).tap(); pg.wait_for_timeout(600)
     tapsel(pg, '#modal [data-a=auto]'); pg.wait_for_timeout(400)
     pv6 = txt(pg, '#modal .pv')
-    ok('멸망한 세력 출신 +25' in pv6, '보낼 무장을 고르면 아래에 더해진 까닭: ' + pv6)
+    ok(('멸망한 세력 출신 +%d' % FALL) in pv6, '보낼 무장을 고르면 아래에 더해진 까닭: ' + pv6)
     pg.evaluate('(() => { recruitRoll = function () { return 0; }; })()')         # 주사위를 0 으로: 반드시 응한다
     tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(900)
     j6 = pg.evaluate('(id) => { var o = off(id); return [o.st, o.f, o.pf, o.past]; }', zl['id'])
@@ -226,7 +227,7 @@ def steps(pg):
     ok(any(p.startswith(zl['n'] + ':') and '옛 동료' in p for p in pk), '무장을 고르는 표: %s 의 칸에 옛 동료 — %s' % (zl['n'], pk[:3]))
     tapsel(pg, '#modal [data-a=auto]'); pg.wait_for_timeout(400)
     pv7 = txt(pg, '#modal .pv')
-    ok('멸망한 세력 출신 +25' in pv7 and '옛 동료의 설득 +12' in pv7, '미리보기: ' + pv7)
+    ok(('멸망한 세력 출신 +%d' % FALL) in pv7 and '옛 동료의 설득 +12' in pv7, '미리보기: ' + pv7)
     B.shot(pg, 'q6_recruit', 200)
     pg.evaluate('closeDialog()'); pg.wait_for_timeout(300)
     pg.evaluate('(id) => showOfficer(off(id))', zl['id']); pg.wait_for_timeout(500)
@@ -282,9 +283,11 @@ def steps(pg):
     ok('20일분 → 280일분' in pv and '3,000 → 4,500' in pv and '남는 병량 3,000' in pv, '미리보기(받는 부대의 군량 날수 · 병력, 수송대에 남는 병량): ' + pv)
     B.shot(pg, 'q7_supply', 200)
     tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(900)
-    a7 = pg.evaluate('(([a, t]) => { var A = UMAP[a], T = UMAP[t]; return { A: [A.troops, A.food, A.done], T: [T.troops, T.food, T.cargo.spear, T.done], modal: !!MODAL, talk: $("talk") ? $("talk").innerText.replace(/\\n/g, " / ") : "" }; })', [U7['A'], U7['T']])
+    a7 = pg.evaluate('(([a, t]) => { var A = UMAP[a], T = UMAP[t]; return { A: [A.troops, A.food, A.done], T: [T.troops, T.food, T.cargo.spear, T.done], modal: !!MODAL && !MODAL.ask, talk: $("talk") ? $("talk").innerText.replace(/\\n/g, " / ") : "" }; })', [U7['A'], U7['T']])
     ok(a7['A'][:2] == [4500, 6300] and a7['T'] == [600, 3000, 0, True] and not a7['modal'], '보급: 받은 부대 병력 4,500 · 병량 6,300, 수송대 병력 600 · 병량 3,000 · 창 0 · 행동 끝 %s' % a7)
     ok('보급' in a7['talk'] and '병량 6,000' in a7['talk'], '대화창: ' + a7['talk'])
+    pg.wait_for_timeout(500)                                                            # v0.21: 보급을 마치면 남을지 · 돌아갈지 묻는다(d35 가 본다) — 여기서는 남는다
+    if pg.evaluate('!!(MODAL && MODAL.ask)'): tapsel(pg, '#modal [data-a=tstay]'); pg.wait_for_timeout(300)
     pg.evaluate('talkHide()')
     # 받는 쪽에서: 행동하지 않은 수송대가 옆에 있으면 [보급 받기]
     pg.evaluate('(([a, t]) => { UMAP[t].done = false; selectUnit(UMAP[a]); })', [U7['A'], U7['T']]); pg.wait_for_timeout(500)

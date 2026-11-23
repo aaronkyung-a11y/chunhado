@@ -60,7 +60,7 @@ var L = by('유비'), home = G.bases[L.loc], rec = L, zy = by('조운'), fr = G.
 zy.f = -1; zy.st = 'free'; zy.loc = home.id; zy.unit = null;
 var other = by('장료'); var of0 = other.f; other.f = -1; other.st = 'free'; other.loc = home.id;
 var pz = recruitChance(home, rec, zy), po = recruitChance(home, rec, other);
-chk('내 군주와 인연이 있는 재야 무장은 등용 확률 +30', pz === Math.min(95, po + 30), po + ' → ' + pz);
+chk('내 군주와 인연이 있는 재야 무장은 등용 확률 +30', pz === Math.min(RECRUIT.max, po + 30), po + ' → ' + pz);      // v0.21: 위 끝이 95 → RECRUIT.max(88)
 G.factions[home.owner].ap = 999; var joined = false;
 for (var k = 0; k < 60 && !joined; k++) { rec.acted = false; var r = cmdRecruit(home, rec.id, zy.id); G.factions[home.owner].ap = 999; joined = r.ok && r.joined; G.turn++; }      // v0.9: 한 무장에게는 한 턴에 한 번만 권할 수 있고 결과가 턴마다 정해져 있으므로, 턴을 넘겨 가며 권한다
 chk('인연이 있는 무장은 등용되면 바로 충성 100', joined && zy.loy === 100, zy.loy);

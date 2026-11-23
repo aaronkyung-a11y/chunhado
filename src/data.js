@@ -1,5 +1,5 @@
 /* ===== 천하도 — 정적 데이터 ===== */
-var GAME_VERSION = 'v0.20';
+var GAME_VERSION = 'v0.21';
 var SAVE_KEY = 'chunhado_save_v2';
 var SHARE_URL = 'https://aaronkyung-a11y.github.io/chunhado/';      // 공유(v0.11)로 보내는 주소 — 누구나 열 수 있는 곳
 /* SHARE_URL 의 QR(33×33, 줄마다 16진수 · 왼쪽이 높은 자리). 주소를 바꾸면 다시 만들어야 한다(segno 로 만들고 OpenCV 로 읽어 확인) */
@@ -49,7 +49,9 @@ var TERR_K = { cover: 0.85, forestShot: 0.85, riverDef: 1.2, riverAtk: 0.7, cavP
    + 논객 talker + 대상이 내 군주와 인연이면 bond.  0~max%.  충성이 wall 이상이거나 제 주군과 인연이 있으면 0.
    이 성공률은 '그 달에 응할 확률'이다 — 다른 세력 무장의 마음은 달마다 한 번 정해지고, 한 무장에게는 한 달에 한 번만 권할 수 있다.
    up = 거절한 무장의 충성이 오르는 폭, tighten = 무장이 떠났을 때 그 세력에 남은 무장들의 충성이 오르는 폭(주군의 단속) */
-var POACH = { base: 15, cha: 0.5, pol: 0.2, lord: 0.25, loy0: 70, loyK: 2.5, talker: 20, bond: 30, max: 85, wall: 95, up: 3, tighten: 2 };
+var POACH = { base: 11, cha: 0.5, pol: 0.2, lord: 0.25, loy0: 70, loyK: 2.8, talker: 20, bond: 30, max: 75, wall: 95, up: 3, tighten: 2 };
+/* v0.21 재야 · 포로의 등용(0.20 까지: base 35 · cha 0.7 · max 95 · cap 15 · 턴마다 다시 권할 수 있었다). cap = 포로라서 깎이는 값, capLoy = 옛 주군에 대한 충성(60 넘는 만큼)의 몫 */
+var RECRUIT = { base: 24, cha: 0.6, pol: 0.2, lord: 0.4, cap: 6, capLoy: 0.8, min: 3, max: 88 };
 /* AI 가 다른 세력의 무장에게 권하는 빈도: 턴마다 tryPct% 의 확률로 한 번, 성공률이 min% 이상인 대상에게만.
    spare = 무장이 이 수 이하(군주 포함)인 세력의 무장에게는 권하지 않는다(작은 세력이 등용만으로 말라 죽지 않게) */
 /* 등용과 옛 관계(v0.11): 보내는 무장과 대상의 사이(가장 큰 것 하나) — bond 직접 인연 · lord 옛 주군 · kin 같은 주군과 인연으로 묶인 사이 · vassal 옛 신하 · mate 옛 동료.
@@ -101,6 +103,7 @@ var FAC_ORDER = ['market', 'farm', 'barracks', 'smithy', 'stable', 'workshop', '
 var BASES_OLD = 49;                                         // v0.20: 0.19.1 까지의 거점 수(옛 저장은 이만큼만 가지고 있다)
 var BASE_GROW = { '홍농': '장안' };                          // 옛 저장에 덧붙일 때의 주인: 이 성을 쥔 세력(없으면 빈 성)
 var MAX_DUR = { L: 3000, M: 2400, S: 1800, G: 2200 };
+var DUR_HEAL = { wait: 2, pct: 4 };      // v0.21 성의 내구: 맞지 않은 지 wait 턴이 지나면 턴마다 최대 내구의 pct % 씩 돌아온다
 var FAC_HP = 800;
 
 /* 행동력 소모 */

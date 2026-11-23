@@ -52,11 +52,12 @@ def steps(pg):
     # ---------- ③ 붓으로 두른 틀 ----------
     print('③ 붓 테두리')
     br = pg.evaluate('''() => { var c = document.querySelector('#sheet .cmd'), a = getComputedStyle(c, '::after'), cs = getComputedStyle(c), f = document.getElementById('inkEdge');
-      return { filt: a.filter, bw: [a.borderTopWidth, a.borderRightWidth, a.borderBottomWidth, a.borderLeftWidth], rad: cs.borderTopLeftRadius + '/' + cs.borderTopRightRadius, own: cs.borderTopColor, fe: f ? [].map.call(f.children, function (x) { return x.tagName; }) : null,
+      return { filt: a.filter, bis: a.borderImageSource.slice(0, 26), bw: [a.borderTopWidth, a.borderRightWidth, a.borderBottomWidth, a.borderLeftWidth], rad: cs.borderTopLeftRadius + '/' + cs.borderTopRightRadius, own: cs.borderTopColor, fe: f ? [].map.call(f.children, function (x) { return x.tagName; }) : null,
         sheet: getComputedStyle($('sheet'), '::before').backgroundImage.slice(0, 26), hud: getComputedStyle($('hud'), '::after').backgroundImage.slice(0, 26), bar: getComputedStyle($('btnEnd'), '::after').borderTopColor, st: getComputedStyle($('sheet')).borderTopColor }; }''')
     print('     ', br)
-    ok(br['fe'] and 'feTurbulence' in br['fe'] and 'feDisplacementMap' in br['fe'] and 'inkEdge' in br['filt'], '단추의 테두리는 붓 거름(#inkEdge)을 거친 가짜 요소가 그린다')
-    ok(len(set(br['bw'])) >= 2 and br['rad'] != '2px/2px' and br['rad'].split('/')[0] != br['rad'].split('/')[1] and 'rgba(0, 0, 0, 0)' in br['own'], '선의 굵기가 변마다 다르고(%s) 모서리가 고르지 않다(%s) — 곧은 테두리는 지웠다' % (br['bw'], br['rad']))
+    # v0.21: 틀은 필터로 흔든 가는 선이 아니라 붓 획을 그린 그림(border-image)이다 — 필터(#inkEdge)는 없앴다(자세한 것은 d35)
+    ok(br['fe'] is None and br['filt'] == 'none' and 'svg' in br['bis'], '단추의 테두리는 붓 획을 그린 그림(가짜 요소의 border-image)이다 — 필터는 쓰지 않는다')
+    ok(br['rad'].split('/')[0] != br['rad'].split('/')[1] and 'rgba(0, 0, 0, 0)' in br['own'], '모서리가 고르지 않다(%s) — 곧은 테두리는 지웠다' % br['rad'])
     ok('svg' in br['sheet'] and 'svg' in br['hud'] and 'rgba(0, 0, 0, 0)' in br['st'], '판의 경계(위 정보줄 · 아래 판)는 붓 한 획 그림')
     # ---------- ④ 내구 막대 ----------
     print('④ 내구 막대')

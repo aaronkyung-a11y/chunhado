@@ -8,6 +8,8 @@ function load(root) {
   return ctx;
 }
 const NEW = load(process.env.SRC || path.join(__dirname, '..', 'src'));
+// v0.21: 등용의 바탕 값이 바뀌었다(RECRUIT · POACH — 재야 35 → 24 …). 이 시험은 '옛 관계가 더하는 값'을 보는 것이라 바탕 값은 0.20 까지의 것으로 돌려놓고 본다(바뀐 값은 tests/v21.js 가 본다)
+vm.runInContext("if (typeof RECRUIT !== 'undefined') { RECRUIT.base = 35; RECRUIT.cha = 0.7; RECRUIT.max = 95; RECRUIT.cap = 15; POACH.base = 15; POACH.loyK = 2.5; POACH.max = 85; }", NEW);
 let pass = 0, fail = 0;
 function ok(c, msg) { if (c) pass++; else { fail++; console.log('  ✗ ' + msg); } }
 function run(ctx, code) { return JSON.parse(vm.runInContext('JSON.stringify((function () {' + code + '})())', ctx)); }

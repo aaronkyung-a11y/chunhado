@@ -282,7 +282,7 @@ function init3d() {
   });
   R3.magfix = !!(renderer.capabilities.isWebGL2 || renderer.extensions.has('EXT_shader_texture_lod'));      // v0.11: 확대했을 때의 손질을 켤 수 있는 기기인가
   if (R3.magfix) R3.tmat.defines = { MAGFIX: 1 };
-  buildTerrain(); buildRoads(); buildTrees();
+  buildTerrain(); buildRoads(); buildTrees(); buildWalls();
   R3.objs = new THREE.Group(); scene.add(R3.objs);
   R3.flame = flameTexture();
 }
@@ -321,6 +321,27 @@ function buildRoads() {
   var g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3)); g.setIndex(n > 65535 ? new THREE.BufferAttribute(new Uint32Array(idx), 1) : new THREE.BufferAttribute(new Uint16Array(idx), 1));
   var mat = new THREE.MeshBasicMaterial({ color: 0x2b2722, transparent: true, opacity: 0.46, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+  var mesh = new THREE.Mesh(g, mat); mesh.frustumCulled = false; mesh.renderOrder = 0; R3.scene.add(mesh);
+}
+function buildWalls() {                                          // v0.21 관문의 능선(MAPDATA.walls): 막힌 변을 따라 먹선 한 줄, 가운데에 짧은 빗금
+  var ws = MAPDATA.walls || []; if (!ws.length) return;
+  var pos = [], idx = [], n = 0, w = 0.075;
+  function quad(ax, az, bx, bz, hw) {
+    var tx = bx - ax, tz = bz - az, L = Math.sqrt(tx * tx + tz * tz) || 1, px = -tz / L * hw, pz = tx / L * hw;
+    var ya = Math.max(groundY(ax, az), groundY(ax + px, az + pz), groundY(ax - px, az - pz)) + 0.05, yb = Math.max(groundY(bx, bz), groundY(bx + px, bz + pz), groundY(bx - px, bz - pz)) + 0.05;
+    pos.push(ax + px, ya, az + pz, ax - px, ya, az - pz, bx + px, yb, bz + pz, bx - px, yb, bz - pz);
+    idx.push(n, n + 1, n + 2, n + 1, n + 3, n + 2); n += 4;
+  }
+  ws.forEach(function (e, i) {
+    var a = hexCenter(e[0], e[1]), b = hexCenter(e[2], e[3]), mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2, dx = b[0] - a[0], dz = b[1] - a[1], L = Math.sqrt(dx * dx + dz * dz) || 1;
+    var ux = dx / L, uz = dz / L, px = -uz, pz = ux, j = (hash2(e[0] * 7 + e[2], e[1] * 5 + e[3]) - 0.5) * 0.10;
+    var cx = mx + ux * j, cz = mz + uz * j;                         // 가운데를 조금 흔들어 꺾인 선으로
+    quad(mx + px * 0.5, mz + pz * 0.5, cx, cz, w); quad(cx, cz, mx - px * 0.5, mz - pz * 0.5, w);
+    var sgn = (i % 2) ? 1 : -1; quad(cx, cz, cx + ux * 0.24 * sgn + px * 0.10, cz + uz * 0.24 * sgn + pz * 0.10, w * 0.62);      // 빗금
+  });
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3)); g.setIndex(new THREE.BufferAttribute(new Uint16Array(idx), 1));
+  var mat = new THREE.MeshBasicMaterial({ color: 0x1b1a18, transparent: true, opacity: 0.74, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   var mesh = new THREE.Mesh(g, mat); mesh.frustumCulled = false; mesh.renderOrder = 0; R3.scene.add(mesh);
 }
 function hash2(a, b) { var n = (a * 374761393 + b * 668265263) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; }
@@ -1170,6 +1191,15 @@ function thump(t, f0, f1, dur, vol) {
   var g = AC.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + dur + 0.02);
 }
+/* v0.21 뜯는 현 한 음(성공 · 실패의 가벼운 소리): 빠르게 서고 길게 스러지는 음 + 옅은 배음 */
+function pluck(t, freq, dur, vol) {
+  var out = (typeof sndBus === 'function') ? sndBus() : AC.destination;
+  [[1, 1, 'triangle'], [2, 0.28, 'sine'], [3, 0.10, 'sine']].forEach(function (h) {
+    var o = AC.createOscillator(); o.type = h[2]; o.frequency.setValueAtTime(freq * h[0], t);
+    var g = AC.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol * h[1], t + 0.008); g.gain.exponentialRampToValueAtTime(0.0008, t + dur / h[0]);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + dur / h[0] + 0.03);
+  });
+}
 function sfxSyn(kind) {                                       // 만든 소리(대신 쓰는 것)
   var t = AC.currentTime;
   if (kind === 'step') nz(t, 0.06, 'lowpass', 420, 0.7, 0.10);
@@ -1180,6 +1210,8 @@ function sfxSyn(kind) {                                       // 만든 소리(�
   else if (kind === 'drum') { thump(t, 95, 42, 0.5, 0.8); nz(t, 0.12, 'lowpass', 260, 0.7, 0.25); }
   else if (kind === 'fall') { thump(t, 95, 40, 0.5, 0.8); thump(t + 0.28, 95, 40, 0.6, 0.8); nz(t, 0.9, 'lowpass', 350, 0.6, 0.3); }
   else if (kind === 'fail') nz(t, 0.2, 'lowpass', 240, 0.8, 0.2);
+  else if (kind === 'good') { pluck(t, 783.99, 0.55, 0.16); pluck(t + 0.12, 1174.66, 0.85, 0.18); }                     // 솔 → 레: 맑게 올라간다
+  else if (kind === 'bad') { pluck(t, 293.66, 0.42, 0.17); pluck(t + 0.15, 220.0, 0.70, 0.17); nz(t, 0.09, 'lowpass', 280, 0.7, 0.07); }   // 레 → 라: 낮게 내려간다
 }
 function sfx(kind) {
   if (!AC || !UI.sound) return;

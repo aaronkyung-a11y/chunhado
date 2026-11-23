@@ -168,7 +168,7 @@ function aiUnitAct(u) {
   var path = longPath(u, goalFn, 0, hint);
   if (!path) { ai.stuck = (ai.stuck || 0) + 1; if (ai.stuck > 3 && mode === 'attack') ai.mode = 'return'; unitWait(u); return; }
   var dest = -1;
-  for (i = 0; i < path.length; i++) { k = path[i]; if (rc.stop[k] && (!G.fires[k] || BAT[k] !== undefined)) dest = k; }
+  for (i = 0; i < path.length; i++) { k = path[i]; if (rc.stop[k] && (BAT[k] === undefined ? !G.fires[k] : i === path.length - 1)) dest = k; }      // v0.21: 지나가는 관문 칸에는 서지 않는다
   if (dest >= 0) {
     c = dest % W; r = (dest - c) / W;
     var res = unitMove(u, c, r, rc);

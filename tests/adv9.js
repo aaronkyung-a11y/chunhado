@@ -63,9 +63,9 @@ console.log('3. 다른 세력 무장 등용 — 대상과 성공률');
   const T = norm[0], l0 = T.loy;
   T.loy = 95; ok(X.recruitChance(b, o, T) === 0, '충성 95 이상이면 0%');
   T.loy = 94; const p94 = X.recruitChance(b, o, T); T.loy = 80; const p80 = X.recruitChance(b, o, T); T.loy = 70; const p70 = X.recruitChance(b, o, T);
-  ok(p94 <= p80 && p80 < p70 && p70 <= 85, '충성이 낮을수록 잘 응한다', o.n + '(매 ' + o.cha + ' 정 ' + o.pol + ') → ' + T.n + ': 충성 94 ' + p94 + '% · 80 ' + p80 + '% · 70 ' + p70 + '%');
+  ok(p94 <= p80 && p80 < p70 && p70 <= X.POACH.max, '충성이 낮을수록 잘 응한다', o.n + '(매 ' + o.cha + ' 정 ' + o.pol + ') → ' + T.n + ': 충성 94 ' + p94 + '% · 80 ' + p80 + '% · 70 ' + p70 + '%');
   const L = X.off(G2.factions[0].lord), TL = X.off(G2.factions[T.f].lord);
-  ok(p80 === X.clamp(Math.round(15 + (o.cha - 50) * 0.5 + (o.pol - 50) * 0.2 + (L.cha - TL.cha) * 0.25 - 10 * 2.5 + (o.sk === '논객' ? 20 : 0)), 0, 85), '식 그대로: 15 + (매력−50)×0.5 + (정치−50)×0.2 + (군주 매력 차)×0.25 − (충성−70)×2.5', p80 + '%');
+  ok(p80 === X.clamp(Math.round(X.POACH.base + (o.cha - 50) * X.POACH.cha + (o.pol - 50) * X.POACH.pol + (L.cha - TL.cha) * X.POACH.lord - 10 * X.POACH.loyK + (o.sk === '논객' ? 20 : 0)), 0, X.POACH.max), '식 그대로: 바탕 + (매력−50)×' + X.POACH.cha + ' + (정치−50)×' + X.POACH.pol + ' + (군주 매력 차)×' + X.POACH.lord + ' − (충성−70)×' + X.POACH.loyK + ' (v0.21: 바탕 11 · 2.8 · 위 끝 75)', p80 + '%');
   const sk0 = o.sk; o.sk = '논객'; T.loy = 86; const pt = X.recruitChance(b, o, T); o.sk = ''; const pn = X.recruitChance(b, o, T); o.sk = sk0; ok(pt - pn === 20 || pt === 85, '논객 +20', pn + ' → ' + pt);
   T.loy = l0;
   ok(!X.canPoach(b, X.off(G2.factions[T.f].lord)), '군주에게는 권할 수 없다');
@@ -81,7 +81,7 @@ console.log('4. 권하기 — 넘어옴 / 거절 / 다시 권하기');
   // 다른 세력 무장의 주사위는 달마다 한 번: 같은 달에는 턴이 바뀌어도 같고, 달이 바뀌면 달라진다
   { const r0 = X.recruitRoll(T), t0 = G3.turn; G3.turn = t0 + 1; const r1 = X.recruitRoll(T); G3.turn = t0 + 2; const r2 = X.recruitRoll(T); G3.turn = t0; G3.month = 2; const r3 = X.recruitRoll(T); G3.month = 1;
     ok(r0 === r1 && r1 === r2 && r3 !== r0, '다른 세력 무장의 마음은 달마다 한 번 정해진다(같은 달에는 같고, 달이 바뀌면 다르다)', r0.toFixed(1) + ' / ' + r3.toFixed(1));
-    const fo = { id: T.id, st: 'free' }; G3.turn = t0 + 1; const f1 = X.recruitRoll(fo); G3.turn = t0; ok(X.recruitRoll(fo) !== f1, '재야·포로는 턴마다 새로 정해진다'); }
+    const fo = { id: T.id, st: 'free' }; G3.turn = t0 + 1; const f1 = X.recruitRoll(fo); G3.turn = t0; const f0 = X.recruitRoll(fo); G3.month = 2; const f2 = X.recruitRoll(fo); G3.month = 1; ok(f0 === f1 && f2 !== f0, '재야·포로도 달마다 한 번 정해진다(v0.21 — 0.20 까지는 턴마다)'); }
   const roll = X.recruitRoll(T);
   T.loy = 94; let o = idle()[0], p = X.recruitChance(b, o, T);
   if (roll >= p) {

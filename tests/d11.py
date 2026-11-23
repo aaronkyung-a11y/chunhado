@@ -32,7 +32,7 @@ CANDS = '''() => {
 }'''
 STATE = '''() => {
   var m = document.querySelector('#modal .dlg-h h2'), ret = $('ret');
-  return { modal: MODAL ? (m ? m.textContent.trim() : '?') : null, on: $('modal').classList.contains('on'), depth: MSTACK.length, lock: !!(MODAL && MODAL.lock),
+  return { modal: MODAL ? (m ? m.textContent.trim() : '?') : null, on: $('modal').classList.contains('on'), depth: MSTACK.length, lock: !!(MODAL && MODAL.lock), ask: (MODAL && MODAL.ask) || null,
     sheet: !SHEET ? null : (SHEET.home ? 'home' : 'sel'), sel: UI.sel ? UI.sel.kind + ':' + UI.sel.id : null, chip: ret.classList.contains('on'), ret: !!UI.ret, via: !!UI.via, sret: !!UI.sret,
     target: !!UI.target, march: !!UI.march, pick: !!UI.pickMarch, busy: !!UI.busy, play: !!UI.play, over: G ? G.over : 'noG', title: !$('title').classList.contains('off') };
 }'''
@@ -81,6 +81,10 @@ def unwind(pg, where):
         trace.append('%s|%s|d%d%s%s%s%s%s' % (s['modal'], s['sel'], s['depth'], ' tgt' if s['target'] else '', ' march' if s['march'] else '', ' pick' if s['pick'] else '', ' via' if s['via'] else '', ' sret' if s['sret'] else ''))
         if s['modal'] is None and s['sheet'] == 'home': break
         pg.evaluate('MPAINT = 0')
+        if s['modal'] is not None and s.get('ask'):      # v0.21: 수송 · 보급을 마친 뒤의 물음 — ×가 없다. 둘 가운데 하나를 눌러야 닫힌다
+            STAT['asks'] = STAT.get('asks', 0) + 1
+            pg.evaluate('''() => { var bs = document.querySelectorAll('#modal [data-a=tstay], #modal [data-a=tgo]'); if (bs.length) bs[Math.floor(Math.random() * bs.length)].click(); }''')
+            n += 1; settle(pg, 60); continue
         if s['modal'] is not None:
             d0 = s['depth']
             ok = pg.evaluate('''() => { var x = document.querySelector('#modal .dlg-h .x') || document.querySelector('#modal [data-a=close]'); if (!x) return false; x.click(); return true; }''')

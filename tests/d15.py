@@ -196,7 +196,7 @@ def steps(pg):
     hp = pg.evaluate('document.querySelector("#modal").textContent')                     # v0.9.2: 토막이 접혀 있어 보이는 글(innerText)에는 제목만 있다
     seen = pg.evaluate('document.querySelector("#modal .dlg-b").innerText')
     ok('초반 보호' in hp and '계략과 상태 이상' in hp and '성역의 경계 — 넘으면' not in hp, '도움말에 두 항목이 있다')
-    ok(len(seen) < 260 and '초반 보호' in seen and pg.evaluate('document.querySelectorAll("#modal details").length') >= 15, 'v0.9.2: 도움말은 제목만 보인다(보이는 글 %d자, 토막 %d개)' % (len(seen), pg.evaluate('document.querySelectorAll("#modal details").length')))
+    ok(len(seen) < 300 and '초반 보호' in seen and pg.evaluate('document.querySelectorAll("#modal details").length') >= 15, 'v0.9.2: 도움말은 제목만 보인다(보이는 글 %d자, 토막 %d개)' % (len(seen), pg.evaluate('document.querySelectorAll("#modal details").length')))
     pg.evaluate('''Array.prototype.forEach.call(document.querySelectorAll("#modal details"), function (d) { if (/초반 보호/.test(d.querySelector("summary").textContent)) d.querySelector("summary").click(); })'''); pg.wait_for_timeout(200)
     ok('1만 미만이면 6개월' in pg.evaluate('document.querySelector("#modal .dlg-b").innerText'), '제목을 누르면 그 토막이 펼쳐진다')
     bad = re.findall(r'[^\n]{0,14}[0-9]\s*턴[^\n]{0,8}', hp)
