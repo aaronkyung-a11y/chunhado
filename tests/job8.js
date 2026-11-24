@@ -73,7 +73,8 @@ function run() {
   eb.troops = 20000; eb.w.spear = 9000; G.factions[eb.owner].ap = 255;
   var eu = cmdDeploy(eb, { type: 'spear', ids: [idleOfficers(eb)[0].id], troops: 5000, food: 5000 }).unit;
   captureBase(b, eu);
-  chk('함락: 짓다 만 시설은 사라지고 다 지은 시설은 남음', !b.plots[pi].fac && b.plots.filter(function (p) { return p.fac && p.fac.done; }).length === doneBefore && b.owner === eu.f);
+  var sackN = typeof sackCount === 'function' ? sackCount(doneBefore) : 0;      // v0.22: 함락하면 다 지은 시설의 일부가 부서진다(tests/v22.js)
+  chk('함락: 짓다 만 시설은 사라지고 다 지은 시설은 일부(' + sackN + '곳)만 부서지고 남음', !b.plots[pi].fac && b.plots.filter(function (p) { return p.fac && p.fac.done; }).length === doneBefore - sackN && b.owner === eu.f);
   chk('함락: 담당이던 무장의 공사 표시가 지워짐', !busy(A) && !A.job && (A.st === 'captive' || A.loc !== b.id));
   chk('함락 뒤 불변식', invariants().length === 0, invariants().slice(0, 3));
   // ---------- 4. 공격·불로 파괴 ----------

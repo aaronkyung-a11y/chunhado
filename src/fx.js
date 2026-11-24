@@ -6,8 +6,8 @@ var FXK = 1.32;                                          // 붓 자국의 크기
 var FX_INK = 0x1b1a18, FX_SEAL = 0xb5332a, FX_WASH = 0x6f6a60, FX_INDIGO = 0x2f4f6f, FX_FIRE = 0xd8572a;
 
 function fxRng(seed) { var s = seed | 0; return function () { s = (s * 1664525 + 1013904223) | 0; return ((s >>> 8) & 0xffff) / 65535; }; }
-function fxCanvas(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
-function fxTexOf(c) { var t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; return t; }
+function fxCanvas(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; cv2d(c); return c; }
+function fxTexOf(c) { return cvTex(c, false); }      // v0.22: 화소를 지닌 텍스처(ui3d.js 의 cvTex)
 
 /* 붓 자국 그림들 */
 function fxTex(name) {
@@ -317,9 +317,13 @@ function animAct(res, done, onImpact) {
     end = hit + 420;
     // 부가 대상(횡소·일소·관통·전우)
     if (res.extra) for (i = 0; i < res.extra.length; i++) (function (xh, i) {
-      var p = hexPos(xh.c, xh.r), ou = UAT[K(xh.c, xh.r)], oo = ou ? R3.units[ou.id] : null;
+      var p = hexPos(xh.c, xh.r), ou = UAT[K(xh.c, xh.r)], oo = xh.id !== undefined ? (R3.units[xh.id] || null) : (ou ? R3.units[ou.id] : null);
       fxMark(tracks, hit + 60 + i * 70, 340, 'arc', FX_INK, p, 1.2, 2.0, Math.random() * 6.28, { fade: 1.6 });
-      if (oo && !oo.anim) fxHurt(tracks, hit + 80 + i * 70, oo, p, 0.11);
+      if (oo && oo !== A && oo !== T && (oo.keep || !oo.anim)) {            // v0.22: 붙잡아 둔 그림을 그 자리에서 흔들고, 궤멸했으면 흩어 보낸다
+        if (touched.indexOf(oo) < 0) { oo.anim = true; touched.push(oo); }
+        fxHurt(tracks, hit + 80 + i * 70, oo, p, 0.11);
+        if (xh.dead) { fxVanish(tracks, hit + 300 + i * 70, oo, p); end = Math.max(end, hit + 900 + i * 70); }
+      }
       end = Math.max(end, hit + 460 + i * 70);
     })(res.extra[i], i);
     // 자리 옮김: 밀려남 · (v0.18) 끌려옴 — 끌려올 때는 조금 늦게, 끄는 쪽을 따라온다
@@ -359,7 +363,8 @@ function animAct(res, done, onImpact) {
   if (res.destroyed) { fxMark(tracks, hit + 80, 800, 'splat', FX_INK, pt, 0.8, 2.4, 1, { dy: 0.3, alpha: 0.75, order: 2.6 }); end = Math.max(end, hit + 700); }
   tracks.push({ a: end, b: end, on: impact });
   return fxTimeline(end + 30, tracks, function () {
-    for (var q = 0; q < touched.length; q++) { var o = touched[q]; o.anim = false; o.c = -1; o.sig = ''; if (o.sp && !o.gone) { o.sp.material.color.setRGB(1, 1, 1); o.sp.scale.set(o.sp.userData.w, o.sp.userData.h, 1); } }
+    if (typeof freeAct === 'function') freeAct(res);                  // v0.22: 붙잡아 둔 거점 · 불을 푼다(함락한 거점은 함락 장면이 푼다)
+    for (var q = 0; q < touched.length; q++) { var o = touched[q]; o.anim = false; o.keep = false; o.c = -1; o.sig = ''; if (o.sp && !o.gone) { o.sp.material.color.setRGB(1, 1, 1); o.sp.scale.set(o.sp.userData.w, o.sp.userData.h, 1); } }
     cv.style.transform = ''; requestDraw(); fin();
   });
 }
@@ -367,6 +372,7 @@ function animAct(res, done, onImpact) {
 /* 성이 넘어가는 장면: 성이 떨리고 먼지가 일며 낙관이 찍힌다 */
 function fxFall(b, text) {
   if (!R3 || !R3.ready) return 0;
+  if (typeof freeBase === 'function') freeBase(b.id);                 // v0.22: 이제 새 주인의 빛깔로(붙잡아 두었다면 여기서 푼다)
   var o = R3.bases[b.id], p = hexPos(b.c, b.r), tracks = [], i;
   if (o) fxHurt(tracks, 0, o, [o.g.position.x, o.g.position.y, o.g.position.z], 0.2);
   for (i = 0; i < 6; i++) fxMark(tracks, i * 60, 760, 'puff', FX_WASH, [p[0] + (Math.random() - 0.5) * 2.6, p[1], p[2] + (Math.random() - 0.5) * 1.2], 0.9, 2.4, 0, { dy: 0.3, rise: 0.7, alpha: 0.95, order: 2.6 });

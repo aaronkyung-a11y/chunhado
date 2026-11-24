@@ -236,9 +236,58 @@ var TERRAIN_FS = [
   '  gl_FragColor = vec4(col, 1.0);',
   '}'].join('\n');
 
+/* ---------- 코드로 그린 그림을 텍스처로(v0.22) ----------
+   0.21 까지는 그림판(canvas)을 그대로 텍스처의 원본으로 두었다(THREE.CanvasTexture). 텍스처는 WebGL 문맥이 새로 만들어질 때마다(앱을 벗어났다 돌아오면 흔하다)
+   원본에서 다시 올라가는데, 그 사이에 브라우저가 그림판의 내용을 비웠으면 빈 그림이 올라간다 — 코드로 그린 것(공사장 · 불길 · 화살 · 붓 고리 · 먹점)만 사라지고
+   사진으로 넣은 그림(성 · 시설 · 부대)은 남는다. 이제는 그리자마자 화소를 읽어 텍스처가 스스로 지닌다(THREE.DataTexture). 그림판에는 더 기대지 않는다. */
+function cv2d(c) { return c.getContext('2d', { willReadFrequently: true }); }      // 곧바로 화소를 읽을 그림판(처음 한 번 이렇게 열어 두면 뒤의 getContext('2d') 도 같은 것을 돌려준다)
+function cvPixels(c) {                                       // 그림판의 화소. 위아래를 뒤집는다(텍스처의 첫 줄 = 그림의 맨 아랫줄). 읽지 못하면 null
+  var w = c.width, h = c.height, d;
+  try { d = c.getContext('2d').getImageData(0, 0, w, h).data; } catch (e) { return null; }
+  var row = w * 4, out = new Uint8Array(row * h);
+  for (var y = 0; y < h; y++) out.set(d.subarray((h - 1 - y) * row, (h - y) * row), y * row);
+  return { data: out, width: w, height: h };
+}
+function texMipOk(w, h) { return !!(R3 && R3.renderer && R3.renderer.capabilities.isWebGL2) || ((w & (w - 1)) === 0 && (h & (h - 1)) === 0); }
+function cvTex(c, mip) {                                     // 그림판 → 텍스처. mip === false 면 축소본을 만들지 않는다
+  var im = cvPixels(c);
+  if (!im) return new THREE.CanvasTexture(c);                // 화소를 읽지 못하면(드물다) 전처럼
+  var t = new THREE.DataTexture(im.data, im.width, im.height, THREE.RGBAFormat), mm = mip !== false && texMipOk(im.width, im.height);
+  t.magFilter = THREE.LinearFilter; t.minFilter = mm ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter; t.generateMipmaps = mm; t.needsUpdate = true;
+  return t;
+}
+function cvTexPut(t, c) {                                    // 다시 그린 그림판을 이미 있는 텍스처에 담는다(이름표). 크기가 바뀌므로 먼저 버리고 새로 올린다
+  var im = t.isDataTexture ? cvPixels(c) : null;
+  t.dispose(); if (im) t.image = im; t.needsUpdate = true;
+}
+/* WebGL 문맥이 새로 만들어진 바로 그때: 끊긴 문맥에서 만든 것들에 걸려 있던 '버릴 때' 연락처를 뗀다 — three 는 새 문맥에서 쓸 때 새로 건다.
+   그대로 두면 버릴 때마다(이름표를 다시 그릴 때 · 붓 자국을 지울 때) 옛 문맥의 것을 지우려다 경고가 쌓인다. three 의 복구 처리가 먼저 돈 뒤, 아무것도 다시 올리기 전에 부른다. */
+function glStale() {
+  if (!R3) return;
+  var k;
+  function drop(o) { if (o && o._listeners && o._listeners.dispose) o._listeners.dispose.length = 0; }
+  R3.scene.traverse(function (o) { var m = o.material; if (m) { drop(m); drop(m.map); if (m.uniforms) for (var u in m.uniforms) { var v = m.uniforms[u].value; if (v && v.isTexture) drop(v); } } drop(o.geometry); });
+  for (k in TEX) drop(TEX[k]); for (k in TEXF) drop(TEXF[k]);
+  if (typeof FX !== 'undefined') for (k in FX.tex) drop(FX.tex[k]);
+  drop(R3.flame); drop(R3.zoneTex); drop(R3.dotTex); drop(R3.stTex); drop(R3.ovTex);
+}
+/* 화면으로 돌아왔을 때 · WebGL 문맥이 복구됐을 때: 코드로 그린 텍스처를 모두 다시 올리고, 이름표를 다시 그리고, 화면을 새로 그린다 */
+function sceneRefresh() {
+  if (!R3 || !R3.ready) return;
+  var k, i;
+  function up(t) { if (t && t.isTexture) t.needsUpdate = true; }
+  if (typeof FX !== 'undefined') for (k in FX.tex) up(FX.tex[k]);
+  for (k in TEX) if (k.indexOf('@') > 0) up(TEX[k]);
+  up(R3.flame); up(R3.zoneTex); up(R3.dotTex); up(R3.stTex); up(R3.ovTex); up(R3.tmat.uniforms.detail.value);
+  for (i = 0; i < R3.bases.length; i++) if (R3.bases[i]) R3.bases[i].sig = '';
+  for (k in R3.units) R3.units[k].sig = '';
+  R3.labelK = 0; R3.refreshN = (R3.refreshN || 0) + 1; UI.dirty = true; UI.render = true;
+  if (typeof MINI !== 'undefined') MINI.t = 0;
+}
+
 function noiseTexture() {
   var n = 256, c = document.createElement('canvas'); c.width = c.height = n;
-  var x = c.getContext('2d'), im = x.createImageData(n, n), d = im.data, s = 12345;
+  var x = cv2d(c), im = x.createImageData(n, n), d = im.data, s = 12345;
   function rnd() { s = (s * 1664525 + 1013904223) | 0; return ((s >>> 8) & 0xffff) / 65535; }
   function layer(cell) {                             // 이음매 없는 값 잡음
     var g = n / cell, a = new Float32Array(g * g), out = new Float32Array(n * n), i, j;
@@ -258,15 +307,16 @@ function noiseTexture() {
     d[k * 4 + 2] = 128; d[k * 4 + 3] = 255;
   }
   x.putImageData(im, 0, 0);
-  var t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+  var t = cvTex(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
 }
 function init3d() {
   cv = $('map'); decodeHeights(); _v = new THREE.Vector3();
   var renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: false, powerPreference: 'high-performance' });
   renderer.setClearColor(FOGC, 1);
+  cv.addEventListener('webglcontextrestored', function () { try { glStale(); sceneRefresh(); } catch (e) { /* */ } }, false);      // v0.22: 문맥이 새로 만들어졌다 — 다시 올리고 다시 그린다(three 의 복구 처리는 이보다 먼저 걸려 있어 먼저 돈다)
   var scene = new THREE.Scene(); scene.fog = new THREE.Fog(FOGC, 60, 200);
   var camera = new THREE.PerspectiveCamera(FOV, 1, 1, 800);
-  R3 = { renderer: renderer, scene: scene, cam: camera, bases: [], units: {}, facs: {}, fires: {}, labelK: 0, pitch: -1, billboard: true, ready: false, loading: 0, labelCache: {} };
+  R3 = { renderer: renderer, scene: scene, cam: camera, bases: [], units: {}, facs: {}, fires: {}, bhold: {}, fhold: {}, labelK: 0, pitch: -1, billboard: true, ready: false, loading: 0, labelCache: {} };
   // 헥스 자료 텍스처
   var st = new Uint8Array(NHEX * 4), i;
   for (i = 0; i < NHEX; i++) { var t = TCH[i]; st[i * 4] = (t === 120 || t === 115 || t === 109) ? 0 : 255; st[i * 4 + 3] = 255; }
@@ -399,10 +449,10 @@ function buildTrees() {
 }
 function flameTexture() {
   var c = document.createElement('canvas'); c.width = 64; c.height = 96;
-  var x = c.getContext('2d'), g = x.createRadialGradient(32, 66, 2, 32, 60, 34);
+  var x = cv2d(c), g = x.createRadialGradient(32, 66, 2, 32, 60, 34);
   g.addColorStop(0, 'rgba(255,226,150,0.98)'); g.addColorStop(0.32, 'rgba(236,120,44,0.95)'); g.addColorStop(0.72, 'rgba(190,52,36,0.78)'); g.addColorStop(1, 'rgba(120,24,18,0)');
   x.fillStyle = g; x.beginPath(); x.moveTo(32, 2); x.bezierCurveTo(60, 44, 58, 92, 32, 94); x.bezierCurveTo(6, 92, 4, 44, 32, 2); x.fill();
-  return new THREE.CanvasTexture(c);
+  return cvTex(c);
 }
 function loadAssets() {
   var k;
@@ -444,8 +494,8 @@ function porImg(key) {
 /* ---------- 이름표 ---------- */
 function rr(x, X, Y, w, h, r) { x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + w, Y, X + w, Y + h, r); x.arcTo(X + w, Y + h, X, Y + h, r); x.arcTo(X, Y + h, X, Y, r); x.arcTo(X, Y, X + w, Y, r); x.closePath(); }
 function mkLabel() {
-  var c = document.createElement('canvas'); c.width = 8; c.height = 8;
-  var t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter; t.generateMipmaps = false;
+  var c = document.createElement('canvas'); c.width = 8; c.height = 8; cv2d(c);
+  var t = cvTex(c, false);
   var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false, depthWrite: false, sizeAttenuation: false }));
   sp.center.set(0.5, 0); sp.renderOrder = 6;
   return { sp: sp, cv: c, tex: t, w: 8, h: 8 };
@@ -483,7 +533,7 @@ function drawLabel(L, lines, bg, border, badge, badgeBg, face, bar) {
   if (badge) { rr(x, w - 31, 3, 28, 28, 4); x.fillStyle = badgeBg || SEAL; x.fill(); x.lineWidth = 1.5; x.strokeStyle = '#fbf6ea'; x.stroke(); x.fillStyle = '#fbf6ea'; x.font = '800 19px ' + FONT_B; x.textBaseline = 'middle'; x.fillText(badge, w - 17, 18); }
   x.restore();
   if (face) { x.globalAlpha = face.dim ? 0.78 : 1; faceAt(x, face.img, face.ring, 0, 0, FD); x.globalAlpha = 1; }
-  L.tex.dispose(); L.tex.needsUpdate = true;
+  cvTexPut(L.tex, L.cv);
 }
 /* 상태 딱지(부대 머리 위): segs = [{t, bg}] 를 옆으로 나란히. 종이 빛 테두리를 둘러 어떤 땅 위에서도 읽힌다 */
 var ST_COL = { confuse: '#2f4f6f', rumor: '#8a5a12', fire: '#b5332a' }, ST_TINT = { confuse: 0xaebdd2, rumor: 0xdccda4 };
@@ -503,7 +553,7 @@ function drawChips(L, segs) {
     X += segs[i].w + gap;
   }
   x.beginPath(); x.moveTo(w / 2 - 7.5, bh + 1.5); x.lineTo(w / 2, bh + tail); x.lineTo(w / 2 + 7.5, bh + 1.5); x.closePath(); x.fillStyle = segs[0].bg; x.fill();   // 테두리 선을 덮어 판과 꼬리를 잇는다
-  L.tex.dispose(); L.tex.needsUpdate = true;
+  cvTexPut(L.tex, L.cv);
 }
 /* 부대의 상태 딱지에 적을 것 */
 function statusSegs(u) {
@@ -525,13 +575,13 @@ function faceAt(x, img, ring, X, Y, S) {                     // (X, Y) 에서 �
 function drawFace(L, img, ring) {
   var S = FACE_D; L.cv.width = L.cv.height = S; L.w = L.h = S;
   faceAt(L.cv.getContext('2d'), img, ring, 0, 0, S);
-  L.tex.dispose(); L.tex.needsUpdate = true;
+  cvTexPut(L.tex, L.cv);
 }
 function mixHex(a, b, t) { var x = rgbOf(a), y = rgbOf(b); return 'rgb(' + Math.round(x[0] + (y[0] - x[0]) * t) + ',' + Math.round(x[1] + (y[1] - x[1]) * t) + ',' + Math.round(x[2] + (y[2] - x[2]) * t) + ')'; }
 /* 붓으로 한 번에 두른 고리(성역 표시): 굵기가 변하고 한쪽이 트여 있다 */
 function ensoTexture() {
   var n = 256, c = document.createElement('canvas'); c.width = c.height = n;
-  var x = c.getContext('2d'), i, s = 91;
+  var x = cv2d(c), i, s = 91;
   function rnd() { s = (s * 1664525 + 1013904223) | 0; return ((s >>> 8) & 0xffff) / 65535; }
   x.translate(n / 2, n / 2);
   for (var pass = 0; pass < 3; pass++) {
@@ -543,15 +593,15 @@ function ensoTexture() {
       x.beginPath(); x.arc(Math.cos(a) * (r - pass * 3.5), Math.sin(a) * (r - pass * 3.5), wd, 0, 6.3); x.fill();
     }
   }
-  var t2 = new THREE.CanvasTexture(c); t2.minFilter = THREE.LinearMipmapLinearFilter; return t2;
+  return cvTex(c);
 }
 /* 부대 발밑의 먹점: 가운데가 짙고 가장자리가 번진 점 */
 function inkDotTexture() {
   var n = 96, c = document.createElement('canvas'); c.width = c.height = n;
-  var x = c.getContext('2d'), g = x.createRadialGradient(n / 2, n / 2, 4, n / 2, n / 2, n / 2);
+  var x = cv2d(c), g = x.createRadialGradient(n / 2, n / 2, 4, n / 2, n / 2, n / 2);
   g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.62, 'rgba(255,255,255,0.86)'); g.addColorStop(0.84, 'rgba(255,255,255,0.42)'); g.addColorStop(1, 'rgba(255,255,255,0)');
   x.fillStyle = g; x.fillRect(0, 0, n, n);
-  return new THREE.CanvasTexture(c);
+  return cvTex(c);
 }
 function shade(hex, k) { var c = rgbOf(hex); return 'rgb(' + Math.round(c[0] * k) + ',' + Math.round(c[1] * k) + ',' + Math.round(c[2] * k) + ')'; }
 
@@ -563,7 +613,7 @@ function siteStage(fc) { return clamp(Math.floor(3 * (fc.prog || 0) / Math.max(1
 function siteCanvas(key, st) {
   var im = SITE_IMG[key], S = SPRITES[key]; if (!im || !S) return null;
   var w = S.w, h = S.h, c = document.createElement('canvas'), i; c.width = w; c.height = h;
-  var x = c.getContext('2d'); x.drawImage(im, 0, 0, w, h);
+  var x = cv2d(c); x.drawImage(im, 0, 0, w, h);
   var d, x0 = w, x1 = 0, y0 = h, y1 = 0, k = SITE_INK[st], al = SITE_A[st];
   try { d = x.getImageData(0, 0, w, h); } catch (e) { return null; }
   var p = d.data;
@@ -610,7 +660,7 @@ function siteTexKey(t, st) {
   if (TEX[k] === null) return '';
   var c = siteCanvas(t, st);
   if (!c) { if (SITE_IMG[t]) TEX[k] = null; return ''; }
-  var tx = new THREE.CanvasTexture(c); TEX[k] = tx; SPRITES[k] = { w: SPRITES[t].w, h: SPRITES[t].h, ay: SPRITES[t].ay };
+  var tx = cvTex(c); TEX[k] = tx; SPRITES[k] = { w: SPRITES[t].w, h: SPRITES[t].h, ay: SPRITES[t].ay };      // v0.22: 화소를 지닌 텍스처(그림판에 기대지 않는다)
   return k;
 }
 /* 목록과 창의 작은 그림에 쓸 주소(가운데 단계). 없으면 '' */
@@ -635,8 +685,42 @@ function setSprite(sp, key, wu, flip) {
   sp.center.set(0.5, S.ay); sp.scale.set(wu, wu * S.h / S.w, 1);
   sp.userData.key = key; sp.userData.top = wu * S.h / S.w * (1 - S.ay); sp.userData.w = wu; sp.userData.h = wu * S.h / S.w; sp.userData.ay = S.ay;
 }
+/* ---------- 붙잡아 두기(v0.22) ----------
+   규칙 쪽 상태는 명령을 내린 순간 끝까지 가 있다. 그 결과(함락 · 궤멸 · 밀려남 · 줄어든 병력)를 그림에 곧바로 옮기면 치기도 전에 성의 빛깔이 바뀌고 부대가 사라진다.
+   그래서 연출에 얽힌 부대 · 거점 · 불은 연출이 끝날 때까지 지금 모습 그대로 둔다.
+     부대 o.keep        자리 · 이름표 · 빛깔을 고치지 않는다(o.anim 과 함께 선다 — anim 이 풀리면 keep 도 풀린다). 규칙 쪽에서 사라져도 지우지 않는다
+     거점 R3.bhold[id]  = 그때의 주인. 이름표 · 성역의 붓 고리 · 시설 · 세력권 · 미니맵을 고치지 않는다
+     불   R3.fhold[칸]  그 칸의 불길을 아직 세우지 않는다
+   푸는 곳: animAct 의 끝 · fxFall · clearAnimFlags · (아무 연출도 없는데 남았으면) syncScene */
+function keepUnit(id) { var o = (R3 && R3.units) ? R3.units[id] : null; if (o) { o.anim = true; o.keep = true; } return o; }
+function keepBase(id, owner) { if (R3 && R3.bhold && id >= 0 && R3.bhold[id] === undefined) R3.bhold[id] = owner; }
+function freeBase(id) { if (!R3 || !R3.bhold || R3.bhold[id] === undefined) return; delete R3.bhold[id]; if (R3.bases[id]) R3.bases[id].sig = ''; requestDraw(); }
+function ownerShown(b) { var h = (R3 && R3.bhold) ? R3.bhold[b.id] : undefined; return h === undefined ? b.owner : h; }      // 지도에 보이는 주인(붙잡아 둔 동안은 옛 주인)
+function keepAct(res, all) {                                 // 행동 하나(공격 · 전법 · 계략)에 얽힌 그림을 붙잡는다. all = 이 행동으로 사라진 부대는 모두(내가 직접 내린 명령 — 함락으로 멸망한 세력의 부대까지)
+  if (!R3 || !R3.ready || !res || res.aid === undefined || res.kind === 'challenge') return;
+  if (all) for (var gid in R3.units) if (!UMAP[gid]) keepUnit(gid);
+  keepUnit(res.aid); if (res.tid >= 0) keepUnit(res.tid);
+  if (res.extra) for (var i = 0; i < res.extra.length; i++) if (res.extra[i].id !== undefined) keepUnit(res.extra[i].id);
+  if (res.tbase >= 0 && (res.tk === 'base' || res.tk === 'fac')) keepBase(res.tbase, res.tf);
+  if (res.c !== undefined && (res.fire || (res.kind === 'ploy' && res.success && res.ploy === '화계'))) R3.fhold[K(res.c, res.r)] = 1;
+}
+function freeAct(res) {                                      // 그 행동의 연출이 끝났다(함락한 거점은 함락 장면이 푼다)
+  if (!R3 || !res) return;
+  if (res.tbase >= 0 && !res.fell) freeBase(res.tbase);
+  if (res.c !== undefined && R3.fhold[K(res.c, res.r)]) { delete R3.fhold[K(res.c, res.r)]; requestDraw(); }
+}
+function holdsFree() {                                       // 남은 것을 모두 푼다
+  if (!R3) return;
+  var k, n = 0;
+  for (k in R3.bhold) { delete R3.bhold[k]; if (R3.bases[k]) R3.bases[k].sig = ''; n++; }
+  for (k in R3.fhold) { delete R3.fhold[k]; n++; }
+  for (k in R3.units) { var o = R3.units[k]; if (o.keep) { o.keep = false; if (o.anim) { o.anim = false; o.c = -1; o.sig = ''; } n++; } }
+  if (n) requestDraw();
+}
+function holdsAny() { var k; if (!R3) return false; for (k in R3.bhold) return true; for (k in R3.fhold) return true; for (k in R3.units) if (R3.units[k].keep) return true; return false; }
 function syncScene() {
   if (!G || !R3.ready) return;
+  if (!UI.busy && !UI.play && holdsAny()) holdsFree();           // v0.22: 아무 연출도 없는데 붙잡아 둔 것이 남아 있으면(놓친 것) 푼다
   var i, j, b, o, p, sig, idleN = {};
   for (i = 0; i < G.officers.length; i++) { var of = G.officers[i]; if (of.st === 'active' && of.f === G.player && of.unit === null && !of.acted) idleN[of.loc] = (idleN[of.loc] || 0) + 1; }
   // 거점
@@ -647,6 +731,7 @@ function syncScene() {
       o.sp = spriteObj(b.kind === 'gate' ? 'gate' : 'city_' + b.sz, BASE_W[b.sz], 2); o.lab = mkLabel();
       o.g.position.set(p[0], p[1], p[2]); o.g.add(o.sp); o.g.add(o.lab.sp); o.lab.sp.position.set(0, o.sp.userData.top * 0.74, 0); R3.objs.add(o.g);
     }
+    if (R3.bhold[i] !== undefined) continue;                              // v0.22: 연출이 끝날 때까지 지금 모습 그대로(이름표 · 붓 고리 · 시설)
     var mineB = b.owner === G.player, col = b.owner >= 0 ? G.factions[b.owner].color : NEUTRAL;
     o.lab.sp.visible = !(SPOT.on && SPOT.v && SPOT.v.b === b);
     if (b.kind === 'city' && !o.zone) {                                 // 성역(성 둘레 ZONE_R 칸)을 붓으로 두른 고리
@@ -688,6 +773,7 @@ function syncScene() {
       o.ring = new THREE.Mesh(R3.ringGeo || (R3.ringGeo = new THREE.CircleGeometry(1.0, 24).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: fcol, map: R3.dotTex || (R3.dotTex = inkDotTexture()), transparent: true, opacity: 0.78, depthTest: false, depthWrite: false }));
       o.ring.renderOrder = 1; R3.objs.add(o.ring); R3.objs.add(o.g);
     }
+    if (o.keep) { if (o.anim) continue; o.keep = false; }                 // v0.22: 붙잡아 둔 부대 — 자리 · 이름표 · 빛깔을 고치지 않는다
     if (!o.anim && (o.c !== u.c || o.r !== u.r)) {
       p = hexPos(u.c, u.r);
       if (o.c >= 0) { var px0 = hexCenter(o.c, o.r)[0]; if (Math.abs(p[0] - px0) > 0.2) o.face = p[0] < px0 ? -1 : 1; }
@@ -722,7 +808,7 @@ function syncScene() {
   }
   // 불
   for (var fk2 in G.fires) {
-    if (R3.fires[fk2]) continue;
+    if (R3.fires[fk2] || R3.fhold[fk2]) continue;                           // v0.22: 불화살 · 화계가 닿기 전에는 불길을 세우지 않는다
     var kk = +fk2, fc2 = kk % W; p = hexPos(fc2, (kk - fc2) / W);
     var fg = new THREE.Group(); fg.position.set(p[0], p[1], p[2]);
     for (j = 0; j < 5; j++) { var fsprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: R3.flame, transparent: true, depthTest: false, depthWrite: false })); fsprite.center.set(0.5, 0.08); fsprite.position.set((j - 2) * 0.33, 0, (j % 2) * 0.24 - 0.1); fsprite.renderOrder = 4; fsprite.userData.k = j === 2 ? 1.25 : (j % 2 ? 1 : 0.8); fg.add(fsprite); }      // v0.20: 불꽃 다섯(가운데가 크다)
@@ -739,13 +825,13 @@ function ovPut(k, c, a) { var d = R3.ovData, i = k * 4; d[i] = c[0]; d[i + 1] = 
 function rebuildOverlay() {
   var d = R3.ovData, i, j, k; d.fill(0);
   for (i = 0; i < G.bases.length; i++) {                       // 세력권
-    var b = G.bases[i]; if (b.owner < 0) continue;
-    var col = rgbOf(G.factions[b.owner].color), rad = b.kind === 'gate' ? 1 : ZONE_R;
+    var b = G.bases[i], ow = ownerShown(b); if (ow < 0) continue;      // v0.22: 붙잡아 둔 거점은 옛 주인의 빛깔로
+    var col = rgbOf(G.factions[ow].color), rad = b.kind === 'gate' ? 1 : ZONE_R;
     for (var r = Math.max(0, b.r - rad); r <= Math.min(H - 1, b.r + rad); r++) for (var c = Math.max(0, b.c - rad - 1); c <= Math.min(W - 1, b.c + rad + 1); c++) {
       if (hdist(c, r, b.c, b.r) > rad) continue; k = r * W + c; var t = TCH[k];
       if (t !== 120 && t !== 115 && t !== 109) ovPut(k, col, 44);
     }
-    if (b.owner === G.player && b.kind === 'city') for (j = 0; j < b.plots.length; j++) if (!b.plots[j].fac) ovPut(K(b.plots[j].c, b.plots[j].r), [176, 124, 34], 88);
+    if (ow === G.player && b.owner === G.player && b.kind === 'city') for (j = 0; j < b.plots.length; j++) if (!b.plots[j].fac) ovPut(K(b.plots[j].c, b.plots[j].r), [176, 124, 34], 88);
   }
   var mpv = UI.mpath && UI.mpath.path ? UI.mpath.path : null;      // v0.18: 고른 부대가 행군(또는 공격 명령) 중이면 갈 길을 보여 준다
   if (mpv) for (i = 0; i < mpv.length; i++) ovPut(mpv[i], [47, 79, 111], 96);
@@ -933,9 +1019,9 @@ function drawMini() {
   if (MINI.img.complete && MINI.img.naturalWidth) x.drawImage(MINI.img, 0, 0, w, h); else { x.fillStyle = '#efe9db'; x.fillRect(0, 0, w, h); }
   var sx = w / MAP3D.WX, sz = h / MAP3D.WZ;
   for (i = 0; i < G.bases.length; i++) {
-    var b = G.bases[i], p = hexCenter(b.c, b.r), s = b.kind === 'gate' ? 3 : 5;
-    x.fillStyle = b.owner >= 0 ? G.factions[b.owner].color : '#a8a295'; x.fillRect(p[0] * sx - s / 2, p[1] * sz - s / 2, s, s);
-    x.strokeStyle = b.owner === G.player ? SEAL : 'rgba(27,26,24,0.8)'; x.lineWidth = b.owner === G.player ? 1.6 : 1; x.strokeRect(p[0] * sx - s / 2, p[1] * sz - s / 2, s, s);
+    var b = G.bases[i], p = hexCenter(b.c, b.r), s = b.kind === 'gate' ? 3 : 5, bow = ownerShown(b);
+    x.fillStyle = bow >= 0 ? G.factions[bow].color : '#a8a295'; x.fillRect(p[0] * sx - s / 2, p[1] * sz - s / 2, s, s);
+    x.strokeStyle = bow === G.player ? SEAL : 'rgba(27,26,24,0.8)'; x.lineWidth = bow === G.player ? 1.6 : 1; x.strokeRect(p[0] * sx - s / 2, p[1] * sz - s / 2, s, s);
   }
   if (!R3 || !CW) return;
   var ty = groundY(cam.x, cam.y), cs = [planeHit(0, CH * 0.12, ty), planeHit(CW, CH * 0.12, ty), planeHit(CW, CH, ty), planeHit(0, CH, ty)];
@@ -1422,5 +1508,6 @@ function stopBgm(keep) {
 }
 function bgmKick() { if (UI.music && BGM.want && !BGM.name) playBgm(BGM.want); }   // 첫 조작 뒤에야 소리를 낼 수 있다
 document.addEventListener('visibilitychange', function () {
+  if (!document.hidden) { try { sceneRefresh(); } catch (e0) { /* */ } }      // v0.22: 돌아왔다 — 코드로 그린 그림을 다시 올린다
   try { if (document.hidden) { if (AC && AC.state === 'running') AC.suspend(); if (BGM.el && BGM.mode === 'file') BGM.el.pause(); } else { if (AC && (UI.sound || UI.music)) AC.resume(); if (BGM.el && BGM.mode === 'file' && UI.music) BGM.el.play(); } } catch (e) { /* */ }
 });

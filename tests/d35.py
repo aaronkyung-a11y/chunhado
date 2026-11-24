@@ -66,11 +66,13 @@ def steps(pg):
     print('① 수송')
     tapsel(pg, '#sheet [data-a="trans"]'); pg.wait_for_timeout(400)
     s1 = pg.evaluate('''() => document.querySelector('#modal .dlg').textContent''')
-    tapsel(pg, '#modal [data-a="next"]'); pg.wait_for_timeout(1300)
+    tapsel(pg, '#modal [data-a="next"]'); pg.wait_for_timeout(400)      # v0.22: ① 호송 무장 → ② 물자
+    s1 += pg.evaluate('''() => document.querySelector('#modal .dlg').textContent''')
+    tapsel(pg, '#modal [data-a="next"]'); pg.wait_for_timeout(1300)     #        ② 물자 → ③ 어디로
     s2 = pg.evaluate('''() => ({ head: document.querySelector('#modal h2').textContent, txt: document.querySelector('#modal .dlg-b').textContent, rows: [].map.call(document.querySelectorAll('#modal .row'), function (e) { return e.textContent; }),
       marks: [].map.call(document.querySelectorAll('#fx .mk'), function (e) { return e.textContent; }), see: $('modal').classList.contains('see'), okOff: document.querySelector('#modal [data-a="ok"]').classList.contains('off'), seg: !!document.querySelector('#modal .seg.tbk') })''')
     print('     ', s2['head'], s2['rows'], s2['marks']); B.shot(pg, 'b1_trans_to', 200)
-    ok('짐을 내린' not in s1 and '짐 내린' not in s1 and '어디로' in s2['head'] and not s2['seg'] and '수송을 마쳤을 때' in s2['txt'], "②단계는 '어디로' — 머물지 · 돌아올지를 고르는 칸이 없다('짐을 내린 뒤'라는 말도 없다)")
+    ok('짐을 내린' not in s1 and '짐 내린' not in s1 and '어디로' in s2['head'] and not s2['seg'] and '수송을 마쳤을 때' in s2['txt'], "마지막 걸음은 '어디로' — 머물지 · 돌아올지를 고르는 칸이 없다('짐을 내린 뒤'라는 말도 없다)")
     ok(s2['see'] and len(s2['rows']) == 5 and all(any(m.startswith(n) and m.endswith('일') for m in s2['marks']) for n in ('동관', '무관', '홍농', '함곡관')) and any(m.startswith('장안') for m in s2['marks']), '지도에 우리 성마다 이름과 날수가 뜬다(동관 · 무관 · 홍농 · 함곡관) · 아래 목록 4곳 + "성 앞에 나가 기다린다"')
     ok(s2['okOff'], '갈 곳을 고르기 전에는 [출발]이 흐리다')
     tapsel(pg, '#modal [data-a="ok"]'); pg.wait_for_timeout(300)
@@ -195,7 +197,7 @@ def steps(pg):
     gw = pg.evaluate('''() => { var n = 0, tri = 0; R3.scene.traverse(function (o) { if (o.isMesh && o.material && o.material.color && o.material.color.getHex() === 0x1b1a18 && o.material.opacity > 0.7 && o.geometry.index) { n++; tri += o.geometry.index.count / 3; } });
       return { walls: (MAPDATA.walls || []).length, mesh: n, tri: tri }; }''')
     print('     ', gw)
-    ok(gw['walls'] == 143 and gw['mesh'] >= 1 and gw['tri'] >= 143 * 6, '능선 143변이 지도에 먹선으로 선다(세모 %d개)' % gw['tri'])
+    ok(gw['walls'] == 149 and gw['mesh'] >= 1 and gw['tri'] >= 149 * 6, '능선 149변이 지도에 먹선으로 선다(세모 %d개)' % gw['tri'])      # v0.22: 부지와 성역을 피해 다시 세웠다(0.21 은 143변)
     g1 = pg.evaluate('''() => { var g = G.bases[baseByName('함곡관')], hn = G.bases[baseByName('홍농')]; G.factions[15].ap = 250; hn.troops = Math.max(hn.troops, 9000);
       var ns = nbrs(g.c, g.r).filter(function (n) { var t = terr(n[0], n[1]); return t !== 'm' && t !== 's' && t !== 'x'; }), A = ns[0], Bq = ns[1];
       var o = baseOfficers(hn).filter(function (x) { return x.unit === null; })[0]; o.acted = false; var r = cmdDeploy(hn, { type: 'spear', ids: [o.id], troops: 2000, food: 3000 }), u = r.unit; placeUnit(u, Bq[0], Bq[1]); u.mp = uMaxMp(u); u.done = false; u.born = -5;

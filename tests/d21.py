@@ -218,15 +218,16 @@ def steps(pg):
     pg.evaluate('(() => { closeDialog(); var b = facCities(G.player)[0]; b.plots.forEach(function (p, i) { p.fac = window._keep[i]; }); reindex(); refreshSheet(); UI.dirty = true; })()'); pg.wait_for_timeout(600)
 
     # ================= 3. 짓는 중인 시설의 그림 =================
+    # v0.22: 공사장 그림은 그림판(canvas)이 아니라 화소를 스스로 지닌 텍스처(DataTexture — image.data)다. 둘 다 '화면에서 만든 그림'으로 본다
     print('3. 공사장 그림')
     g = pg.evaluate('''(([bid, p2, p12, p13, p3]) => { var one = function (pi) { var b = G.bases[bid], fc = b.plots[pi].fac, fo = R3.facs[bid + ":" + pi], k = fo.sp.userData.key;
-        return { key: k, stage: fc.done ? -1 : siteStage(fc), same: fo.sp.material.map === TEX[k], op: fo.sp.material.opacity, cv: !!(TEX[k].image && TEX[k].image.getContext), w: SPRITES[k].w === SPRITES[fc.t].w && SPRITES[k].h === SPRITES[fc.t].h && SPRITES[k].ay === SPRITES[fc.t].ay }; };
+        return { key: k, stage: fc.done ? -1 : siteStage(fc), same: fo.sp.material.map === TEX[k], op: fo.sp.material.opacity, cv: !!(TEX[k].image && (TEX[k].image.getContext || (TEX[k].image.data && TEX[k].image.data.length === TEX[k].image.width * TEX[k].image.height * 4))), w: SPRITES[k].w === SPRITES[fc.t].w && SPRITES[k].h === SPRITES[fc.t].h && SPRITES[k].ay === SPRITES[fc.t].ay }; };
       syncScene(); return { m2: one(p2), b12: one(p12), b13: one(p13), m3: one(p3) }; })''', [st['id'], byNo[2], byNo[12], byNo[13], p3])
     print('  ', g)
     ok(g['m2']['key'] == 'market@0' and g['b12']['key'] == 'barracks@0' and g['b13']['key'] == 'barracks@2', '짓는 중: 공사장 그림(공사가 나아간 만큼 단계가 다르다) %s' % [g[k]['key'] for k in ('m2', 'b12', 'b13')])
     ok(all(g[k]['same'] and g[k]['op'] == 1 and g[k]['cv'] and g[k]['w'] for k in ('m2', 'b12', 'b13')), '화면에서 만든 그림 · 반투명이 아니다 · 크기는 완성된 그림과 같다')
     ok(g['m3']['key'] == 'market' and g['m3']['op'] == 1 and not g['m3']['cv'], '다 지은 시설은 전과 같은 그림')
-    px = pg.evaluate('''(() => { var cnt = function (c) { var d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data, o = { och: 0, red: 0, ink: 0, n: 0 };
+    px = pg.evaluate('''(() => { var cnt = function (c) { var d = c.getContext ? c.getContext("2d").getImageData(0, 0, c.width, c.height).data : c.data, o = { och: 0, red: 0, ink: 0, n: 0 };
         for (var i = 0; i < d.length; i += 4) { if (d[i + 3] < 40) continue; o.n++; var r = d[i], g = d[i + 1], b = d[i + 2];
           if (d[i + 3] > 200 && Math.abs(r - 156) < 30 && Math.abs(g - 108) < 30 && Math.abs(b - 52) < 30) o.och++;
           if (d[i + 3] > 200 && r > 150 && g < 90 && b < 80) o.red++; if (r + g + b < 240) o.ink++; }

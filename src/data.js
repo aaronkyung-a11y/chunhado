@@ -1,5 +1,5 @@
 /* ===== 천하도 — 정적 데이터 ===== */
-var GAME_VERSION = 'v0.21';
+var GAME_VERSION = 'v0.22';
 var SAVE_KEY = 'chunhado_save_v2';
 var SHARE_URL = 'https://aaronkyung-a11y.github.io/chunhado/';      // 공유(v0.11)로 보내는 주소 — 누구나 열 수 있는 곳
 /* SHARE_URL 의 QR(33×33, 줄마다 16진수 · 왼쪽이 높은 자리). 주소를 바꾸면 다시 만들어야 한다(segno 로 만들고 OpenCV 로 읽어 확인) */

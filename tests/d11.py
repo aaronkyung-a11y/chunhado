@@ -151,7 +151,7 @@ def steps(pg):
         elif c[0] == 'esc': pg.keyboard.press('Escape')
         elif c[0] == 'hex': pg.evaluate('([c, r]) => onTap(c, r)', c[1])
         elif c[0] == 'macro':
-            seq = ['#sheet [data-a=deploy]', '#modal [data-a=auto]', '#modal [data-a=next]', '#modal [data-a=ok]'] if c[2] == 'deploy3' else ['#sheet [data-a=trans]', '#modal [data-a=next]', '#modal [data-a=ok]']      # v0.20: 출진 · 수송은 두 단계
+            seq = ['#sheet [data-a=deploy]', '#modal [data-a=auto]', '#modal [data-a=next]', '#modal [data-a=ok]'] if c[2] == 'deploy3' else ['#sheet [data-a=trans]', '#modal [data-a=next]', '#modal [data-a=next]', '#modal [data-a=ok]']      # v0.20: 출진은 두 단계 · v0.22: 수송은 세 단계
             for q in seq:
                 pg.evaluate('(q) => { MPAINT = 0; var e = document.querySelector(q); if (e && !e.disabled) e.click(); }', q); pg.wait_for_timeout(60)
         STAT['steps'] += 1

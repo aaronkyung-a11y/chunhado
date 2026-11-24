@@ -282,7 +282,8 @@ def steps(pg):
     # 수송
     reset(pg); open_base(pg, 'mil')
     tap(pg, '#sheet [data-a=trans]'); s = st(pg); check('수송 창', s['modal'] and '수송' in s['modal'], s)
-    tap(pg, '#modal [data-a=next]', 0, 700); tap(pg, '#modal [data-a=to][data-v=x0]', 0, 400); tap(pg, '#modal [data-a=ok]', 0, 900); s = st(pg); check('수송 출발 → 수송대 창', s['modal'] is None and s['sheet'] and s['sheet'].startswith('unit:'), s)
+    # v0.22: 수송은 세 걸음(무장 → 물자 → 어디로) — [다음]을 두 번
+    tap(pg, '#modal [data-a=next]', 0, 700); tap(pg, '#modal [data-a=next]', 0, 700); tap(pg, '#modal [data-a=to][data-v=x0]', 0, 400); tap(pg, '#modal [data-a=ok]', 0, 900); s = st(pg); check('수송 출발 → 수송대 창', s['modal'] is None and s['sheet'] and s['sheet'].startswith('unit:'), s)
     SX(pg); s = st(pg); check('수송대 창 × → 나온 성의 군사 탭', s['sheet'] == 'base:%d' % info['id'] and s['tab'] == 'mil', s)
 
     # ---- 6. 지도에서 내 부지 누르기 ----

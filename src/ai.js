@@ -228,7 +228,7 @@ function aiPickPlot(b, type) {
   if (type === 'mint' || type === 'granary') {
     var want = type === 'mint' ? 'market' : 'farm', bi = free[0], bn = -1;
     for (i = 0; i < free.length; i++) {
-      var p = b.plots[free[i]], ns = nbrs(p.c, p.r), cnt = 0;
+      var p = b.plots[free[i]], ns = nbrsAll(p.c, p.r), cnt = 0;
       for (var j = 0; j < ns.length; j++) { var q = PAT[K(ns[j][0], ns[j][1])]; if (q && q.b === b.id) { var fc = b.plots[q.i].fac; if (fc && fc.t === want) cnt++; } }
       if (cnt > bn) { bn = cnt; bi = free[i]; }
     }

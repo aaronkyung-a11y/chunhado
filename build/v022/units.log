@@ -1,0 +1,5 @@
+u_bow (200, 197) -> (200, 197) bytes 13232 accent px 84 
+u_cav (210, 200) -> (210, 200) bytes 16988 accent px 313 
+u_halberd (200, 173) -> (200, 173) bytes 13202 accent px 104 
+u_spear (162, 200) -> (200, 200) bytes 12000 accent px 86  pad 162 -> 200 (x0 35)
+written src/sprites.js

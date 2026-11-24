@@ -4,7 +4,7 @@ from playwright.sync_api import sync_playwright
 ROOT = os.path.dirname(os.path.abspath(__file__))
 URL = 'file://' + os.path.join(ROOT, '..', 'dist', os.environ.get('PAGE', 'offline.html'))   # 시험은 three.js를 넣은 판으로
 SHOTS = os.path.join(ROOT, 'shots2')
-VER = 'v0.21'                                    # 지금 판의 번호 — 판 번호를 보는 시험들이 여기서 읽는다(v0.19~)
+VER = 'v0.22'                                    # 지금 판의 번호 — 판 번호를 보는 시험들이 여기서 읽는다(v0.19~)
 errors = []
 def run(steps, w=412, h=915, dpr=1):
     with sync_playwright() as p:

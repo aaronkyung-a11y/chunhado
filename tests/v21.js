@@ -32,7 +32,7 @@ const w1 = run(NEW, `newGame(0, 7); var ws = MAPDATA.walls || [], bad = 0, onBas
 const w0 = run(OLD, `newGame(0, 7); return { walls: (MAPDATA.walls || []).length, edges: MAPDATA.edges.length, bases: MAPDATA.bases.length, t: MAPDATA.t.length };`);
 console.log('① 능선', JSON.stringify(w1));
 ok(/^v0\.(2[1-9]|[3-9]\d)/.test(w1.ver), '판 번호가 v0.21 이후 [' + w1.ver + ']');
-ok(w0.walls === 0 && w1.n === 143 && w1.bad === 0 && w1.far === 0 && w1.nb === 0, '능선의 변 143곳: 서로 이웃한 두 칸 사이이고 양쪽에서 이웃이 아니다');
+ok(w0.walls === 0 && w1.n === 149 && w1.bad === 0 && w1.far === 0 && w1.nb === 0, '능선의 변 149곳: 서로 이웃한 두 칸 사이이고 양쪽에서 이웃이 아니다');      // v0.22: 부지와 성역을 피해 다시 세웠다(0.21 은 143곳 — tests/v22.js)
 ok(w1.onBase === 0, '거점 칸에 닿은 능선은 없다(성 둘레의 여섯 칸은 늘 드나든다)');
 ok(w1.edges === 76 && w0.edges === 76, '길의 수는 76 그대로');
 ok(w1.hl.join() === '낙양 7,진류 12,허창 12' && w1.ly.indexOf('허창 18') < 0 && w1.hc.indexOf('호로관 12') >= 0, '허창 — 낙양 길은 호로관을 지난다: ' + w1.hl.join(' · '));

@@ -18,6 +18,12 @@ function nbrs(c, r) {
   for (var i = 0; i < 6; i++) { var cc = c + d[i][0], rr = r + d[i][1]; if (inMap(cc, rr) && !WALLB[k6 + i]) out.push([cc, rr]); }      // v0.21: 능선 너머는 이웃이 아니다
   return out;
 }
+/* v0.22: 능선을 따지지 않는 이웃 — 한 성의 부지끼리의 '옆'(합병 · 조폐 · 곡창). 걷거나 치는 데에는 쓰지 않는다 */
+function nbrsAll(c, r) {
+  var d = (r & 1) ? NB_ODD : NB_EVEN, out = [];
+  for (var i = 0; i < 6; i++) { var cc = c + d[i][0], rr = r + d[i][1]; if (inMap(cc, rr)) out.push([cc, rr]); }
+  return out;
+}
 function cubeX(c, r) { return c - ((r - (r & 1)) >> 1); }
 function hdist(c1, r1, c2, r2) {
   var dx = cubeX(c1, r1) - cubeX(c2, r2), dz = r1 - r2;
@@ -711,7 +717,7 @@ function newGame(playerFaction, seed) {
 
 /* ---------- 수입 ---------- */
 function adjFacCount(b, pi, type) {
-  var p = b.plots[pi], n = 0, ns = nbrs(p.c, p.r);
+  var p = b.plots[pi], n = 0, ns = nbrsAll(p.c, p.r);      // v0.22: 부지끼리의 옆은 능선과 상관없다
   for (var i = 0; i < ns.length; i++) { var q = PAT[K(ns[i][0], ns[i][1])]; if (q && q.b === b.id) { var f = b.plots[q.i].fac; if (f && f.done && f.t === type) n++; } }
   return n;
 }
@@ -1112,8 +1118,27 @@ function enterBase(u, b, viaMove) {
   removeUnit(u);
   return hb ? { to: hb.id, turns: bt } : null;
 }
+/* v0.22: 함락하면 시설의 일부가 부서진다 — 전부는 아니다.
+   다 지은 시설 n 곳 가운데 round(n × SACK.rate) 곳(적어도 SACK.min 곳)이 사라져 빈 부지가 된다. 다만 SACK.keep 곳은 반드시 남는다(n 이 keep 이하면 하나도 부서지지 않는다).
+   어느 것인지는 그 턴 · 그 거점 · 그 부지로 정해지는 주사위(omenRoll)의 작은 차례 — 판의 난수(rnd)는 쓰지 않는다. 돌려주는 값: 부서진 시설의 종류들 */
+var SACK = { rate: 0.3, min: 1, keep: 2 };
+function sackCount(n) { return Math.max(0, Math.min(Math.max(SACK.min, Math.round(n * SACK.rate)), n - SACK.keep)); }
+function sackBase(b) {
+  var done = [], lost = [], i;
+  for (i = 0; i < b.plots.length; i++) { var f = b.plots[i].fac; if (f && f.done) done.push([omenRoll('sack|' + b.id + '|' + i), i]); }
+  var k = sackCount(done.length);
+  done.sort(function (x, y) { return x[0] - y[0] || x[1] - y[1]; });
+  for (i = 0; i < k; i++) { var pi = done[i][1]; lost.push(b.plots[pi].fac.t); b.plots[pi].fac = null; }
+  return lost;
+}
+function sackText(lost) {                                    // '시장 2 · 농장'
+  var n = {}, out = [];
+  lost.forEach(function (t) { n[t] = (n[t] || 0) + 1; });
+  FAC_ORDER.forEach(function (t) { if (n[t]) out.push(FAC[t].name + (n[t] > 1 ? ' ' + n[t] : '')); });
+  return out.join(' · ');
+}
 function captureBase(b, u) {
-  var old = b.owner, i;
+  var old = b.owner, i, lost = [];
   for (i = 0; i < b.plots.length; i++) { var uf = b.plots[i].fac; if (uf && !uf.done) { freeBuilders(uf, true); b.plots[i].fac = null; } }   // 짓다 만 시설은 버려진다
   if (old >= 0) {
     var os = baseOfficers(b), otherBases = facBases(old).length > 1;
@@ -1133,7 +1158,11 @@ function captureBase(b, u) {
     }
   }
   logMsg(old >= 0 ? josa(facName(u.f) + '군', '이가') + ' ' + josa(b.n, '을를') + (b.kind === 'gate' ? ' 점령' : ' 함락') + ' (' + facName(old) + '군의 땅)' : josa(facName(u.f) + '군', '이가') + ' 주인 없는 ' + josa(b.n, '을를') + ' 차지', b.c, b.r, old >= 0 ? old : u.f, old === G.player || u.f === G.player ? 3 : 2);
-  ev({ t: 'fall', b: b.id, by: u.f, old: old });
+  if (old >= 0) {                                              // v0.22: 싸움에 시설의 일부가 부서진다
+    lost = sackBase(b);
+    if (lost.length) logMsg(b.n + '의 시설 ' + lost.length + '곳이 싸움에 부서졌다 (' + sackText(lost) + ')', b.c, b.r, old, old === G.player || u.f === G.player ? 2 : 0);
+  }
+  ev({ t: 'fall', b: b.id, by: u.f, old: old, lost: lost.length });
   b.owner = u.f; b.troops = 0;
   if (b.corps || u.corps) b.corps = (u.f === G.player && !G.aiOnly && u.corps && corpsById(u.corps)) ? u.corps : 0;      // 군단의 부대가 차지한 거점은 그 군단에 든다
   b.dur = Math.max(b.dur, Math.round(b.maxDur * 0.3));
@@ -1142,6 +1171,7 @@ function captureBase(b, u) {
   enterBase(u, b);
   checkFaction(old);
   checkVictory();
+  return lost;
 }
 
 /* ---------- 군단(v0.10) ----------
@@ -1378,7 +1408,7 @@ function facHasLv(t) { return !(FAC[t] && FAC[t].noLv); }
 function mergeCandidates(b, pi) {
   var p = b.plots[pi], f = p.fac, out = [];
   if (!f || !f.done || f.lv >= 3 || !facHasLv(f.t)) return out;
-  var ns = nbrs(p.c, p.r);
+  var ns = nbrsAll(p.c, p.r);                                // v0.22: 부지끼리의 옆은 능선과 상관없다(0.21 에서는 능선이 부지 사이를 지나 합병이 막혔다)
   for (var i = 0; i < ns.length; i++) { var q = PAT[K(ns[i][0], ns[i][1])]; if (q && q.b === b.id) { var g = b.plots[q.i].fac; if (g && g.done && g.t === f.t && g.lv <= f.lv) out.push(q.i); } }
   return out;
 }
@@ -2359,9 +2389,11 @@ function unitAttack0(u, t) {
     if (b.owner === G.player) logMsg(b.n + ' 피습! ' + facName(u.f) + ' ' + uName(u) + ' (병력 -' + nf(td) + ', 내구 -' + nf(dd) + ')', b.c, b.r, b.owner, 2);
     if (b.troops <= 0 || b.dur <= 0) {
       res.fell = true;
-      if (!ranged2) captureBase(b, u);
+      if (!ranged2) { var lostC = captureBase(b, u); if (lostC && lostC.length) res.sacked = lostC; }
       else {   // 원거리로 무너뜨리면 빈 거점이 된다
         var old = b.owner, os = baseOfficers(b), i;
+        var lostR = sackBase(b);                               // v0.22: 멀리서 무너뜨려도 시설의 일부가 부서진다
+        if (lostR.length) { res.sacked = lostR; logMsg(b.n + '의 시설 ' + lostR.length + '곳이 싸움에 부서졌다 (' + sackText(lostR) + ')', b.c, b.r, old, old === G.player || u.f === G.player ? 2 : 0); }
         for (i = 0; i < os.length; i++) fleeOfficer(os[i], b.c, b.r, b.id);
         var held = b.captives.slice(); for (i = 0; i < held.length; i++) releaseCaptive(off(held[i]));
         logMsg(b.n + ' 수비대 궤멸 — 빈 거점이 되었다', b.c, b.r, old, 2);
@@ -2577,9 +2609,10 @@ function unitTactic0(u, tac, t) {
     var o2 = others[i][0];
     if (!alive(o2) || !alive(u)) continue;
     var od = defMods(o2, dmgUU(u, o2, tac.mult * cm * others[i][1] * tacticSizeK(u, o2), hdist(u.c, u.r, o2.c, o2.r) > 1), 'tactic');
-    var ex = { c: o2.c, r: o2.r, dmg: od };
+    var ex = { c: o2.c, r: o2.r, dmg: od, id: o2.id };       // v0.22: id · dead — 화면이 그 부대의 그림을 붙잡아 두었다가 맞는 모습 · 흩어지는 모습을 보인다
     res.extra.push(ex);
     var dead2 = hurtUnit(o2, od, u.f, u); afterHit(u, o2, od);
+    if (dead2) ex.dead = true;
     if (!dead2 && e.moraleAll) { var m2 = Math.min(o2.morale, e.moraleAll); o2.morale -= m2; if (m2) ex.mor = m2; }
   }
   res.uc = u.c; res.ur = u.r;

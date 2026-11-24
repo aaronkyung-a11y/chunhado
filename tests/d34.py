@@ -76,7 +76,7 @@ def steps(pg):
     site = pg.evaluate('''() => { var A = G.bases[T.a]; A.gold = 30000; G.factions[G.player].ap = 250; var os = idleOfficers(A).filter(function (o) { return !isLord(o); }), pi = -1;
       for (var i = 0; i < A.plots.length; i++) if (!A.plots[i].fac && !UAT[K(A.plots[i].c, A.plots[i].r)]) { pi = i; break; }
       var r = cmdDevelop(A, pi, 'farm', [os[0].id]); syncScene(); var fo = R3.facs[A.id + ':' + pi], fc = A.plots[pi].fac; window.T.pi = pi; selectBase(A); flowFacility(A, pi);
-      var cvs = TEX[siteTexKey('farm', 0)].image, x = cvs.getContext('2d'), d = x.getImageData(0, 0, cvs.width, cvs.height).data, n = 0, dk = 0;
+      var cvs = TEX[siteTexKey('farm', 0)].image, d = cvs.data, n = 0, dk = 0;      // v0.22: 화소를 지닌 텍스처(THREE.DataTexture) — 그림판을 거치지 않고 화소를 바로 본다
       for (var k = 0; k < d.length; k += 4) if (d[k + 3] > 60) { n++; if (d[k] < 150) dk++; }
       return { ok: r.ok, sig: fo.sig, key: siteTexKey(fc.t, siteStage(fc)), ink: SITE_INK, al: SITE_A, share: Math.round(dk / n * 100) }; }''')
     pg.wait_for_timeout(900); B.shot(pg, 'e1_site', 200)

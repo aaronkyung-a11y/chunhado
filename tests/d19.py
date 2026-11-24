@@ -203,7 +203,7 @@ def steps(pg):
     pg.evaluate('clearSel(); showHome()'); pg.wait_for_timeout(300)
     # --- 수송
     pg.evaluate('(id) => { selectBase(G.bases[id]); }', bid); pg.wait_for_timeout(500); reset(pg, bid)
-    cmd(pg, 'trans'); tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(700); tapsel(pg, '#modal [data-a=to][data-v=x0]'); pg.wait_for_timeout(300); tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(900)
+    cmd(pg, 'trans'); tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(700); tapsel(pg, '#modal [data-a=next]'); pg.wait_for_timeout(700); tapsel(pg, '#modal [data-a=to][data-v=x0]'); pg.wait_for_timeout(300); tapsel(pg, '#modal [data-a=ok]'); pg.wait_for_timeout(900)
     t = tk(pg); u = pg.evaluate('''(() => { var u = selUnit(); return u ? { leader: uLeader(u).n, type: u.type } : null; })()''')
     ls = lines(pg, u['leader'], 'trans') if u else []
     ok(u is not None and u['type'] == 'trans' and t['on'] and t['who'] == u['leader'] and t['say'] in ls and t['sub'].startswith('수송대 출발'), '수송: 이끄는 무장(%s)이 답한다 ["%s" / %s]' % (u and u['leader'], t['say'], t['sub']))
