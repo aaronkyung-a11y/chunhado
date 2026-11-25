@@ -77,6 +77,13 @@ def main():
         M.append(dict(n=p[0], ldr=st[0], war=st[1], int=st[2], pol=st[3], cha=st[4], apt=p[2], sk=p[3], por=p[4], new=True, f194=None, home=p[6], st194=None, y194=None, j194=None, rec=rec, has_sk=True))
         bios[p[0]] = p[8]
     IDX = {m['n']: i for i, m in enumerate(M)}
+    if os.environ.get('POOL'):                                # v0.24: 공용 초상(gm1 ~ 5 · gc1 ~ 5)을 쓰던 사람은 가장 뛰어난 능력에 맞는 공용 초상으로(갈래 안에서는 차례로 돌려 쓴다)
+        import re as _re
+        cat, cnt, nxt = ['war', 'ldr', 'int', 'pol', 'cha'], [14, 14, 12, 10, 10], [0] * 5
+        for m in M:
+            if _re.match(r'^g[mc]\d$', m['por']):
+                v = [m[k] for k in cat]; c = v.index(max(v))
+                m['por'] = 'gm%d%02d' % (c + 1, nxt[c] % cnt[c] + 1); nxt[c] += 1
 
     # ── 생몰년 ──
     for m in M:

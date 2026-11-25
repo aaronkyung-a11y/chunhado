@@ -28,7 +28,8 @@ def steps(pg):
     print('1. 받아 온다')
     pg.wait_for_function('window.SCENES_READY === true', timeout=30000)
     st = pg.evaluate('({ n: Object.keys(SCENES).length, need: SCENARIO.officers.filter(function (o) { return !/^g[mcf]\\\\d/.test(o.por) && !SCENES[o.por]; }).map(function (o) { return o.n; }), ver: GAME_VERSION })')
-    ok(st['n'] == 265 and st['need'] == [] and st['ver'] == B.VER, '페이지가 뜬 뒤 큰 그림 %d장을 받아 왔다(제 초상이 있는 무장은 모두 큰 그림이 있다) %s' % (st['n'], st['need'][:3]))
+    ok(st['n'] >= 265 and st['need'] == [] and st['ver'] == B.VER,      # v0.24: 그림 묶음(공용 초상 120장)의 장면이 먼저 와 있으면 더 많다
+       '페이지가 뜬 뒤 큰 그림 %d장을 받아 왔다(제 초상이 있는 무장은 모두 큰 그림이 있다) %s' % (st['n'], st['need'][:3]))
     pg.evaluate('([f, s]) => { localStorage.clear(); newGame(f, s); saveGame(); }', [10, 1]); pg.reload(); pg.wait_for_function('window.R3 && R3.ready', timeout=60000)
     pg.wait_for_function('window.SCENES_READY === true', timeout=30000); pg.wait_for_timeout(400)
     tapsel(pg, '#tCont'); pg.wait_for_timeout(1300)
@@ -51,7 +52,8 @@ def steps(pg):
     pg.evaluate('talkHide()')
     st = pg.evaluate('({ ready: window.SCENES_READY, n: Object.keys(SCENES).length, turn: G.turn, por: !!POR_URL["wuguotai"] })')
     d = pg.evaluate(SHOW, '오국태')
-    ok(st['ready'] is not True and st['n'] == 0 and st['por'] and d['lg'] and not d['sc'], '큰 그림을 받지 못해도 작은 초상으로 판이 돈다 %s' % st); B.shot(pg, 'w3_blocked', 300)
+    ok(st['ready'] is not True and st['n'] <= 120 and st['por'] and d['lg'] and not d['sc'],      # v0.24: 그림 묶음의 장면 120장은 따로 온다
+       '큰 그림을 받지 못해도 작은 초상으로 판이 돈다 %s' % st); B.shot(pg, 'w3_blocked', 300)
     pg.evaluate('closeDialog()')
     bad = [e for e in B.errors[n_err:] if 'scenes.json' not in e and 'Failed to load resource' not in e and 'net::ERR_FAILED' not in e]
     ok(not bad, '그때 나는 오류는 그 파일을 받지 못했다는 것뿐 %s' % bad[:3])

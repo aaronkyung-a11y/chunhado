@@ -20,6 +20,8 @@ src = src.replace(a, b)
 # v0.19: 영상은 스냅샷 옆이 아니라 한 칸 위의 video/ 에 있다(판마다 따로 두지 않는다 — 지금 올라 있는 영상을 같이 쓴다)
 for va, vb in (("a.src = 'video/' + name + '.mp4'", "a.src = '../video/' + name + '.mp4'"), ("b.src = 'video/' + name + '.webm'", "b.src = '../video/' + name + '.webm'")):
     if va in src: assert src.count(va) == 1; src = src.replace(va, vb)
+# v0.24: 그림 묶음(data/por-… · data/scn-… — 이름에 내용의 지문이 있다)도 한 칸 위의 data/ 에 있는 것을 같이 쓴다
+src = src.replace('"data/por-', '"../data/por-').replace('"data/scn-', '"../data/scn-')
 open(out, 'w', encoding='utf-8', newline='\n').write(src)
 if borrow: print('snapshot', out, os.path.getsize(out), '· 큰 그림은 v%s 의 것(지문이 같다)' % borrow)
 else:

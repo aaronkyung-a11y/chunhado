@@ -109,6 +109,10 @@ ok(M.other === N_OLD, '다른 명부로 만든 저장은 건드리지 않는다'
 // ④ 초상: 명부의 초상 키가 모두 자산에 있다
 if (fs.existsSync(path.join(root, 'assets.js'))) {
   const a = {}; vm.createContext(a); vm.runInContext(fs.readFileSync(path.join(root, 'assets.js'), 'utf8'), a);
+  // v0.24 — 초상 묶음(assets_<이름>.js)도 함께 읽는다
+  fs.readdirSync(root).filter(f => /^assets_[a-z0-9]+\.js$/.test(f)).forEach(f => {
+    vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8') + '\n(function () { var k, n = ' + JSON.stringify(f.replace(/^assets_|\.js$/g, '')) + ', p = this["PACK_" + n]; for (k in p.por) PORTRAITS[k] = p.por[k]; for (k in p.scn) SCENES[k] = p.scn[k]; }).call(this);', a);
+  });
   const P = vm.runInContext('Object.keys(PORTRAITS)', a), Sc = vm.runInContext('Object.keys(SCENES)', a), need = vm.runInContext('SCENARIO.officers.map(function (o) { return o.por; })', ctx);
   const miss = [...new Set(need.filter(k => P.indexOf(k) < 0))], wk = vm.runInContext(`SCENARIO.officers.filter(function (o) { return SCENARIO.women.indexOf(o.n) >= 0; }).map(function (o) { return o.por; })`, ctx);
   ok(miss.length === 0, '초상이 없는 키: ' + JSON.stringify(miss.slice(0, 8)));

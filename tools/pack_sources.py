@@ -32,6 +32,7 @@ build/v021/s1_gates.py build/v021/s2_rules.py build/v021/s3_trans.py build/v021/
 build/v022/s1_tex.py build/v022/s2_hold.py build/v022/s3_rules.py build/v022/s4_flow.py build/v022/s5_ui.py build/v022/s6_css.py build/v022/apply.sh build/v022/terrain.sh build/v022/gates.log build/v022/units.log tools/gates22.py tools/units22.py tests/v22.js tests/d36.py tests/d37.py
 build/v0221/s1_fix.py build/v0221/apply.sh build/v0221/audio.log build/v0221/por.log tools/make_audio_v0221.py tools/por0221_fix.py art/por0221_focus.tsv tests/d38.py
 build/v023/s1_core.py build/v023/s2_ui.py build/v023/s3_birth.py build/v023/apply.sh build/v023/roster.log build/v023/fn.py tools/hist23.py tools/roster23.py build/roster.v0221.js tests/v23.js tests/d39.py
+build/v024/s1_rules.py build/v024/s2_duel.py build/v024/apply.sh build/v024/roster.log tools/por24_prompt.py tools/make_pack24.py tools/ids24.py art/por24_scenes.tsv art/por24_faces.tsv art/por24_out/crops.tsv tests/v24.js tests/d40.py tests/d41.py tools/por25_prompt.py art/por25_scenes.tsv
 pwa/manifest.webmanifest pwa/sw.js
 tools/geo.py tools/mapgen2.py tools/bake3d.py tools/bake3d_ink.py tools/make_sprites.py tools/make_sprites_ink.py tools/make_roster.py tools/make_portraits.py tools/make_assets_ink.py
 tools/build.py tools/pack_sources.py tools/fetch_art.py tools/contact.py tools/dl_por2.py tools/dl_por3.py

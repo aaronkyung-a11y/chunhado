@@ -3049,15 +3049,32 @@ function lifeSet(on) {
    해가 바뀔 때(roundEnd) birthTick: ① 명부의 아이가 태어나는 해면 알린다 ② 벼슬하는 남자 무장에게서 가상의 아이가 태어난다(BIRTH). 판의 난수(rnd)는 쓰지 않는다(omenRoll · strHash). */
 function surnameOf(n) { return (n.length >= 3 && SURN2.indexOf(n.slice(0, 2)) >= 0) ? n.slice(0, 2) : n.charAt(0); }
 function kidsOf(o) { return G.officers.filter(function (k) { return k.dad === o.n; }); }
-function kidName(o, used) {
-  var sur = surnameOf(o.n), N = KID_NAMES.length, h = strHash('kid|' + o.id + '|' + G.year + '|' + (G.seed0 | 0)) >>> 0, i, nm;
-  for (i = 0; i < N; i++) { nm = sur + KID_NAMES[(h + i) % N]; if (!used[nm]) return nm; }
-  for (i = 0; i < N * 4; i++) { nm = sur + KID_NAMES[(h + i) % N] + KID_NAMES[((h >>> 9) + i * 3) % N]; if (!used[nm]) return nm; }
+function kidName(o, used, girl) {           // v0.24: girl = 딸의 이름
+  var L = girl ? GIRL_NAMES : KID_NAMES, sur = surnameOf(o.n), N = L.length, h = strHash('kid|' + o.id + '|' + G.year + '|' + (G.seed0 | 0)) >>> 0, i, nm;
+  for (i = 0; i < N; i++) { nm = sur + L[(h + i) % N]; if (!used[nm]) return nm; }
+  for (i = 0; i < N * 4; i++) { nm = sur + L[(h + i) % N] + L[((h >>> 9) + i * 3) % N]; if (!used[nm]) return nm; }
   return null;
 }
+/* v0.24 공용 초상 고르기: 가장 뛰어난 능력의 갈래에서 아직 덜 쓰인 그림을 준다. 그 갈래의 그림이 모두 쓰였으면 둘째로 뛰어난 능력의 갈래에 남은 그림을 먼저 쓴다.
+   죽은 사람이 쓰던 그림은 다시 돈다. 같은 만큼 쓰인 그림 사이에서는 이름으로 정해지는 차례(판의 난수는 쓰지 않는다) */
+function porCat(o) { var ks = POOL.key, c = 0, i; for (i = 1; i < ks.length; i++) if (o[ks[i]] > o[ks[c]]) c = i; return c; }
+function poolPick(o) {
+  var s = isWoman(o) ? 'gf' : 'gm', ks = POOL.key, c1 = porCat(o), c2 = -1, use = {}, best = null, i, r, j;
+  for (i = 0; i < ks.length; i++) if (i !== c1 && (c2 < 0 || o[ks[i]] > o[ks[c2]])) c2 = i;
+  for (i = 0; i < G.officers.length; i++) { var p = G.officers[i]; if (p !== o && p.kid && p.st !== 'dead' && p.por) use[p.por] = (use[p.por] || 0) + 1; }      // 아이들끼리만 센다(명부의 사람이 쓰는 것은 세지 않는다)
+  for (r = 0; r < 2; r++) {
+    var c = r ? c2 : c1;
+    for (j = 1; j <= POOL.n[c]; j++) {
+      var key = s + (c + 1) + (j < 10 ? '0' : '') + j, score = (use[key] || 0) * 2 + r, h = strHash(o.n + '|' + key) >>> 0;
+      if (!best || score < best[0] || (score === best[0] && h < best[1])) best = [score, h, key];
+    }
+  }
+  return best[2];
+}
 function makeKid(o, used) {
-  var key = 'kid|' + o.id + '|' + G.year, nm = kidName(o, used); if (!nm) return null;
+  var key = 'kid|' + o.id + '|' + G.year;
   function roll(k) { return omenRoll(key + '|' + k) / 100; }
+  var girl = roll('sex') * (BIRTH.boy + BIRTH.girl) >= BIRTH.boy, nm = kidName(o, used, girl); if (!nm) return null;      // v0.24: 성비
   function stat(k) { return clamp(Math.round(o[k] * BIRTH.inh + 60 * (1 - BIRTH.inh) + (roll(k) * 2 - 1) * BIRTH.vr), 20, 97); }
   var L = 'CBAS', apt = '', i, r, x;
   for (i = 0; i < 5; i++) { x = L.indexOf(o.apt.charAt(i)); r = roll('a' + i); if (r < 0.25) x = Math.max(0, x - 1); else if (r > 0.9) x = Math.min(3, x + 1); apt += L.charAt(x); }
@@ -3065,7 +3082,8 @@ function makeKid(o, used) {
     y: G.year + BIRTH.grow, j: facHouse(o.f), capF: -1, dest: -1, eta: 0, pf: -1, by: G.year, dy: 0, dm: 1 + Math.floor(roll('dm') * 12), dad: o.n, kid: 1 };
   r = roll('sk') * 100;
   if (o.sk && r < BIRTH.skP) k.sk = o.sk; else if (r >= 100 - BIRTH.skR) k.sk = BIRTH.sk[Math.floor(roll('sk2') * BIRTH.sk.length)];
-  k.por = (k.war >= k.int ? 'gm' : 'gc') + (1 + Math.floor(roll('por') * 5));
+  if (girl) k.sex = 'f';
+  k.por = poolPick(k);                                                   // v0.24: 능력에 맞는 공용 초상
   k.dy = k.by + BIRTH.life[0] + Math.floor(roll('life') * (BIRTH.life[1] - BIRTH.life[0] + 1));
   return k;
 }
@@ -3205,6 +3223,7 @@ function deserialize(s) {
     var gcap = facCities(G.player)[0] || facBases(G.player)[0];
     logMsg('무장이 늘었습니다 — 천하에 ' + galive + '명이 더해졌습니다' + (gj ? ' · 우리 세력에 ' + gj + '명' : ''), gcap ? gcap.c : undefined, gcap ? gcap.r : undefined, G.player, 1);
   }
+  G.officers.forEach(function (ko) { if (ko.kid && /^g[mc]\d$/.test(ko.por || '')) ko.por = poolPick(ko); });      // v0.24: 0.23 에서 태어난 아이(옛 공용 초상 열 장)도 새 공용 초상으로
   if (lifeNew) { var lcap = facCities(G.player)[0] || facBases(G.player)[0]; logMsg('수명이 생겼습니다(v0.23) — 무장이 제 수명에 세상을 떠나고 아이가 태어납니다. 메뉴에서 끌 수 있습니다', lcap ? lcap.c : undefined, lcap ? lcap.r : undefined, G.player, 1); }
   if (grownB) for (var gbi = G.bases.length - grownB; gbi < G.bases.length; gbi++) {
     var gnb = G.bases[gbi]; delete gnb.grown;

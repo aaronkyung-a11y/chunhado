@@ -457,6 +457,7 @@ function flameTexture() {
 function loadAssets() {
   var k;
   for (k in PORTRAITS) POR_URL[k] = URL.createObjectURL(b64blob(PORTRAITS[k], 'image/webp'));
+  window.POR_BUILT = true;                                               // v0.24: 뒤늦게 오는 그림 묶음(아티팩트 판)은 이 뒤로는 제 손으로 주소를 만든다(tools/build.py 의 받아 오기)
   if (typeof TITLE_IMG === 'string' && TITLE_IMG) $('title').style.backgroundImage = 'url(' + TITLE_IMG + ')';      // v0.18: 만든 판에서는 CSS 에 들어 있다(첫 화면부터 그려지게 — tools/build.py)
   if (typeof HANJI_IMG === 'string') document.documentElement.style.setProperty('--hanji', 'url(' + HANJI_IMG + ')');
   function img(src, done) { var im = new Image(); R3.loading++; im.onload = function () { done(im); R3.loading--; if (!R3.loading) { R3.ready = true; requestDraw(); } }; im.onerror = function () { R3.loading--; }; im.src = src; }

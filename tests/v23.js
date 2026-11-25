@@ -57,7 +57,8 @@ const oldP = path.join(__dirname, '..', 'build', 'roster.v0221.js');
 if (fs.existsSync(oldP)) {
   const t = fs.readFileSync(oldP, 'utf8'), O = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)), S = J('scenarioMake("194")');
   let d = 0;
-  O.officers.forEach((o, i) => { const n = S.officers[i]; for (const k of Object.keys(o)) if (JSON.stringify(o[k]) !== JSON.stringify(n[k])) d++; for (const k of ['st', 'y', 'j', 'sk']) if ((k in n) !== (k in o)) d++; });
+  O.officers.forEach((o, i) => { const n = S.officers[i]; for (const k of Object.keys(o)) { if (k === 'por' && /^g[mc]\d$/.test(o.por)) { if (!/^gm[1-5]\d\d$/.test(n.por)) d++; continue; } if (JSON.stringify(o[k]) !== JSON.stringify(n[k])) d++; }      // v0.24: 공용 초상을 쓰던 사람의 초상 열쇠만 바뀌었다
+  for (const k of ['st', 'y', 'j', 'sk']) if ((k in n) !== (k in o)) d++; });
   ok(d === 0 && O.officers.length === 425, '194년 판: 예전 명부의 425명이 글자까지 같다(능력 · 세력 · 도시 · 등장 연도)');
   ok(JSON.stringify(O.factions.map(f => [f.n, f.cities])) === JSON.stringify(S.factions.map(f => [f.n, f.cities])) && JSON.stringify(O.gates) === JSON.stringify(S.gates) && JSON.stringify(O.women) === JSON.stringify(S.women), '194년 판: 세력 · 땅 · 관문 · 여성 표가 같다');
   const nw = S.officers.slice(425);
@@ -292,7 +293,7 @@ const h1 = J(`(function () {
   out.dup = Object.keys(names).filter(function (n) { return names[n] > 1; });
   out.bad = kids.filter(function (k) { var f = N(k.dad); return !(k.kid === 1 && k.st === 'hidden' && k.f === -1 && k.by === 195 && k.y === 195 + BIRTH.grow && k.j === facHouse(f.f) && k.id === G.officers.indexOf(k) && k.n.indexOf(surnameOf(f.n)) === 0 && k.n.length === surnameOf(f.n).length + 1
     && ['ldr', 'war', 'int', 'pol', 'cha'].every(function (s) { return k[s] >= 20 && k[s] <= 97 && Math.abs(k[s] - (f[s] * BIRTH.inh + 60 * (1 - BIRTH.inh))) <= BIRTH.vr + 1; })
-    && /^[SABC]{5}$/.test(k.apt) && (!k.sk || SKILLS[k.sk]) && /^g[mc][1-5]$/.test(k.por) && k.dy >= k.by + BIRTH.life[0] && k.dy <= k.by + BIRTH.life[1] && k.dm >= 1 && k.dm <= 12 && G.bases[k.loc].kind === 'city' && bioOf(k).length >= 20); }).map(function (k) { return k.n; });
+    && /^[SABC]{5}$/.test(k.apt) && (!k.sk || SKILLS[k.sk]) && (k.sex === 'f' ? /^gf[1-5][0-9][0-9]$/ : /^gm[1-5][0-9][0-9]$/).test(k.por) && k.dy >= k.by + BIRTH.life[0] && k.dy <= k.by + BIRTH.life[1] && k.dm >= 1 && k.dm <= 12 && G.bases[k.loc].kind === 'city' && bioOf(k).length >= 20); }).map(function (k) { return k.n; });
   var cc = N('조조'), ck = kids.filter(function (k) { return k.dad === '조조'; })[0], zg = kids.filter(function (k) { return /^(하후|공손)/.test(k.n); }).map(function (k) { return k.dad + '→' + k.n; });
   out.cao = ck ? [ck.n, ck.ldr, ck.war, ck.int, ck.pol, ck.cha, ck.apt, ck.sk, ck.por] : null; out.two = zg.slice(0, 3);
   out.noW = kids.every(function (k) { return !isWoman(N(k.dad)); }); out.skIn = kids.filter(function (k) { return k.sk && k.sk === N(k.dad).sk; }).length; out.skNone = kids.filter(function (k) { return !k.sk; }).length;

@@ -18,7 +18,7 @@ def base():
     if b: return b
     m = re.search(r'(https://\S+?)/hf_\d{8}_', open(os.environ['PRIV_LOG'], encoding='utf8').read())      # 로컬 전용 기록에서 주소 앞부분을 얻는다
     return m.group(1)
-def probe(job, hms, span=12):
+def probe(job, hms, span=int(os.environ.get('SPAN', '12'))):      # v0.24: SPAN=<초> 로 찾는 폭을 넓힌다
     import datetime
     t0 = datetime.datetime.strptime(os.environ.get('DATE', {'17': '20261121', '18': '20261122'}.get(POR, '20261122')) + hms, '%Y%m%d%H%M%S')
     for d in sorted(range(-span, span + 1), key=abs):

@@ -1265,8 +1265,8 @@ function showTacticInfo(u, d) {
   });
 }
 /* 행동 결과를 한 줄로 */
-function resultMsg(name, res) {
-  if (res.kind === 'challenge') return name + ' 일기토 신청 → ' + res.tname + (res.accepted ? (res.duel ? ' — ' + (res.duel.draw ? '비김' : (res.duel.win ? res.duel.a : res.duel.d) + ' 승' + (res.duel.ko ? '(쓰러뜨림)' : '')) : ' — 응함') : ' — 받지 않음 (기력 -' + res.mor + ')');      // v0.16: AI 도 건다
+function resultMsg(name, res, hideDuel) {                          // hideDuel(v0.24): 곧 일기토를 화면으로 보여 줄 것이면 승패는 아직 적지 않는다
+  if (res.kind === 'challenge') return name + ' 일기토 신청 → ' + res.tname + (res.accepted ? (res.duel && !hideDuel ? ' — ' + (res.duel.draw ? '비김' : (res.duel.win ? res.duel.a : res.duel.d) + ' 승' + (res.duel.ko ? '(쓰러뜨림)' : '')) : ' — 응함') : ' — 받지 않음 (기력 -' + res.mor + ')');      // v0.16: AI 도 건다
   var msg = name + ' ';
   if (res.kind === 'ploy') {
     if (res.success) msg += res.ploy + ' 성공' + (res.dmg ? ' (-' + fmt(res.dmg) + ')' : '') + (res.st ? ' — ' + statusName(res.st) + ' ' + days(res.stN) : '') + (res.chain ? ' · 연환!' : '');
@@ -1284,7 +1284,7 @@ function resultMsg(name, res) {
     if (res.confused) msg += ' · 혼란 ' + days(res.stN || 1);
   }
   if (res.counter) msg += ' (반격 -' + fmt(res.counter) + ')';
-  if (res.duel) msg += duelTxt(res.duel);
+  if (res.duel) msg += hideDuel ? ' · 일기토!' : duelTxt(res.duel);
   if (res.killed) msg += ' · 궤멸!';
   if (res.destroyed) msg += ' · 파괴!';
   if (res.selfDead) msg += ' · 아군 부대 궤멸…';
@@ -1292,7 +1292,7 @@ function resultMsg(name, res) {
   return msg;
 }
 /* 타격 순간에 띄우는 숫자·글씨와 소리. 피해는 인주색, 전법 이름은 먹, 계략은 쪽빛 */
-function resultFx(res) {
+function resultFx(res, noDuel) {                                   // noDuel(v0.24): '일기토 패' 글씨는 나중에(duelLossFx) — 일기토 화면이 닫힌 뒤에
   var C_DMG = '#b5332a', C_INK = '#1b1a18', C_PLOY = '#2f4f6f', C_DIM = '#6a645a', C_CNT = '#8a5a12';
   var tc = res.tc1 !== undefined ? res.tc1 : (res.tc !== undefined ? res.tc : res.c), tr = res.tr1 !== undefined ? res.tr1 : (res.tr !== undefined ? res.tr : res.r);
   var ac = res.ac1 !== undefined ? res.ac1 : res.ac, ar = res.ar1 !== undefined ? res.ar1 : res.ar;
@@ -1330,10 +1330,17 @@ function resultFx(res) {
     else sfx(res.fail ? 'fail' : (res.kind === 'tactic' ? (res.crit ? 'great' : 'big') : (res.crit ? 'big' : (res.tk === 'base' || res.tk === 'fac' ? 'siege' : 'hit'))));
   }
   if (res.counter) floatText(ac, ar, '-' + fmt(res.counter), C_CNT, 520);
-  if (res.duel && !res.duel.draw) floatText(res.duel.win ? tc : ac, res.duel.win ? tr : ar, '일기토 패 -' + fmt(res.duel.loss), C_INK, 1150, true, -8);   // 소리는 연출(fx.js) 쪽에서 엇갈리는 순간에
+  if (!noDuel) duelLossFx(res, 1150);   // 소리는 연출(fx.js) 쪽에서 엇갈리는 순간에
   if (res.selfDmg) floatText(res.ac, res.ar, '-' + fmt(res.selfDmg), C_CNT, 500);
   if (res.fell) { sfx('fall'); if (res.af === G.player) sfx('cheerlate'); }
   voiceAct(res, 1);                                         // v0.13: 결과에 따른 한마디
+}
+/* 일기토에서 진 부대 위에 잃은 병력을 적는다. 일기토를 화면으로 다시 보여 줄 때는 그 화면이 닫힌 뒤에 부른다(v0.24 — 시작도 하기 전에 '일기토 패' 가 뜨던 것) */
+function duelLossFx(res, delay) {
+  if (!res || !res.duel || res.duel.draw) return;
+  var tc = res.tc1 !== undefined ? res.tc1 : (res.tc !== undefined ? res.tc : res.c), tr = res.tr1 !== undefined ? res.tr1 : (res.tr !== undefined ? res.tr : res.r);
+  var ac = res.ac1 !== undefined ? res.ac1 : res.ac, ar = res.ar1 !== undefined ? res.ar1 : res.ar;
+  floatText(res.duel.win ? tc : ac, res.duel.win ? tr : ar, '일기토 패 -' + fmt(res.duel.loss), '#1b1a18', delay || 0, true, -8);
 }
 function duelTxt(d) { return ' · 일기토! ' + d.a + ' 대 ' + d.d + ' — ' + (d.draw ? '비김' : (d.win ? d.a : d.d) + ' 승' + (d.ko ? '(쓰러뜨림)' : '')); }
 /* 일기토가 끝난 뒤 화면에 적는 것: 두 부대가 얻고 잃은 것 */
@@ -2676,7 +2683,7 @@ var HELP_HTML = '<div class="help">' +
   '<h3>시대</h3><p>새 판을 시작할 때 <b>여덟 시대</b> 가운데 하나를 고릅니다 — 184년 황건의 난 · 190년 반동탁 연합 · 194년 군웅할거 · 200년 관도대전 · 207년 삼고초려 · 219년 한중 쟁탈 · 227년 출사표 · 234년 오장원. 시대마다 세력 · 땅 · 무장의 자리가 다릅니다. 그 해에 이미 세상을 떠난 사람은 나오지 않고, 아직 어린 사람은 <b>등장 연도</b>에 나옵니다. 예전 저장은 모두 194년 판입니다.</p>' +
   '<h3>수명</h3><p>무장에게는 <b>태어난 해와 수명</b>이 있습니다(무장 창의 나이 — 태어난 해가 한 살인 세는나이). 사서에 병으로 · 늙어서 죽었다고 적힌 사람은 <b>역사의 그 해</b>에 세상을 떠납니다. 처형 · 전사 · 암살로 죽은 사람은 이 판에서 그 일을 겪지 않으므로 <b>역사보다 ' + LIFE.add + '년 더</b>, 그래도 ' + LIFE.min + '세가 안 되면 <b>' + LIFE.min + '세까지</b> 삽니다. 숨을 거두기 ' + LIFE.warn + '달쯤 앞서 <b>병석에 눕고</b>(알림), 출진 · 이동 중이면 거점에 돌아올 때까지 버팁니다. 태어난 해 · 죽은 해가 사서에 없는 사람이 많습니다 — 벼슬길과 싸움의 기록으로 어림했고, 그런 해에는 <b>추정</b>이라고 적었습니다. 예전 저장을 열면, 이미 수명이 지난 사람은 한꺼번에 떠나지 않고 ' + LIFE.old + '년에 걸쳐 차례로 떠납니다.</p>' +
   '<p><b>수명 켬 · 끔</b> — 새 판을 시작할 때 <b>수명</b> 단추로 고르고, 판을 하는 중에도 <b>메뉴</b>에서 바꿉니다. 끄면 무장이 늙어 죽지 않고(가상의 아이도 태어나지 않습니다), 다시 켜면 이미 수명이 지난 사람은 ' + LIFE.old + '년에 걸쳐 차례로 떠납니다. 예전 저장은 켜진 채로 열립니다.</p>' +
-  '<h3>아이</h3><p>사서에 아버지가 적힌 사람(유선 · 조예 · 손등 …)은 <b>태어난 해에 알림</b>이 오고, 등장 연도가 되면 <b>아버지가 섬기는 세력</b>으로 옵니다(아버지가 벼슬하지 않으면 그 집안으로). 수명을 켠 판에서는 해가 바뀔 때 벼슬하는 무장(' + BIRTH.min + ' ~ ' + BIRTH.max + '세)에게서 <b>가상의 아이</b>도 태어납니다 — 한 해에 ' + BIRTH.p + '%(군주는 ' + BIRTH.lord + '%), 한 사람에게 ' + BIRTH.kids + '명까지. 성은 아버지의 성을 따르고, 능력 · 적성 · 특기는 아버지를 닮되 들쭉날쭉합니다. ' + BIRTH.grow + '년 뒤에 장성해 찾아오고, 초상은 공용입니다. 무장 창에 아버지와 자식이 적힙니다. 지금은 아들만 태어납니다.</p>' +
+  '<h3>아이</h3><p>사서에 아버지가 적힌 사람(유선 · 조예 · 손등 …)은 <b>태어난 해에 알림</b>이 오고, 등장 연도가 되면 <b>아버지가 섬기는 세력</b>으로 옵니다(아버지가 벼슬하지 않으면 그 집안으로). 수명을 켠 판에서는 해가 바뀔 때 벼슬하는 무장(' + BIRTH.min + ' ~ ' + BIRTH.max + '세)에게서 <b>가상의 아이</b>도 태어납니다 — 한 해에 ' + BIRTH.p + '%(군주는 ' + BIRTH.lord + '%), 한 사람에게 ' + BIRTH.kids + '명까지. 성은 아버지의 성을 따르고, 능력 · 적성 · 특기는 아버지를 닮되 들쭉날쭉합니다. ' + BIRTH.grow + '년 뒤에 장성해 찾아옵니다. <b>아들과 딸</b>이 ' + BIRTH.boy + ' : ' + BIRTH.girl + ' 으로 태어납니다. 초상은 <b>공용 초상 ' + (POOL.n.reduce(function (a, b) { return a + b; }, 0) * 2) + '장</b>(남 · 여 절반씩) 가운데, 그 아이의 <b>가장 뛰어난 능력</b>(무력 · 통솔 · 지력 · 정치 · 매력)에 맞는 모습에서 아직 덜 쓰인 그림부터 고릅니다 — 무력이 으뜸이면 무기를 든 무인, 통솔이면 지휘하는 장수, 지력이면 책사, 정치면 문관, 매력이면 귀인의 모습입니다. 무장 창에 아버지와 자식이 적힙니다.</p>' +
   '<h3>후계</h3><p>군주가 세상을 떠나면 <b>후계</b>가 뒤를 잇고 세력의 이름이 바뀝니다. 군주의 무장 창(STATUS 창의 초상)에서 <b>후계 정하기</b>, 또는 무장 창의 <b>후계로 세우기</b>로 미리 정할 수 있습니다 — 행동력은 들지 않고 언제든 바꿉니다. 정해 두지 않으면 <b>아들(나이순) → 형제 → 그 밖의 혈연(매력순) → 매력이 높은 무장</b>(통솔 · 정치도 조금 봅니다)의 차례입니다. 뒤를 이을 무장이 한 사람도 없으면 세력은 사라지고 그 땅은 주인 없는 땅이 됩니다.</p>' +
   '<p><b>후계와 충성</b> — 새 군주가 선대와 <b>한집안</b>(혈연 · 의형제 · 부부)이면 선대의 인연이 그대로 이어집니다(의형제 · 심복은 <b>세신</b>이 됩니다 — 충성 100). 한집안이 아니면 인연이 끊겨, 선대의 <b>일가</b>(혈연 · 의형제 · 부부 · 인척)는 충성이 ' + HEIR.kin[0] + ' ~ ' + HEIR.kin[1] + ' 내리고, <b>심복</b>은 ' + HEIR.bondP + '%로 ' + HEIR.bond[0] + ' ~ ' + HEIR.bond[1] + ' 내립니다. 새 군주와 직접 인연이 있는 사람은 흔들리지 않습니다. 인연이 없던 무장은 <b>흔들릴 수도, 그대로일 수도</b> 있습니다 — ' + HEIR.base + '%에서 새 군주의 매력이 선대보다 낮은 만큼 늘고(1마다 ' + HEIR.cha + '%p), 미리 정해 둔 후계면 ' + HEIR.named + '%p 줄며, 새 군주보다 공적이 높은 사람은 ' + HEIR.merit + '%p 더합니다. 그렇게 흔들리면 ' + HEIR.drop[0] + ' ~ ' + HEIR.drop[1] + ' 내립니다. 새 군주의 매력이 선대보다 ' + HEIR.upAt + ' 넘게 높으면 오르는 사람도 있습니다. 후계를 고르는 창에 누가 뒤를 이으면 어떻게 될지 줄마다 적혀 있습니다.</p>' +
   '<h3>무장 명부</h3><p>무장은 모두 ' + SCENARIO.officers.length + '명입니다(여성 ' + SCENARIO.women.length + '명 · v0.23에서 다른 시대의 사람 ' + (SCENARIO.officers.length - 425) + '명이 늘었습니다). 그 시대에 이미 세력에 있는 사람 말고는 <b>등장 연도</b>가 되어야 나옵니다: 재야의 사람은 그 도시에서 <b>탐색</b>으로 찾고, 군주의 집안사람과 <b>아버지가 벼슬하고 있는 사람</b>은 해가 바뀔 때 스스로 찾아옵니다(아버지가 섬기는 세력으로). 예전 판의 저장을 불러오면 새 무장이 그 판에 덧붙습니다 — 세력에 있던 사람은 그 세력이 살아 있으면 그 세력으로, 망했으면 그 도시의 재야로 갑니다.</p>' +
@@ -3374,12 +3381,16 @@ function presentEvent(e, cb) {
     var mineD = e.f === G.player || e.tf === G.player;
     if (mineD && UI.battleTurn !== G.turn) { UI.battleTurn = G.turn; playBgm('battle'); }
     focusNear(e.tc, e.tr, pg(function () {
-      var r = e.res;
-      setCaption(e.f, resultMsg(e.name, r), e.tf === G.player ? 'hit' : '');
+      var r = e.res, rp = !!(r.accepted && r.duelRec && r.duel && !P.skip && mineD);      // v0.24: 다시 그려 보일 것이면 승패는 그 화면이 닫힌 뒤에
+      setCaption(e.f, resultMsg(e.name, r, rp), e.tf === G.player ? 'hit' : '');
       floatText(r.ac, r.ar, '일기토 신청', '#1b1a18', 0, true, -20);
       if (!r.accepted) { sfx('miss'); floatText(r.c, r.r, '받지 않음 · 기력 -' + r.mor, '#2f4f6f', 320, false, 22); pwait(1100 * k, cb); return; }
-      if (r.duelRec && r.duel && !P.skip && mineD) {                // 내 군단이 얽혔으면 처음부터 그려 보인다
-        duelReplay(r.duelRec, { sub: e.name + ' 대 ' + (r.tname || ''), out: duelOutHtml(null, r.duel, e.name, r.tname || '') }, pg(function () { pwait(300 * k, cb); }));
+      if (rp) {                // 내 군단이 얽혔으면 처음부터 그려 보인다
+        duelReplay(r.duelRec, { sub: e.name + ' 대 ' + (r.tname || ''), out: duelOutHtml(null, r.duel, e.name, r.tname || '') }, pg(function () {
+          setCaption(e.f, resultMsg(e.name, r), e.tf === G.player ? 'hit' : '');
+          if (!r.duel.draw) floatText(r.duel.win ? r.c : r.ac, r.duel.win ? r.r : r.ar, '일기토 패 -' + fmt(r.duel.loss), '#b5332a', 0, true, 22); else floatText(r.c, r.r, '비김', '#6a645a', 0, false, 22);
+          pwait(1100 * k, cb);
+        }));
         return;
       }
       sfx('duel');
@@ -3390,19 +3401,24 @@ function presentEvent(e, cb) {
   } else if (e.t === 'act') {
     if ((e.f === G.player || e.tf === G.player) && UI.battleTurn !== G.turn) { UI.battleTurn = G.turn; playBgm('battle'); }   // 내가 얽힌 싸움이면 전투 음악으로
     focusNear(e.tc, e.tr, pg(function () {
-      setCaption(e.f, (e.res.fell && restFall(e.res.tbase)) ? '<b>' + e.name + '</b> — ' + e.res.tname + ' 공격' : resultMsg(e.name, e.res), e.tf === G.player ? 'hit' : '');      // v0.22
+      var rec = e.res.duelRec, replay = !!(rec && e.res.duel && !P.skip && (e.f === G.player || e.tf === G.player));      // v0.24: 일기토를 다시 그려 보일 것이면 승패(말 · '일기토 패' 글씨)는 그 화면이 닫힌 뒤에
+      var capCls = e.tf === G.player ? 'hit' : '';
+      setCaption(e.f, (e.res.fell && restFall(e.res.tbase)) ? '<b>' + e.name + '</b> — ' + e.res.tname + ' 공격' : resultMsg(e.name, e.res, replay), capCls);      // v0.22
       var n0 = UI.anims.length;
       animAct(e.res, pg(function () {
         P.ans = [];
         if (e.res.fell && e.res.tbase >= 0 && !restFall(e.res.tbase)) freeBase(e.res.tbase);      // v0.22: 뒤따르는 함락 장면이 없으면 여기서 새 빛깔로
         holdRest(); requestDraw();
-        var rec = e.res.duelRec;
-        if (rec && e.res.duel && !P.skip && (e.f === G.player || e.tf === G.player)) {      // v0.13: 내 부대가 얽힌 일기토는 처음부터 다시 그려 보인다
-          duelReplay(rec, { sub: e.name + ' 대 ' + (e.res.tname || ''), out: duelOutHtml(null, e.res.duel, e.name, e.res.tname || '') }, pg(function () { pwait(300 * k, cb); }));
+        if (replay && !P.skip) {      // v0.13: 내 부대가 얽힌 일기토는 처음부터 다시 그려 보인다
+          duelReplay(rec, { sub: e.name + ' 대 ' + (e.res.tname || ''), out: duelOutHtml(null, e.res.duel, e.name, e.res.tname || '') }, pg(function () {
+            setCaption(e.f, resultMsg(e.name, e.res), capCls); duelLossFx(e.res, 0);
+            pwait(1100 * k, cb);
+          }));
           return;
         }
+        if (replay) { setCaption(e.f, resultMsg(e.name, e.res), capCls); duelLossFx(e.res, 0); }      // 연출 사이에 건너뛰기를 눌렀다 — 화면 없이 결과만
         pwait((e.res.fell ? 200 : 700) * k, cb);
-      }), function () { resultFx(e.res); });   // 함락이면 바로 뒤에 함락 장면이 따로 나온다
+      }), function () { resultFx(e.res, replay); });   // 함락이면 바로 뒤에 함락 장면이 따로 나온다
       P.ans = UI.anims.slice(n0);
     }));
   } else if (e.t === 'fall') {

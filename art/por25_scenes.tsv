@@ -1,0 +1,254 @@
+# v0.25 개별 초상 253장(새 무장 83 + 공용 초상을 쓰던 170): key <TAB> 이름 <TAB> 포인트색 <TAB> 장면(영문). 번호는 줄 차례. 프롬프트 = 머리말 + 장면 + 맺음말(tools/por25_prompt.py)
+shihuan	사환	deep blue	Shi Huan, a veteran guard commander in his forties in plain iron armor, holding a lantern and a spear on night watch, alert eyes.
+lvqian	여건	deep blue	Lu Qian, a sturdy provincial governor-general in his forties with a short beard, drawing a strong bow.
+bichen	필심	indigo	Bi Chen, a filial official in plain robes, bowing with clasped hands, torn and sorrowful.
+songxian	송헌	violet	Song Xian, a wary cavalry officer in dark armor, hand on his sword hilt, glancing over his shoulder.
+weixu	위속	violet	Wei Xu, a lean cavalry officer with a sneer, leveling a spear.
+houcheng	후성	purple	Hou Cheng, a stocky cavalry officer in armor, gripping a bridle and whip, resentful scowl.
+chenglian	성렴	violet	Cheng Lian, a fierce cavalry commander in heavy armor, lunging with a lance, shouting.
+haomeng	학맹	purple	Hao Meng, a rebel officer at night with a torch in one hand and a drawn sword in the other.
+caoxing	조성	violet	Cao Xing, a sharp-eyed archer officer squinting down a drawn bow.
+caobao	조표	slate blue	Cao Bao, an old general with a gray beard in heavy armor, stern and stubborn.
+sunguan	손관	slate blue	Sun Guan, a rugged bandit-turned-general in scale armor, a broad saber on his shoulder.
+quexuan	궐선	ochre gold	Que Xuan, a rebel who styled himself emperor, a gaudy crown and robe over armor, arrogant chin raised.
+caohong2	조굉	slate blue	A sly, thin courtier in a fine robe, whispering behind a raised sleeve with a sneer.
+zhaoyu	조욱	slate blue	Zhao Yu, an upright scholar-official in a simple robe, holding bamboo slips, stern honest face.
+zerong	착융	ochre gold	Ze Rong, a portly warlord in a rich robe with prayer beads in one hand and a sword at his belt, sly smile.
+yuantan	원담	gold	Yuan Tan, a proud young general in ornate gold-trimmed armor, sword drawn, glaring.
+jiangyiqu	장의거	gold	Jiang Yiqu, a sturdy loyal general in armor, planting a rallying banner to gather scattered troops.
+hanmeng	한맹	ochre	Han Meng, a burly bold general in armor with a glaive on his shoulder, guarding supply carts.
+lvkuang	여광	gold	Lu Kuang, a general in lamellar armor, thrusting a spear, determined.
+lvxiang	여상	ochre	Lu Xiang, a general in lamellar armor, swinging a halberd, grim.
+mayan	마연	gold	Ma Yan, a cavalry officer in armor with a spear and a round shield.
+zhangkai	장개	ochre	Zhang Kai, a treacherous officer with a greedy grin, clutching a sack of gold, a dagger in his other hand.
+yuanxi	원희	gold	Yuan Xi, a mild young lord in armor and a fur-lined cloak, uncertain eyes.
+xinpi	신비	gold	Xin Pi, an outspoken middle-aged adviser in a court robe, tugging at a sleeve as he remonstrates.
+yangang	엄강	sky blue	Yan Gang, a cavalry commander of the white-horse riders in a white cloak over armor, lance raised.
+gongsunxu	공손속	sky blue	Gongsun Xu, a young rider in light armor, urgently holding out a sealed letter.
+shanjing	단경	sky blue	Shan Jing, a provincial governor in armor, a sword in one hand and an official seal in the other.
+tiankai	전해	sky blue	Tian Kai, a weathered veteran general in worn armor, leaning into a spear thrust.
+guanjing	관정	sky blue	Guan Jing, an anxious chief clerk in a robe, raising a hand in urgent counsel.
+zoudan	추단	sky blue	Zou Dan, a grim general in heavy armor with a halberd.
+zoujing	추정	sky blue	Zou Jing, a veteran colonel in armor, one arm raised to rally volunteers.
+liuyi	유의	steel blue	Liu Yi, a northern general in fur-trimmed armor, pointing across the sea.
+gongsungong	공손공	steel blue	Gongsun Gong, a mild sickly lord in a fur robe, a weak smile, thin hands folded.
+gongsunmo	공손모	steel blue	Gongsun Mo, a northern general in a fur cap and armor, spear leveled.
+xuehong	설홍	rust brown	Xue Hong, a cautious chief clerk in a robe, holding an official seal close.
+suigu	휴고	rust brown	Sui Gu, a wild-haired mountain bandit general in furs, a great saber raised.
+wangxiu	왕수	violet	Wang Xiu, an earnest loyal official in a robe, rushing forward with a drawn sword to save his lord.
+sunshao	손소	crimson	Sun Shao, a tall dignified minister in a court robe and hat, holding a tablet.
+zongbao	종보	violet	Zong Bao, a young officer charging with a spear.
+zhangxun	장훈	purple	Zhang Xun, a grand general in ornate armor, raising a command baton.
+yanghong	양홍	purple	Yang Hong, a scheming chief adviser with a thin beard, a fan half-raised, narrowed eyes.
+hanyin	한윤	purple	Han Yin, an ingratiating envoy in a robe, presenting a lacquered box of betrothal gifts.
+yuanyin	원윤	purple	Yuan Yin, an anxious nobleman in a robe, clutching a wrapped seal box as he flees.
+yuejiu	악취	purple	Yue Jiu, a defiant general in armor with a glaive.
+lianggang	양강	purple	Liang Gang, a general in armor with a spear and a tall shield.
+chenji	진기	purple	Chen Ji, a sly general in armor, a sword resting on his shoulder.
+yangdajiang	양대장	purple	An elderly chief clerk in a robe, pointing at a spread map as he advises.
+qiaorui	교유	purple	Qiao Rui, a grand general in heavy armor, charging with a long glaive.
+leibo	뇌박	purple	Lei Bo, a rugged mountain bandit general in furs and patched armor, saber in hand.
+chenlan	진란	purple	Chen Lan, a rough bandit general in a mountain cloak, spear leveled.
+liupi	유벽	ochre yellow	Liu Pi, a rebel chief with a yellow headscarf, in patched armor, saber raised.
+gongdu	공도	ochre yellow	Gong Du, a rebel chief with a yellow headscarf, thrusting a spear.
+heman	하만	ochre yellow	He Man, a giant brute with a yellow headscarf, swinging a huge iron club, roaring.
+sunjing	손정	crimson	Sun Jing, a calm elder general in armor and cloak, leading a night attack with a torch.
+wujing	오경	crimson	Wu Jing, a seasoned general in his forties in armor, spear in hand.
+xukun	서곤	red	Xu Kun, a general in armor, pointing at a river crossing, reed rafts sketched behind him.
+sunjiao	손교	red	Sun Jiao, a generous young general in armor with a red cape, extending a hand to his comrades.
+sunhuan	손환	red	Sun Huan, a handsome young general of about twenty-five in armor, sword raised on a city wall.
+zhangying	장영	indigo	Zhang Ying, a general guarding a river fort, armor and spear.
+fanneng	번능	indigo	Fan Neng, an officer in armor with a sword, braced to defend.
+yumi	우미	indigo	Yu Mi, an officer in armor with a halberd.
+xueli	설례	indigo	Xue Li, a chancellor in armor over a robe, defending a wall with a sword.
+shiyi	시의	red	Shi Yi, a frugal upright official in a plain robe with a ledger, modest and steady.
+yanyu	엄여	brown	Yan Yu, a fierce bold warrior with a saber, baring his teeth.
+xugong	허공	brown	Xu Gong, a governor in a robe and hat, furtively writing a letter with a brush.
+zouta	추타	brown	Zou Ta, a rough local strongman with a wooden club.
+qiantong	전동	brown	Qian Tong, a rough local strongman with a spear.
+zhouxin	주흔	blue gray	Zhou Xin, a general in armor with a halberd, standing firm.
+zhangyun	장윤	teal	Zhang Yun, a naval commander in armor at a ship's prow, one hand on the rail.
+wangwei	왕위	teal	Wang Wei, a loyal officer in armor, kneeling on one knee with fist in palm, proposing an ambush.
+fuxun	부손	teal	Fu Xun, an eloquent adviser in a robe, persuading with an open hand.
+caizhong	채중	teal	Cai Zhong, a sly naval officer in armor, a forced smile.
+caihe	채화	teal	Cai He, a shifty naval officer in armor, eyes darting sideways.
+huojun	곽준	green	Huo Jun, a steadfast defender in armor on a wall, sword in hand, calm.
+sufei	소비	teal	Su Fei, a kindly naval commander in armor, a friendly open smile.
+chenjiu	진취	teal	Chen Jiu, a naval officer in armor with a boat hook and sword.
+denglong	등룡	teal	Deng Long, a naval officer in armor with a spear.
+liupan	유반	teal	Liu Pan, a brave young raider in armor, spear leveled, daring grin.
+hanxuan	한현	teal	Han Xuan, a petty suspicious governor in a robe and official hat, pointing an accusing finger.
+xianglang	상랑	green	Xiang Lang, an elderly book-loving official in a robe, arms full of scrolls.
+limeng	이몽	dark crimson	Li Meng, a frontier officer in armor with a saber.
+wangfang	왕방	dark crimson	Wang Fang, a frontier officer in armor with a spear.
+hanxian	한섬	dark crimson	Han Xian, a wild bandit chief in a fur cloak, saber raised.
+libie	이별	dark crimson	Li Bie, a young frontier officer in armor, sword at his side.
+hufeng	호봉	dark crimson	Hu Feng, a brutal officer with a heavy club, cruel grin.
+likan	이감	rust orange	Li Kan, a frontier warlord in armor with a spear.
+dongcheng	동승	imperial red	Dong Cheng, a general and imperial kinsman, armor under a court robe, hiding a hidden imperial edict in his sash.
+duanwei	단외	dark crimson	Duan Wei, a gray-bearded veteran general, armor over farmer's clothes, calm.
+matie	마철	rust orange	Ma Tie, a young frontier cavalryman in armor with a spear.
+maxiu	마휴	rust orange	Ma Xiu, a young frontier cavalryman drawing a bow.
+yangqiu	양추	rust orange	Yang Qiu, a frontier warlord in armor with a saber.
+houxuan	후선	rust orange	Hou Xuan, a frontier warlord in armor with a spear.
+chengyi	성의	rust orange	Cheng Yi, a frontier warlord in armor with a halberd.
+chengyin	정은	rust orange	Cheng Yin, a frontier warlord in armor with a sword.
+mawan	마완	rust orange	Ma Wan, a frontier warlord in armor with a glaive.
+zhangwei	장위	turquoise	Zhang Wei, a defiant general in armor with a talisman sash, sword raised.
+yangren	양임	turquoise	Yang Ren, a general charging with a spear.
+yangang2	양앙	turquoise	Yang Ang, a general in armor with a saber.
+yangsong	양송	turquoise	Yang Song, a greedy adviser in a robe, weighing gold in his palm with a smirk.
+yangbo	양백	turquoise	Yang Bo, a general in armor with a spear.
+liugui	유괴	olive green	Liu Gui, a general in armor defending a wall, sword in hand.
+wanglei	왕루	olive green	Wang Lei, a passionate loyal official in a robe, holding up a written remonstrance.
+dengxian	등현	olive green	Deng Xian, a general in armor with a spear.
+gaopei	고패	olive green	Gao Pei, a general guarding a mountain pass, glaring, a hidden blade at his belt.
+yanghuai	양회	olive green	Yang Huai, a general guarding a mountain pass, one hand behind his back on a dagger.
+zhaowei	조위	olive green	Zhao Wei, an aging rebel general in armor, stern.
+pangxi	방희	olive green	Pang Xi, a dignified governor with a robe over armor.
+feishi	비시	green	Fei Shi, a blunt official in a robe, speaking frankly with a raised finger.
+wuban	오반	green	Wu Ban, a chivalrous cavalry general in armor, spear resting on his shoulder.
+wangfu	왕보	green	Wang Fu, a strategist-official in a robe, pointing toward distant beacon towers.
+zhangyi4	장예	green	Zhang Yi, a witty administrator in a robe, checking iron tools and tallies.
+tianchou	전주	blue	Tian Chou, a hermit warrior-scholar with a sword and a book, leading the way along a mountain path.
+xianyufu	선우보	blue	Xianyu Fu, a northern officer in fur-trimmed armor, grim and vengeful.
+bingyuan	병원	blue	Bing Yuan, a pure scholar in a plain robe, teaching with an open book.
+wanglie	왕렬	slate gray	Wang Lie, a virtuous white-bearded hermit in a simple robe, leaning on a staff.
+zhangshiping	장세평	ochre	Zhang Shiping, a wealthy horse merchant in a merchant's robe and cap, offering a heavy purse.
+yongkai	옹개	orange	Yong Kai, a southern rebel chief in tribal-trimmed armor, saber raised.
+xingdaorong	형도영	teal	Xing Daorong, a boastful burly general hefting a huge battle axe.
+zhaofan	조범	teal	Zhao Fan, an oily-smiling governor in a robe, offering a cup of wine.
+jinxuan	김선	teal	Jin Xuan, a governor in armor over a robe, spear in hand.
+liudu	유도	teal	Liu Du, a timid governor in a robe and hat, holding out an official seal in surrender.
+pengyang	팽양	green	Peng Yang, an arrogant gifted adviser with disheveled hair, lounging with a smug look.
+zhangji3	장기	blue	Zhang Ji, a capable frontier governor with a robe over light armor, a calming hand raised.
+duji	두기	blue	Du Ji, a benevolent governor in a plain robe, holding a sheaf of grain among fields.
+duxi	두습	blue	Du Xi, an upright adviser in a robe, remonstrating firmly.
+zhaoyan	조엄	blue	Zhao Yan, an army coordinator with a robe over armor, both hands raised to calm quarreling generals.
+yangfu	양부	blue	Yang Fu, a fierce loyal official with bandaged wounds, sword raised.
+wangling	왕릉	blue	Wang Ling, a white-bearded senior general in armor, resolute.
+luyu	노육	blue	Lu Yu, an upright minister in a robe, holding law scrolls.
+leixu	뇌서	green	Lei Xu, a rough rebel leader in patched armor, leading his people forward.
+cuizhouping	최주평	jade green	Cui Zhouping, a wandering hermit scholar with a wide straw hat and a staff, carefree.
+guoyuan	국연	blue	Guo Yuan, a farm administrator in a robe, counting grain tallies.
+wenhui	온회	blue	Wen Hui, a shrewd governor in a robe, gazing at a river in thought.
+gaorou	고유	blue	Gao Rou, a judge in a robe, reading law tablets by lamplight.
+zhaoang	조앙	blue	Zhao Ang, a loyal frontier official with armor over a robe, sword in hand.
+shendan	신탐	blue	Shen Dan, a cautious local warlord in armor, arms folded.
+shenyi	신의	blue	Shen Yi, a sly local warlord in armor, a thin smile.
+juhu	저곡	gold	Ju Hu, a young scholar-officer in a robe with a sword.
+liuzhen	유정	blue	Liu Zhen, a poet in a robe with a brush, meeting the viewer's eyes with a defiant upright gaze.
+simafu	사마부	blue	Sima Fu, a gentle upright elder statesman in a court robe, holding a tablet.
+xumiao	서막	blue	Xu Miao, a wine-loving official in a robe, a cup in hand, flushed and smiling.
+liufang	유방	blue	Liu Fang, a palace scribe-official in a robe, drafting an edict with a brush.
+wucan	오찬	red	Wu Can, a general risen from humble birth, in armor on a riverboat, pulling a comrade aboard.
+xizhen	습정	green	Xi Zhen, an officer with a robe over light armor, composed.
+liaoli	요립	green	Liao Li, a proud gifted official in a robe, looking down his nose.
+feiguan	비관	green	Fei Guan, a sociable official-general in a robe, a warm easy smile.
+jiangxu	강서	blue	Jiang Xu, a frontier officer in armor, sword drawn.
+yinfeng	윤봉	blue	Yin Feng, a frontier officer in armor with a spear.
+sunzi	손자	blue	Sun Zi, a palace scribe-official in a robe, holding sealed letters.
+hanji	한기	blue	Han Ji, an engineer-official in a robe with sleeves tied back, holding a small model of a water-powered bellows.
+baoxun	포훈	blue	Bao Xun, a stern censor in a court robe, remonstrating.
+dailai	대래동주	orange	A southern tribal chieftain with feathers in his hair and a short spear.
+dongtuna	동도나	orange	A southern tribal chieftain in rattan armor with a spear.
+ahuinan	아회남	orange	A southern tribal chieftain in rattan armor with a saber.
+jinhuan	금환결	orange	A southern tribal chieftain wearing gold rings, with a glaive.
+zongyu	종예	green	Zong Yu, a composed envoy-general in a robe, holding an envoy's staff.
+xuezong	설종	red	Xue Zong, a witty scholar-official in a robe with a brush, a wry smile.
+chenshi	진식	green	Chen Shi, a general in armor, thrusting a spear.
+wangchang	왕창	blue	Wang Chang, a scholarly general in armor, writing on a bamboo slip.
+xiahoude	하후덕	blue	Xiahou De, a general in armor guarding a mountain camp, sword in hand.
+wangsu	왕숙	blue	Wang Su, a scholar in a robe with a stack of classics.
+cheliji	철리길	rust	A western tribal king in steppe armor and a fur cap, saber raised.
+yueji	월길	rust	A western tribal marshal in heavy armor, a great iron hammer in both hands.
+xiangchong	상총	green	Xiang Chong, a steady calm general in armor, sword point resting on the ground.
+xiahoumao	하후무	blue	Xiahou Mao, a pampered young general in gaudy armor, soft-faced and nervous.
+wangshuang	왕쌍	blue	Wang Shuang, a giant warrior in heavy armor, swinging a massive saber, a meteor hammer at his belt.
+zhugedan	제갈탄	blue	Zhuge Dan, a proud general in armor, sword raised, defiant.
+chentai	진태	blue	Chen Tai, a calm brilliant commander in armor and cape, studying a map.
+huzun	호준	blue	Hu Zun, a general in armor and a heavy winter cloak, snow blowing around him.
+guanqiujian	관구검	blue	Guanqiu Jian, a general in fur-trimmed armor, raising a banner over a captured mountain fort.
+dongzhuo	동탁	dark crimson	Dong Zhuo, an obese brutal tyrant with a thick beard, lavish black armor and a fur mantle, a goblet in one hand and a heavy saber in the other, sneering.
+sunjian	손견	crimson	Sun Jian, a fierce general in his thirties wearing a red headcloth and scale armor, leaping forward with an ancient saber.
+zhangjue	장각	ochre yellow	Zhang Jue, a gaunt sorcerer with long loose hair and a yellow turban, in a Taoist robe, raising a ringed staff to call a storm.
+zhangbao2	장보	ochre yellow	Zhang Bao, a sorcerer-general with loose hair and a yellow headscarf, pointing a sword as if casting a spell.
+zhangliang3	장량	ochre yellow	Zhang Liang, a young rebel general in armor with a yellow headscarf, spear leveled.
+zhangmancheng	장만성	ochre yellow	Zhang Mancheng, a burly rebel chief in a yellow turban, swinging a glaive.
+bocai	파재	ochre yellow	Bo Cai, a rebel chief with a yellow headscarf, holding a blazing torch at night.
+peiyuanshao	배원소	ochre yellow	Pei Yuanshao, a shaggy bandit chief with a faded yellow headscarf, a spear and a crooked grin.
+chengyuanzhi	정원지	ochre yellow	Cheng Yuanzhi, a rebel general with a yellow headscarf, charging with a saber.
+dengmao	등무	ochre yellow	Deng Mao, a snarling rebel officer with a yellow headscarf and a spear.
+hejin	하진	imperial red	He Jin, a stout grand general who was once a butcher, pompous court armor and a tasseled helmet, unsure eyes.
+luzhi	노식	imperial red	Lu Zhi, a towering scholar-general with a long beard, armor over a scholar's robe, a scroll in one hand and a sword in the other.
+wangyun	왕윤	imperial red	Wang Yun, an elderly white-bearded minister in a court robe and hat, a dagger hidden in his sleeve, grim resolve.
+dingyuan	정원	gray blue	Ding Yuan, a rough middle-aged frontier governor in cavalry armor, a bow in hand.
+hanfu	한복	olive	Han Fu, a timid soft-faced governor in a rich robe, wringing his hands.
+liuyu	유우	indigo	Liu Yu, a gentle white-bearded imperial clansman in a plain patched robe and worn hat.
+liudai	유대	brown	Liu Dai, an impatient governor with armor over a robe, hand on his sword.
+kongzhou	공주	slate gray	Kong Zhou, a lofty talker in a scholar's robe, gesturing grandly in debate.
+qiaomao	교모	brown	Qiao Mao, a governor in a robe, unrolling a call-to-arms proclamation.
+baoxin	포신	blue	Bao Xin, a modest righteous general in armor, covering a retreat with his sword.
+wangkuang	왕광	gold	Wang Kuang, a generous governor in armor, aiming a crossbow.
+zhangchao	장초	violet	Zhang Chao, a governor with armor over a robe, defiant on a besieged wall.
+zumao	조무	crimson	Zu Mao, a bold officer wearing his lord's red headcloth as a decoy, twin sabers ready, grinning.
+huaxiong	화웅	dark crimson	Hua Xiong, a giant tiger-fierce general in heavy armor, a great saber raised.
+liru	이유	dark crimson	Li Ru, a thin sinister adviser in a dark robe, holding out a cup of poison.
+xurong	서영	dark crimson	Xu Rong, a calm deadly veteran general in armor, signaling an ambush with a raised spear.
+niufu	우보	dark crimson	Niu Fu, a nervous general in armor, clutching a bag of gold and a talisman.
+dongmin	동민	dark crimson	Dong Min, a stout arrogant general in ornate armor, chin raised.
+lisu	이숙	dark crimson	Li Su, a smooth-talking cavalry officer in armor, a sly smile, holding out a jeweled belt as a bribe.
+caiyong	채옹	indigo	Cai Yong, an elderly great scholar in a robe, playing a zither with a scorched end.
+panfeng	반봉	olive	Pan Feng, a burly general swinging a giant battle axe.
+yushe	유섭	purple	Yu She, a bold officer charging with a saber.
+liuyan	유언	olive green	Liu Yan, an aging ambitious imperial clansman in a rich robe, a sly look, unrolling a map of the west.
+gengwu	경무	olive	Geng Wu, a loyal clerk in a robe, drawing a short sword in protest.
+liuqi	유기	teal	Liu Qi, a gentle sickly young heir in a robe, pale, holding a tear-stained letter.
+liucong	유종	teal	Liu Cong, a young lord of about twenty in a fine robe, uncertain, holding out a provincial seal.
+liushan	유선	green	Liu Shan, a plump genial young emperor in an imperial robe and a tasseled crown, a carefree smile.
+caorui	조예	blue	Cao Rui, a handsome young emperor with very long hair, in an imperial robe, sharp eyes.
+simalang	사마랑	blue	Sima Lang, a tall upright official in a robe, carrying medicine to sick soldiers.
+zhuling	주령	blue	Zhu Ling, a stern veteran general in armor, sword in hand.
+liufu	유복	blue	Liu Fu, a governor in a robe with sleeves tied back, holding wall plans beside stacked straw mats.
+liangxi	양습	blue	Liang Xi, a composed frontier governor with a robe over armor.
+luotong	낙통	red	Luo Tong, an earnest young official-general with a robe over light armor.
+lvdai	여대	red	Lu Dai, a white-haired but vigorous general in his eighties in armor, standing straight with a spear.
+zhuju	주거	red	Zhu Ju, a handsome minister-general in armor and a robe, a bow in hand.
+zhangwen	장온	red	Zhang Wen, an elegant envoy in a fine robe, debating gracefully.
+zhugeke	제갈각	red	Zhuge Ke, a brilliant arrogant minister-general, a robe over armor, a smug smile, a folded fan.
+sundeng	손등	red	Sun Deng, a gentle crown prince in a simple robe, kind eyes.
+lukang	육항	red	Lu Kang, a calm noble general in armor and cloak on a river wall, hand on his sword.
+zhugezhan	제갈첨	green	Zhuge Zhan, a young general in armor with a feather fan at his belt, tragic resolve.
+fuqian	부첨	green	Fu Qian, a fierce loyal general in battered armor, making a last stand with a spear.
+dongyun	동윤	green	Dong Yun, a stern upright minister in a court robe, one hand raised to forbid.
+qiaozhou	초주	green	Qiao Zhou, an old scholar in a robe with star charts and books.
+luoxian	나헌	green	Luo Xian, a steadfast defender in armor on a wall, a torch held high.
+huoyi	곽익	green	Huo Yi, a general in armor trimmed with southern patterns, calm authority.
+guoyouzhi	곽유지	green	Guo Youzhi, a mild palace attendant in a court robe, holding a memorial scroll.
+gaoxiang	고상	green	Gao Xiang, a general in armor, charging with a spear.
+lvkai	여개	green	Lu Kai, a loyal frontier official in a robe, unrolling a map of the southern lands.
+goufu	구부	green	Gou Fu, a brave tough general in armor with a halberd.
+xujing	허정	green	Xu Jing, a refined elderly critic in a robe, appraising with a half-raised fan.
+caoshuang	조상	blue	Cao Shuang, a fat pompous regent in a lavish robe over armor, a wine cup in hand.
+xiahouxuan	하후현	blue	Xiahou Xuan, an elegant philosopher-noble in a flowing robe, serene and radiant.
+simashi	사마사	blue	Sima Shi, a steely regent in armor and cloak with a cloth patch over one eye, cold gaze.
+simazhao	사마소	blue	Sima Zhao, an ambitious regent with a robe over armor, gripping his sword hilt, a calculating smile.
+zhonghui	종회	blue	Zhong Hui, a brilliant handsome young general in armor and a scholar's cap, a brush in one hand and a sword in the other.
+dengzhong	등충	blue	Deng Zhong, a fierce young general in armor, climbing a cliff with a spear on his back.
+wangji	왕기	blue	Wang Ji, a learned general in armor, holding a scroll.
+chenqian	진건	blue	Chen Qian, a steady general in armor, raising a banner.
+shibao	석포	blue	Shi Bao, a strikingly handsome general in armor, confident.
+jiachong	가충	blue	Jia Chong, a scheming minister in a court robe, a law scroll in hand, a cold smile.
+yanghu	양호	blue	Yang Hu, a benevolent general in a light fur robe with a loose sash and no armor, a gentle beard, calm.
+duyu	두예	blue	Du Yu, a scholar-general with a robe over armor, a bamboo-slip classic in one hand and a map in the other.
+wenqin	문흠	deep blue	Wen Qin, a rough bold general in armor, saber raised.
+wenyang	문앙	blue	Wen Yang, a peerless young warrior of about twenty in armor, charging alone with a spear and a steel whip.
+sunli	손례	blue	Sun Li, a brave general drawing his sword, a tiger pelt over his shoulder.
+gongsunyuan	공손연	steel blue	Gongsun Yuan, a treacherous northern king, a fur-trimmed royal robe over armor and a crown, arrogant.
+sunjun	손준	red	Sun Jun, a ruthless regent with a rich robe over armor, cold eyes.
+sunchen	손침	red	Sun Chen, a brutal arrogant young regent in armor.
+lukai	육개	red	Lu Kai, an upright old chancellor in a court robe, remonstrating.
+zhuyi	주이	red	Zhu Yi, a general in armor with a spear.
+liuzan	유찬	red	Liu Zan, a general with loose hair singing a battle song at the top of his voice, saber raised.
+sunxiu	손휴	red	Sun Xiu, a scholarly emperor in a robe and crown, reading a book.
+sunhao	손호	red	Sun Hao, a cruel last emperor in an imperial robe, a wine cup in hand, a menacing glare.
