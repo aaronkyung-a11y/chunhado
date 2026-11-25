@@ -386,9 +386,11 @@ function fxDeploy(u, b, done) {
   if (!o) { if (done) done(); return; }
   var p0 = hexPos(b.c, b.r), p1 = hexPos(u.c, u.r);
   o.anim = true; fxFace(o, p0, p1);
-  anim(430, function (t) {
+  var step = function (t) {
     var e = easeOut(t), p = fxLerp(p0, p1, e), s = 0.55 + 0.45 * e;
     fxPut(o, [p[0], p[1] + Math.sin(Math.PI * t) * 0.18, p[2]]);
     o.sp.scale.set(o.sp.userData.w * s, o.sp.userData.h * s, 1); o.sp.material.opacity = Math.min(1, 0.2 + t * 1.6);
-  }, function () { o.sp.scale.set(o.sp.userData.w, o.sp.userData.h, 1); o.anim = false; o.c = -1; o.sig = ''; fxDust(p1[0], p1[1], p1[2], 1.2); requestDraw(); if (done) done(); });
+  };
+  step(0);                                                    // v0.22.1: 첫 모습(성 안 · 작고 옅게)을 바로 입힌다 — 나갈 칸에 선 모습이 한 장이라도 먼저 그려지지 않게
+  anim(430, step, function () { o.sp.scale.set(o.sp.userData.w, o.sp.userData.h, 1); o.anim = false; o.c = -1; o.sig = ''; fxDust(p1[0], p1[1], p1[2], 1.2); requestDraw(); if (done) done(); });
 }

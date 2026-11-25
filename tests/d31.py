@@ -345,7 +345,7 @@ def more(pg):
     # ---------- 11-5. 충차 · 북소리 ----------
     rm = pg.evaluate("() => [UNIT_TYPES.ram.mp, UNIT_TYPES.ram.siege, ROAD_COST.join(','), JSON.stringify(CUES.deploy.s), Object.keys(SFX_DATA).length, SFX_DATA.drum.length, SFX_DATA.drums.length]")
     ok(rm[0] == 10 and rm[1] == 8 and rm[2] == '2,2,2', '충차: 이동력 10 · 공성 8 · 길의 칸값 2')
-    ok(rm[3] == '[["drums",0.85,0.02],["horn",0.42,0.01,0.9]]' and rm[4] == 29, '출진의 소리: 북(둥 — 둥 — 둥둥둥) + 마지막 센 박에 뿔나팔 · 효과음은 29개 그대로')
+    ok(rm[3] == '[["drums",0.85,0.02],["horn",0.42,0.01,0.9]]' and rm[4] == 30, '출진의 소리: 북(둥 — 둥 — 둥둥둥) + 마지막 센 박에 뿔나팔 · 효과음은 30개(v0.22.1: 순찰의 딱따기가 늘었다)')
 B.run(steps, 390, 844, 2)
 B.run(small, 360, 640, 2)
 B.run(more, 390, 844, 2)

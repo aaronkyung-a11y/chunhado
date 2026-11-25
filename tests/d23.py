@@ -214,7 +214,7 @@ def steps(pg):
     ok(all(n in hp_ for n in need), '도움말: %s' % [n for n in need if n not in hp_])
     pg.evaluate('closeDialog()')
     cues = pg.evaluate('(() => { var miss = [], k, i; for (k in CUES) for (i = 0; i < CUES[k].s.length; i++) if (!SFX_DATA[CUES[k].s[i][0]]) miss.push(k + ":" + CUES[k].s[i][0]); return { miss: miss, n: Object.keys(SFX_DATA).length, hit: CUES.arrowhit.s.map(function (x) { return x[0]; }), big: CUES.arrowbig.s.map(function (x) { return x[0]; }), fail: CUES.arrowfail.s.map(function (x) { return x[0]; }), great: CUES.arrowgreat.s.map(function (x) { return x[0]; }) }; })()')
-    ok(cues['miss'] == [] and cues['n'] == 29, '큐가 가리키는 소리가 모두 있다(소리 %d개)' % cues['n'])
+    ok(cues['miss'] == [] and cues['n'] == 30, '큐가 가리키는 소리가 모두 있다(소리 %d개)' % cues['n'])
     ok(cues['hit'] == ['thock'] and cues['big'] == ['arrowland'] and 'thud' not in cues['fail'] + cues['great'] and 'crush' not in cues['great'], '쏘는 공격이 맞는 소리는 화살 소리뿐이다 %s' % {k: cues[k] for k in ('hit', 'big', 'great', 'fail')})
 
     # ================= 6. 나갈 자리 (v0.20: 지도에서 고른다) =================

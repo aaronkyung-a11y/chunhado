@@ -84,7 +84,8 @@ def steps(pg):
     print('⑩ 불 — 노병의 첫 전법')
     flame('hwasi', pg.evaluate('TACTICS.bow[0].name'), case('hwasi', 2, 0, "doAct({ kind: 'tactic', tac: TACTICS.bow[0] })", fire))
     print('⑩ 불 — 계략')
-    flame('ploy', pg.evaluate('PLOYS[0].name'), case('ploy', 0, 0, "doAct({ kind: 'ploy', ploy: PLOYS[0] })", fire))
+    # 계략의 성패는 '턴 · 대상 · 계략'으로 미리 정해져 있어(omenRoll) 되돌리고 다시 걸어도 같다 → 화신(화계가 반드시 통한다)을 주고 건다. v0.22 의 이 시험은 세 번에 한 번꼴로 떨어질 수 있었다(성공률 67%)
+    flame('ploy', pg.evaluate('PLOYS[0].name'), case('ploy', 0, 0, "uLeader(u).sk = '화신'; doAct({ kind: 'ploy', ploy: PLOYS[0] })", fire, tries=2))
 B.run(steps, 393, 852, 2)
 errs = [e for e in B.errors if 'ReadPixels' not in e and 'ERR_FILE' not in e and 'GPU stall' not in e]
 print('오류 기록:', errs[:6])

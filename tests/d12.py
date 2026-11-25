@@ -70,7 +70,7 @@ def steps(pg):
     a = pg.evaluate('''() => ({ n: Object.keys(SND.buf).length, total: Object.keys(SFX_DATA).length, ac: AC ? AC.state : null, off: SND.off, dur: Object.keys(SND.buf).map(function (k) { return [k, +SND.buf[k].duration.toFixed(2)]; }),
       mode: BGM.mode, file: BGM.file, name: BGM.name, paused: BGM.el ? BGM.el.paused : null, t: BGM.el ? BGM.el.currentTime : -1, dead: Object.keys(BGM.dead), syn: SYN.name })''')
     print('  효과음 풀린 것', a['n'], '/', a['total'], 'AC', a['ac'], '| 음악', a['mode'], a['file'], 'paused', a['paused'], 't', round(a['t'], 2), 'dead', a['dead'])
-    check('효과음 29개가 모두 풀림(v0.12: thock · arrowland 가 늘었다)', a['n'] == 29 and a['total'] == 29, a['n'])
+    check('효과음 30개가 모두 풀림(v0.12: thock · arrowland, v0.22.1: clack 이 늘었다)', a['n'] == 30 and a['total'] == 30, a['n'])
     check('효과음 시작 보정이 0~60ms', all(0 <= v <= 0.061 for v in a['off'].values()), a['off'])
     check('소리 장치가 켜짐(running)', a['ac'] == 'running', a['ac'])
     print('  시작 보정(ms):', {k: round(v * 1000) for k, v in a['off'].items()})

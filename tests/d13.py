@@ -98,7 +98,7 @@ try:
         check('인터넷이 없어도 열림', pg.evaluate('!!(window.R3 && R3.ready) && typeof GAME_VERSION === "string"'), None)
         pg.locator('#tHelp').tap(); pg.wait_for_timeout(2500)
         m = pg.evaluate('() => ({ mode: BGM.mode, file: BGM.file, paused: BGM.el ? BGM.el.paused : null, t: BGM.el ? BGM.el.currentTime : -1, dead: Object.keys(BGM.dead), n: Object.keys(SND.buf).length })')
-        check('인터넷이 없어도 음악(저장해 둔 title.mp3)과 효과음이 나옴', m['mode'] == 'file' and m['file'] == 'title' and m['paused'] is False and m['t'] > 0.5 and m['n'] == 29, m)
+        check('인터넷이 없어도 음악(저장해 둔 title.mp3)과 효과음이 나옴', m['mode'] == 'file' and m['file'] == 'title' and m['paused'] is False and m['t'] > 0.5 and m['n'] == 30, m)
         pg.locator('#modal .dlg-h .x').tap(); pg.wait_for_timeout(300)
         pg.locator('#tNew').tap(); pg.wait_for_timeout(300); pg.locator('#modal .row').nth(0).tap(); pg.wait_for_timeout(300); pg.locator('#modal [data-a=go]').tap(); pg.wait_for_timeout(900)
         pg.locator('#modal [data-a=close]').nth(0).tap(); pg.wait_for_timeout(2500)

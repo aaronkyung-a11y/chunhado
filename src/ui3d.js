@@ -800,7 +800,7 @@ function syncScene() {
       o.lab.sp.center.set(o.lab.ax, o.lab.ay); o.fcOn = false; o.hasFace = !!fim;
       R3.labelK = 0;
     }
-    o.g.visible = o.ring.visible = (u.id !== UI.hide) || o.anim;
+    o.g.visible = o.ring.visible = !o.wait && ((u.id !== UI.hide) || o.anim);      // v0.22.1: 출진 장면을 기다리는 부대(o.wait)는 보이지 않는다
   }
   for (var id in R3.units) {
     if (seen[id] || R3.units[id].anim) continue;
@@ -1209,6 +1209,7 @@ var CUES = {
   rout:     { s: [['rout', 0.7, 0.03]], gap: 500, syn: 'big' },
   coin:     { s: [['coin', 0.7, 0.03]], gap: 200, syn: 'ui' },
   hammer:   { s: [['hammer', 0.8, 0.03]], gap: 300, syn: 'drum' },
+  patrol:   { s: [['clack', 0.8, 0]], gap: 500, syn: 'ui' },                                     // v0.22.1: 순찰 — 딱따기 두 번. 음높이를 흔들지 않는다(전에는 싸움용 발구름 step 을 썼다 — 혼자 나면 깨진 소리처럼 들렸다)
   duel:     { s: [['duel', 0.95, 0.02]], gap: 800, syn: 'big' },
   shout:    { s: [['shout', 0.6, 0.05]], gap: 250, syn: '' },
   bow:      { s: [['bow', 0.8, 0.08]], gap: 60, syn: 'ui' },                                       // v0.12: 새로 만든 소리(시위 울림 + 바람 가르는 소리)

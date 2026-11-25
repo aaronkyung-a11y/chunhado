@@ -1626,7 +1626,7 @@ function flowDraft(b) {
 function flowPatrol(b) {
   pickOfficers({ title: '순찰 — 담당 무장', list: idleOfficers(b), max: 3, hi: 'war', key: function (o) { return Math.max(o.war, o.ldr) + (o.sk === '위압' ? 40 : 0); }, auto: function (n) { return autoPick('patrol', b, null, n); },
     preview: function (os) { var v = Math.round(5 + Math.max(bestOf(os, 'war'), bestOf(os, 'ldr')) / 9 + (os.length - 1) * 2); if (anyHas(os, '위압')) v *= 2; v = Math.min(v, 100 - b.order); return '치안 <b>+' + v + '</b> · 금 ' + COST.patrol + '<br><small>수입 ' + incPct(b.order) + '% → ' + incPct(b.order + v) + '%</small>'; } },
-    function (os) { var r = cmdPatrol(b, ids(os)); return done(r, r.ok ? '치안 +' + r.n : '', 'step', os[0], 'patrol'); });
+    function (os) { var r = cmdPatrol(b, ids(os)); return done(r, r.ok ? '치안 +' + r.n : '', 'patrol', os[0], 'patrol'); });
 }
 function flowTrain(b) {
   pickOfficers({ title: '훈련 — 담당 무장', list: idleOfficers(b), max: 3, hi: 'ldr', key: function (o) { return o.ldr; }, auto: function (n) { return autoPick('train', b, null, n); },
@@ -3083,7 +3083,7 @@ function setCaption(f, html, cls, porF) {
 }
 function showBanner(t, sub) { var b = $('banner'); b.innerHTML = t + (sub ? '<small>' + sub + '</small>' : ''); b.classList.add('on'); }
 function hideBanner() { $('banner').classList.remove('on'); }
-function clearAnimFlags() { if (!R3) return; for (var id in R3.units) { var o = R3.units[id]; o.held = false; o.keep = false; if (o.anim) { o.anim = false; o.c = -1; o.sig = ''; } } holdsFree(); }      // v0.22: 붙잡아 둔 거점 · 불도 푼다
+function clearAnimFlags() { if (!R3) return; for (var id in R3.units) { var o = R3.units[id]; o.held = false; o.keep = false; if (o.wait) { o.wait = false; o.g.visible = o.ring.visible = true; } if (o.anim) { o.anim = false; o.c = -1; o.sig = ''; } } holdsFree(); }      // v0.22: 붙잡아 둔 거점 · 불도 푼다
 /* 그 칸이 화면에 보이게 한 뒤 cb. 이미 잘 보이면 바로. */
 function focus(c, r, cb, zWant) {
   var P = UI.play;
@@ -3259,7 +3259,7 @@ function presentEvents(evs, done) {
   syncScene();                                             // 새로 나온 부대를 만들고, 움직일 부대는 출발점에 둔 채로
   for (i = 0; i < evs.length; i++) if (evs[i].t === 'deploy') {   // 막 출진한 부대는 성 앞 칸에 세워 둔다(뒤따르는 이동은 거기서 시작)
     var od = R3.units[evs[i].id];
-    if (od && !od.held) { od.anim = true; od.held = true; fxPut(od, hexPos(evs[i].c, evs[i].r)); }
+    if (od && !od.held) { od.anim = true; od.held = true; fxPut(od, hexPos(evs[i].c, evs[i].r)); od.wait = true; od.g.visible = od.ring.visible = false; }      // v0.22.1: 출진 장면이 나올 때까지는 보이지 않는다(나갈 칸에 먼저 서 있지 않게)
   }
   i = 0;
   var one = pg(function () {
@@ -3339,7 +3339,13 @@ function presentEvent(e, cb) {
       var odp = R3.units[e.id], bb = G.bases[e.base];
       if (odp && bb) {                                           // 성에서 걸어 나온다(뒤따르는 이동 장면을 위해 붙잡아 둔 채로)
         var q0 = hexPos(bb.c, bb.r), q1 = hexPos(e.c, e.r);
-        anim(420, function (t) { var w = 1 - (1 - t) * (1 - t), px = q0[0] + (q1[0] - q0[0]) * w, pz = q0[2] + (q1[2] - q0[2]) * w; fxPut(odp, [px, groundY(px, pz) + Math.sin(Math.PI * t) * 0.16, pz]); });
+        var dstep = function (t) {                               // v0.22.1: 성 안에서 작고 옅게 나와 제 크기 · 제 빛으로(내 출진의 연출 fxDeploy 와 같게)
+          var w = 1 - (1 - t) * (1 - t), px = q0[0] + (q1[0] - q0[0]) * w, pz = q0[2] + (q1[2] - q0[2]) * w, sc = 0.55 + 0.45 * w;
+          fxPut(odp, [px, groundY(px, pz) + Math.sin(Math.PI * t) * 0.16, pz]);
+          if (odp.sp && odp.sp.userData.w) { odp.sp.scale.set(odp.sp.userData.w * sc, odp.sp.userData.h * sc, 1); odp.sp.material.opacity = Math.min(1, 0.2 + t * 1.6); }
+        };
+        dstep(0); odp.wait = false; odp.g.visible = odp.ring.visible = true;      // 이제 보인다 — 성 안에서부터
+        anim(420, dstep);
         P.ans = [UI.anims[UI.anims.length - 1]];
       }
       pwait(640, cb);
