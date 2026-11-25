@@ -57,7 +57,7 @@ const oldP = path.join(__dirname, '..', 'build', 'roster.v0221.js');
 if (fs.existsSync(oldP)) {
   const t = fs.readFileSync(oldP, 'utf8'), O = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)), S = J('scenarioMake("194")');
   let d = 0;
-  O.officers.forEach((o, i) => { const n = S.officers[i]; for (const k of Object.keys(o)) { if (k === 'por' && /^g[mc]\d$/.test(o.por)) { if (!/^gm[1-5]\d\d$/.test(n.por)) d++; continue; } if (JSON.stringify(o[k]) !== JSON.stringify(n[k])) d++; }      // v0.24: 공용 초상을 쓰던 사람의 초상 열쇠만 바뀌었다
+  O.officers.forEach((o, i) => { const n = S.officers[i]; for (const k of Object.keys(o)) { if (k === 'por' && /^g[mc]\d$/.test(o.por)) { if (/^g[mc]\d$/.test(n.por)) d++; continue; } if (JSON.stringify(o[k]) !== JSON.stringify(n[k])) d++; }      // v0.24: 공용 초상을 쓰던 사람의 초상 열쇠만 바뀌었다(0.24 능력에 맞는 공용 초상 → 0.25 제 초상)
   for (const k of ['st', 'y', 'j', 'sk']) if ((k in n) !== (k in o)) d++; });
   ok(d === 0 && O.officers.length === 425, '194년 판: 예전 명부의 425명이 글자까지 같다(능력 · 세력 · 도시 · 등장 연도)');
   ok(JSON.stringify(O.factions.map(f => [f.n, f.cities])) === JSON.stringify(S.factions.map(f => [f.n, f.cities])) && JSON.stringify(O.gates) === JSON.stringify(S.gates) && JSON.stringify(O.women) === JSON.stringify(S.women), '194년 판: 세력 · 땅 · 관문 · 여성 표가 같다');

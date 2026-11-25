@@ -318,7 +318,7 @@ function heirTag(o) { return (o.f >= 0 && G.factions[o.f].heir === o.id && heirO
 function roleTag(o) { var a = advTag(o), h = heirTag(o); return a && h ? a + '·' + h : (a || h); }
 function heirLine(fc, L, who) {            // 뒤를 이으면 어떻게 되는가 한 줄. who = 군주와의 사이를 따로 적을 때(후계 창: 아들 · 형제 …)
   return (who ? '<b>' + who + '</b>' : (fc.kin ? L.n + '의 혈연' : (fc.house ? L.n + '의 ' + (fc.rel || '일가') : '<b class="bad">한집안이 아님</b>'))) + ' · 인연이 이어짐 ' + fc.keep + '명' + (fc.fam.length ? ' · <b class="bad">일가 반발 ' + fc.fam.length + '명</b>' : '') +
-    (fc.vas.length ? ' · <b class="bad">심복 동요 ' + fc.vas.length + '명</b>' : '') + (fc.n ? ' · 그 밖 ' + fc.n + '명은 ' + fc.p + '%로 동요' : '');
+    (fc.vas.length ? ' · <b class="bad">심복 동요 ' + fc.vas.length + '명</b>' : '') + (fc.n ? ' · 그 밖 ' + fc.n + '명은 ' + (UI.pct ? fc.p + '%로 동요' : '동요할 가능성 ' + pcT(fc.p)) : '');
 }
 function heirNote(o) {                     // 내 무장의 창에: 이 사람이 뒤를 이으면
   if (!G || o.f !== G.player || G.aiOnly) return '';
@@ -438,7 +438,7 @@ function barFit() {
    그 지력이 ODDS_FINE 이상이면 다섯 단계로 또렷이, 아니면 셋으로 어림해서만 보인다(똑똑한 군사를 둘 까닭이 하나 더 생긴다). 규칙의 확률은 그대로다.
    pcT = 글 속의 한 마디 · pcG = 말 + 눈금 다섯 칸 · pcBest = '최고 N%' 자리 · pcWas = 지난 일의 '(성공률 N%)' 자리 · accT = 군사의 조언이 맞을 확률 */
 var ODDS_FINE = 70;
-var ODDS_W = ['불가', '매우 낮음', '낮음', '반반', '높음', '매우 높음', '확실'], ODDS_WC = ['불가', '낮은 듯', '낮은 듯', '반반인 듯', '높은 듯', '높은 듯', '확실'];
+var ODDS_W = ['불가', '매우 낮음', '낮음', '보통', '높음', '매우 높음', '확실'], ODDS_WC = ['불가', '낮음', '낮음', '보통', '높음', '높음', '확실'];      // v0.25: 어림(셋)도 '높음 · 보통 · 낮음' 으로 적는다 — 어림인 것은 흐린 눈금과 '어림으로만 봅니다' 줄이 알린다
 function oddsEye() {
   if (!G || !(G.player >= 0)) return { o: null, adv: false, fine: true };
   var su = typeof selUnit === 'function' ? selUnit() : null;       // v0.20: 부대를 고른 동안(싸움터)에는 그 부대의 참모가 가늠한다
@@ -738,15 +738,15 @@ function counselText(c) {
     P = x.pick; t = off(P.t); o = off(P.o); go = ['recruit', b.id];
     var kindN = t.st === 'captive' ? '포로' : '재야', tie = tieOf(o, t, b.owner);
     if (x.says === null || L === 0) { tip = '등용할 인재 ' + x.ts.length + '명'; say = b.n + ' — 부를 만한 인재가 ' + x.ts.length + '명 있습니다. 등용하시지요.'; }
-    else if (x.says) { tip = t.n + ' 등용 <i class="adv y">응할 듯</i>'; say = L === 2 ? b.n + '의 ' + kindN + ' ' + t.n + '에게 ' + send(o) + (tie ? '(' + tie.short + ')' : '') + '. 응할 것입니다.' : b.n + '의 ' + josa(t.n, '은는') + ' 지금 부르면 응할 것입니다.'; }
+    else if (x.says) { tip = t.n + ' 등용 <i class="adv y">응할 것</i>'; say = L === 2 ? b.n + '의 ' + kindN + ' ' + t.n + '에게 ' + send(o) + (tie ? '(' + tie.short + ')' : '') + '. 응할 것입니다.' : b.n + '의 ' + josa(t.n, '은는') + ' 지금 부르면 응할 것입니다.'; }
     else { tip = kindN + ' ' + x.ts.length + '명 <i class="adv n">오늘은 불응</i>'; say = b.n + '의 ' + josa(t.n, '은는') + ' 오늘은 응하지 않겠습니다. 다음 턴에 다시 권하시지요.'; }
   } else if (c.kind === 'poach') {
-    P = x.pick; t = off(P.t); o = off(P.o); go = ['recruit', b.id]; tip = L === 0 ? '이웃 무장 등용' : t.n + ' 등용 <i class="adv y">응할 듯</i>';
+    P = x.pick; t = off(P.t); o = off(P.o); go = ['recruit', b.id]; tip = L === 0 ? '이웃 무장 등용' : t.n + ' 등용 <i class="adv y">응할 것</i>';
     say = L === 0 ? b.n + ' — 이웃 세력의 무장을 불러 보시지요.' : (L === 2 ? G.bases[t.loc].n + '의 ' + t.n + '(' + facName(t.f) + '군)에게 ' + send(o, b.n) + '. 응할 것입니다.' : b.n + '에서 ' + josa(t.n, '을를') + ' 부르면 응할 것입니다.');
   } else if (c.kind === 'search') {
     o = off(x.o); go = ['base', b.id, 'men'];
     if (L === 0) { tip = '탐색'; say = b.n + ' — 탐색으로 인재를 찾아보시지요.'; }
-    else if (x.says) { tip = '탐색 <i class="adv y">만날 듯</i>'; say = L === 2 ? b.n + '에 숨은 인재가 있습니다. ' + (isLord(o) ? '주공께서 직접' : josa(o.n, '이가')) + ' 찾아 나서면 오늘 만날 것입니다.' : b.n + '에 숨은 인재가 있는 듯합니다. 탐색해 보시지요.'; }
+    else if (x.says) { tip = '탐색 <i class="adv y">만날 것</i>'; say = L === 2 ? b.n + '에 숨은 인재가 있습니다. ' + (isLord(o) ? '주공께서 직접' : josa(o.n, '이가')) + ' 찾아 나서면 오늘 만날 것입니다.' : b.n + '에 숨은 인재가 있는 듯합니다. 탐색해 보시지요.'; }
     else { tip = '숨은 인재 <i class="adv n">오늘은 못 만남</i>'; say = b.n + '에 숨은 인재가 있는 듯하나, 오늘은 만나기 어렵겠습니다. 다음 턴에 찾아보시지요.'; }
   } else if (c.kind === 'reward') {
     t = off(x.t); go = ['base', b.id, 'men']; tip = t.n + ' 충성 ' + x.loy + ' → 포상';
@@ -2691,7 +2691,7 @@ var HELP_HTML = '<div class="help">' +
   '<p><b>병종 적성</b>은 부대의 공격 · 방어에 곱해집니다 — C ×' + APT_MUL.C + ' · B ×' + APT_MUL.B + ' · A ×' + APT_MUL.A + ' · S ×' + APT_MUL.S + '(주장 · 부장 가운데 가장 높은 적성). 전법은 C 하나 · B 둘 · A부터 셋을 쓰고, 높을수록 잘 통합니다.</p>' +
   '<p><b>열전</b> — 무장 창과 무장 카드에는 그 사람이 누구인지 두세 문장이 붙습니다. 사서에 적힌 일을 바탕으로 했고, 연의나 민간 전승에만 나오는 사람 · 일은 그렇다고 적었습니다.</p>' +
   '<h3>영상</h3><p>제목 화면의 그림이 움직이고, 새 판을 시작할 때와 판이 끝날 때(천하통일 · 패망) 짧은 영상이 나옵니다. <b>화면을 누르면 건너뜁니다.</b> 메뉴의 <b>영상</b>에서 끌 수 있고, 기기에서 「동작 줄이기」를 켜 두었으면 나오지 않습니다. 소리는 없습니다(음악이 그대로 흐릅니다).</p>' +
-  '<h3>가늠 — 확률을 말로</h3><p>성공할 가능성은 숫자 대신 <b>매우 높음 · 높음 · 반반 · 낮음 · 매우 낮음</b>과 눈금 다섯 칸으로 보입니다. 가늠하는 이는 군사와 군주 가운데 지력이 높은 쪽입니다 — 그 지력이 ' + ODDS_FINE + ' 미만이면 <b>높은 듯 · 반반인 듯 · 낮은 듯</b> 셋으로만 어림합니다.</p><p><b>싸움터에서는 그 부대의 부장이 헤아립니다</b>(부장이 없으면 주장이 스스로). 부장의 <b>지력</b>이 높을수록 계략이 통할지(○ ×)를 잘 맞히고 가능성을 또렷이 보며, <b>통솔</b>이 높을수록 예상 피해를 정확히 내다보고(통솔 ' + STAFF.errAt + ' 이상이면 그대로 · 낮으면 \'약 N\'이 실제와 벌어집니다) 어느 수가 가장 나은지를 바르게 짚습니다. 적을 고르면 뜨는 단추 가운데 <i class="rec" style="position:static;display:inline-flex;transform:none">薦</i>이 붙은 것이 <b>부장이 권하는 수</b>입니다(주는 피해에서 받는 반격을 뺀 기대값이 가장 큰 것 — 헤아림이 모자란 부장은 가끔 다른 수를 권합니다). 숫자로 보고 싶으면 <b>메뉴 → 확률 표시</b>. 어느 쪽으로 보든 규칙의 확률은 같습니다.</p>' +
+  '<h3>가늠 — 확률을 말로</h3><p>성공할 가능성은 숫자 대신 <b>매우 높음 · 높음 · 보통 · 낮음 · 매우 낮음</b>과 눈금 다섯 칸으로 보입니다. 가늠하는 이는 군사와 군주 가운데 지력이 높은 쪽입니다 — 그 지력이 ' + ODDS_FINE + ' 미만이면 <b>높음 · 보통 · 낮음</b> 셋으로만 어림합니다(눈금이 흐리게 보입니다).</p><p><b>싸움터에서는 그 부대의 부장이 헤아립니다</b>(부장이 없으면 주장이 스스로). 부장의 <b>지력</b>이 높을수록 계략이 통할지(○ ×)를 잘 맞히고 가능성을 또렷이 보며, <b>통솔</b>이 높을수록 예상 피해를 정확히 내다보고(통솔 ' + STAFF.errAt + ' 이상이면 그대로 · 낮으면 \'약 N\'이 실제와 벌어집니다) 어느 수가 가장 나은지를 바르게 짚습니다. 적을 고르면 뜨는 단추 가운데 <i class="rec" style="position:static;display:inline-flex;transform:none">薦</i>이 붙은 것이 <b>부장이 권하는 수</b>입니다(주는 피해에서 받는 반격을 뺀 기대값이 가장 큰 것 — 헤아림이 모자란 부장은 가끔 다른 수를 권합니다). 숫자로 보고 싶으면 <b>메뉴 → 확률 표시</b>. 어느 쪽으로 보든 규칙의 확률은 같습니다.</p>' +
   '<h3>충성과 인연</h3><p>군주와 <b>인연</b>(의형제·혈연·부부·인척·심복)이 있는 무장은 충성이 100이고 내려가지 않습니다 — 무장 창의 충성 옆에 그 사이가 적혀 있습니다. 포로가 되어도 주군의 세력이 남아 있는 한 등용에 거의 응하지 않습니다. 그 밖의 무장은 군주의 매력에 따라 80~98 사이에 자리를 잡습니다. 새로 등용한 무장은 70~85에서 시작해 분기마다 2씩 오르고, 포상으로 올린 충성은 천천히 제자리로 돌아옵니다.</p>' +
   '<h3>닫기(×)와 뒤로 가기</h3><p><b>×는 한 단계만 뒤로</b> 갑니다. 무장 정보를 닫으면 보던 목록으로, 무장 고르는 표를 닫으면 그 앞 창으로 돌아갑니다. 부대에서 대상이나 행군을 고르던 중이면 그것만 물립니다. 막 출진한 부대의 창을 닫으면 나온 성의 출진 탭으로 돌아갑니다.</p>' +
   '<p>목록·기록·지난 열흘의 일에서 줄을 눌러 지도로 건너뛰면 왼쪽 위에 <b>‹ 목록</b> 같은 단추가 생깁니다. 누르면 보던 자리 그대로 다시 열립니다. 그렇게 열린 거점·부대 창은 ×로도 목록에 돌아갑니다.</p>' +
@@ -2964,9 +2964,9 @@ function showSavePaste(done) {
 function showMenu() {
   showDialog({
     render: function () {
-      return dlgHead('메뉴 — ' + GAME_VERSION) + '<div class="dlg-b"><div class="cmds"><button class="cmd" type="button" data-a="save"><b>저장</b></button><button class="cmd" type="button" data-a="load"><b>불러오기</b></button>' +
+      return dlgHead('메뉴 — ' + GAME_VERSION) + '<div class="dlg-b"><div class="cmds mnu-top"><button class="cmd" type="button" data-a="save"><b>저장</b></button><button class="cmd" type="button" data-a="load"><b>불러오기</b></button></div><div class="cmds mnu-rest">' +
         '<button class="cmd" type="button" data-a="talk"><b>대화창 ' + (UI.talk === false ? '꺼짐' : '켜짐') + '</b></button><button class="cmd" type="button" data-a="snd"><b>효과음 ' + (UI.sound ? '켜짐' : '꺼짐') + '</b></button><button class="cmd" type="button" data-a="voi"><b>음성 ' + (UI.voice === false ? '꺼짐' : '켜짐') + '</b><small>' + (UI.sound ? '중국어' : '효과음이 꺼져 있음') + '</small></button><button class="cmd" type="button" data-a="mus"><b>음악 ' + (UI.music ? '켜짐' : '꺼짐') + '</b>' + (UI.music && BGM.mode === 'file' ? '<small>연주곡</small>' : (UI.music && BGM.mode === 'syn' ? '<small>만든 음악</small>' : '')) + '</button><button class="cmd" type="button" data-a="spd"><b>열흘 재생</b><small>' + SPEEDS[UI.pspeed][0] + '</small></button><button class="cmd" type="button" data-a="pct"><b>확률 표시</b><small>' + (UI.pct ? '숫자(%)' : '말로 가늠') + '</small></button><button class="cmd" type="button" data-a="vid"><b>영상 ' + (UI.video === false ? '꺼짐' : '켜짐') + '</b><small>제목 · 오프닝 · 끝</small></button><button class="cmd" type="button" data-a="help"><b>도움말</b></button><button class="cmd" type="button" data-a="share"><b>공유</b></button>' +
-        '<button class="cmd" type="button" data-a="life"><b>수명 ' + (G.life === 1 ? '켜짐' : '꺼짐') + '</b><small>이 판</small></button>' +
+        '<button class="cmd" type="button" data-a="life"><b>수명 ' + (G.life === 1 ? '켜짐' : '꺼짐') + '</b></button>' +
         '<button class="cmd" type="button" data-a="title"><b>처음으로</b></button></div><p class="note">턴마다 자동 저장 · 저장 칸 ' + SAVE_SLOTS + '개 · 이 기기에만 남습니다(다른 기기로는 공유 → 세이브 파일 보내기)</p></div>';
     },
     on: {
@@ -2978,7 +2978,7 @@ function showMenu() {
       mus: function () { UI.music = !UI.music; saveOpts(); if (UI.music) playBgm(bgmForState()); else stopBgm(); refreshDialog(); },
       spd: function () { UI.pspeed = (UI.pspeed + 1) % 4; saveOpts(); toast(UI.pspeed ? '열흘 재생: ' + SPEEDS[UI.pspeed][0] : '열흘 재생 끔 — 요약만', 2000); refreshDialog(); },
       vid: function () { UI.video = UI.video === false; saveOpts(); toast(UI.video ? '영상 켬 — 제목 화면 · 새 판의 오프닝 · 끝' : '영상 끔', 2200); refreshDialog(); },
-      pct: function () { UI.pct = !UI.pct; saveOpts(); toast(UI.pct ? '확률을 숫자(%)로 보여 줍니다' : '확률을 말로 가늠해 보여 줍니다 — 높음 · 반반 · 낮음', 2400); refreshDialog(); refreshSheet(); },
+      pct: function () { UI.pct = !UI.pct; saveOpts(); toast(UI.pct ? '확률을 숫자(%)로 보여 줍니다' : '확률을 말로 가늠해 보여 줍니다 — 높음 · 보통 · 낮음', 2400); refreshDialog(); refreshSheet(); },
       life: function () { var on = lifeSet(G.life !== 1); saveGame(); toast(on ? '수명 켬 — 무장이 제 수명에 세상을 떠나고 아이가 태어납니다' : '수명 끔 — 무장이 늙어 죽지 않습니다(아이도 태어나지 않습니다)', 2600); refreshDialog(); },
       help: function () { showHelp(); },
       share: function () { shareGame(); },

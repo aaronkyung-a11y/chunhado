@@ -77,6 +77,18 @@ def main():
         M.append(dict(n=p[0], ldr=st[0], war=st[1], int=st[2], pol=st[3], cha=st[4], apt=p[2], sk=p[3], por=p[4], new=True, f194=None, home=p[6], st194=None, y194=None, j194=None, rec=rec, has_sk=True))
         bios[p[0]] = p[8]
     IDX = {m['n']: i for i, m in enumerate(M)}
+    if os.environ.get('P253'):                                # v0.25: 공용 초상을 쓰던 253명에게 제 초상을(P253 = art/por25_scenes.tsv — 번호 key 이름 …). 묶음(src/assets_p253.js)에 그림이 없는 사람은 아래의 공용 초상 그대로
+        import re as _re2
+        own = {}
+        for l in open(os.environ['P253'], encoding='utf8'):
+            if l.strip() and not l.startswith('#'):
+                a = l.rstrip('\n').split('\t'); a = a[1:] if len(a) == 5 else a; own[a[1]] = a[0]
+        pk = os.path.join(ROOT, 'src', 'assets_p253.js')
+        have = set(_re2.findall(r'"([a-z0-9]+)":"', open(pk, encoding='utf8').read().split('"scn"')[0])) if os.path.exists(pk) else set()
+        nown = 0
+        for m in M:
+            if _re2.match(r'^g[mc]\d$', m['por']) and own.get(m['n']) in have: m['por'] = own[m['n']]; nown += 1
+        print('개별 초상(P253): %d명 (묶음의 그림 %d장)' % (nown, len(have)))
     if os.environ.get('POOL'):                                # v0.24: 공용 초상(gm1 ~ 5 · gc1 ~ 5)을 쓰던 사람은 가장 뛰어난 능력에 맞는 공용 초상으로(갈래 안에서는 차례로 돌려 쓴다)
         import re as _re
         cat, cnt, nxt = ['war', 'ldr', 'int', 'pol', 'cha'], [14, 14, 12, 10, 10], [0] * 5

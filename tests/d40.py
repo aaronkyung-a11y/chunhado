@@ -27,7 +27,12 @@ ok(len(html.encode('utf-8')) < 16 * 1024 * 1024, 'index.html %.2fMiB — 16MiB �
 ok(len(pf) == 1 and len(sf) == 1, '그림 묶음 파일이 하나씩: %s · %s' % (os.path.basename(pf[0]) if pf else '-', os.path.basename(sf[0]) if sf else '-'))
 pj = json.load(open(pf[0], encoding='utf-8')); sj = json.load(open(sf[0], encoding='utf-8'))
 ok(len(pj) == 120 and sorted(pj) == sorted(sj) and all(v.startswith('UklGR') for v in pj.values()), '흉상 120장(%.2fMiB) · 장면 120장(%.2fMiB)' % (os.path.getsize(pf[0]) / 1048576, os.path.getsize(sf[0]) / 1048576))
-ok('"gm101":"UklGR' not in html and ('"data/' + os.path.basename(pf[0]) + '"') in html and ('"data/' + os.path.basename(sf[0]) + '"') in html and 'window.PACKS_WANT = 2' in html, '묶음은 페이지에 없고 data/ 의 두 파일을 받아 오게 되어 있다')
+NP = len(glob.glob(os.path.join(ART, 'data', 'por-*-*.json'))) + len(glob.glob(os.path.join(ART, 'data', 'scn-*-*.json')))      # v0.25: 묶음이 둘(공용 pool · 개별 p253) — 파일은 묶음마다 둘
+ok('"gm101":"UklGR' not in html and ('"data/' + os.path.basename(pf[0]) + '"') in html and ('"data/' + os.path.basename(sf[0]) + '"') in html and ('window.PACKS_WANT = %d' % NP) in html, '묶음은 페이지에 없고 data/ 의 파일 %d개를 받아 오게 되어 있다' % NP)
+p2 = sorted(glob.glob(os.path.join(ART, 'data', 'por-p253-*.json'))); s2 = sorted(glob.glob(os.path.join(ART, 'data', 'scn-p253-*.json')))
+if p2 or s2:
+    j2 = json.load(open(p2[0], encoding='utf-8')); k2 = json.load(open(s2[0], encoding='utf-8'))
+    ok(len(p2) == 1 and len(s2) == 1 and len(j2) == 253 and sorted(j2) == sorted(k2) and '"zhuling":"UklGR' not in html and ('"data/' + os.path.basename(p2[0]) + '"') in html, '개별 초상 묶음: 흉상 253장(%.2fMiB) · 장면 253장(%.2fMiB) — 페이지에는 없다' % (os.path.getsize(p2[0]) / 1048576, os.path.getsize(s2[0]) / 1048576))
 IMG = '''([kind, key]) => new Promise(function (res) { var u = kind === 'p' ? POR_URL[key] : sceneUrl(key); if (!u) return res(0); var a = new Image(); a.onload = function () { res(a.naturalWidth); }; a.onerror = function () { res(-1); }; a.src = u; })'''
 CARD = '''(n) => { var o = offByName(n); ocardOpen(o); var e = document.querySelector('#ocard'), p = e.querySelector('.por'); var r = { por: o.por, bg: (p && p.getAttribute('style')) || '', sc: !!e.querySelector('.por.sc'), tx: e.textContent.slice(0, 1200) }; return r; }'''
 def boot(pg, f=0):
@@ -37,20 +42,20 @@ def boot(pg, f=0):
     pg.evaluate('talkHide(); UI.talk = false;')
 def steps(pg):
     print('1. 받아 온다')
-    pg.wait_for_function('window.PACKS_READY === 2', timeout=30000)
+    pg.wait_for_function('window.PACKS_READY === %d' % NP, timeout=30000)
     st = pg.evaluate('({ ver: GAME_VERSION, n: Object.keys(PORTRAITS).filter(function (k) { return /^g[mf][1-5][0-9][0-9]$/.test(k); }).length, url: !!POR_URL.gm101 && !!POR_URL.gf510, sc: !!SCENES.gm101 && !!SCENES.gf510, fail: window.PACKS_FAIL || 0 })')
     ok(st == {'ver': B.VER, 'n': 120, 'url': True, 'sc': True, 'fail': 0}, '페이지가 뜬 뒤 공용 초상 120장을 받아 왔다 %s' % st)
     w = [pg.evaluate(IMG, ['p', 'gm101']), pg.evaluate(IMG, ['p', 'gf510']), pg.evaluate(IMG, ['s', 'gm305']), pg.evaluate(IMG, ['s', 'gf204'])]
     ok(w[0] == 256 and w[1] == 256 and w[2] >= 300 and w[3] >= 300, '그림이 풀린다 — 흉상 %d · %dpx, 장면 %d · %dpx' % tuple(w))
     boot(pg)
-    pg.wait_for_function('window.PACKS_READY === 2', timeout=30000)
+    pg.wait_for_function('window.PACKS_READY === %d' % NP, timeout=30000)
     d = pg.evaluate(CARD, '주령')
-    ok(d['por'].startswith('gm1') and d['sc'] and 'blob:' in d['bg'], '공용 초상을 쓰는 무장(주령 — 무력이 으뜸: %s)의 카드에 큰 그림이 나온다' % d['por']); B.shot(pg, 'h_roster', 300)
+    ok((d['por'].startswith('gm1') or d['por'] == 'zhuling') and d['sc'] and 'blob:' in d['bg'], '묶음의 초상을 쓰는 무장(주령 — 0.24 에서는 공용 초상, 0.25 부터는 제 초상: %s)의 카드에 큰 그림이 나온다' % d['por']); B.shot(pg, 'h_roster', 300)
     pg.evaluate('ocardClose()')
 
     print('2. 늦게 와도')
     n_err = len(B.errors)
-    pg.route('**/data/por-pool-*.json', lambda r: r.abort()); pg.route('**/data/scn-pool-*.json', lambda r: r.abort())
+    pg.route('**/data/por-*-*.json', lambda r: r.abort()); pg.route('**/data/scn-*-*.json', lambda r: r.abort())
     pg.reload(); pg.wait_for_function('window.R3 && R3.ready', timeout=60000); pg.wait_for_timeout(600)
     tapsel(pg, '#tCont'); pg.wait_for_timeout(1300)
     if pg.evaluate('!!MODAL'): pg.evaluate('closeDialog()')
@@ -60,12 +65,12 @@ def steps(pg):
     ok(s0['ready'] == 0 and not s0['url'] and s0['own'] and 'blob:' not in d0['bg'], '묶음을 아직 못 받았으면 그 초상 자리는 빈 종이다(제 초상이 있는 무장은 그대로 나온다) %s' % s0)
     t0 = pg.evaluate('''() => { var t = G.turn; closeDialog(); endTurn(); showOfficer(offByName('주령')); return [t, G.turn]; }''')
     ok(t0[1] == t0[0] + 1, '그동안에도 판은 돈다(턴 %d → %d)' % (t0[0], t0[1]))
-    pg.unroute('**/data/por-pool-*.json'); pg.unroute('**/data/scn-pool-*.json')
-    pg.wait_for_function('window.PACKS_READY === 2', timeout=40000); pg.wait_for_timeout(400)
+    pg.unroute('**/data/por-*-*.json'); pg.unroute('**/data/scn-*-*.json')
+    pg.wait_for_function('window.PACKS_READY === %d' % NP, timeout=40000); pg.wait_for_timeout(400)
     d1 = pg.evaluate('''() => { var p = document.querySelector('#modal .card .por'); return { bg: (p && p.getAttribute('style')) || '', sc: !!document.querySelector('#modal .card .por.sc'), url: !!POR_URL.gm101 }; }''')
     ok(d1['url'] and 'blob:' in d1['bg'] and d1['sc'], '다시 받아 오면 열려 있던 창의 그림이 그 자리에서 채워진다')
     pg.evaluate('closeDialog()')
-    bad = [e for e in B.errors[n_err:] if 'pool-' not in e and 'Failed to load resource' not in e and 'net::ERR_FAILED' not in e]
+    bad = [e for e in B.errors[n_err:] if 'pool-' not in e and 'p253-' not in e and 'Failed to load resource' not in e and 'net::ERR_FAILED' not in e]
     ok(not bad, '그때 나는 오류는 그 파일을 받지 못했다는 것뿐 %s' % bad[:3])
     del B.errors[n_err:]
 
@@ -91,8 +96,8 @@ ok(not errs, '오류 · 경고 기록이 없다(%d건)' % len(errs))
 print('4. 한 파일짜리 판')
 B.URL = OFFLINE; n_e = len(B.errors)
 def steps2(pg):
-    st = pg.evaluate('({ packs: typeof window.PACKS_WANT, n: Object.keys(PORTRAITS).filter(function (k) { return /^g[mf][1-5][0-9][0-9]$/.test(k); }).length, url: !!POR_URL.gm101 && !!POR_URL.gf510, sc: !!SCENES.gf101, pack: typeof PACK_pool === "undefined" || PACK_pool === null })')
-    ok(st == {'packs': 'undefined', 'n': 120, 'url': True, 'sc': True, 'pack': True}, '오프라인 판에는 묶음이 들어 있어 뜨자마자 쓴다 %s' % st)
+    st = pg.evaluate('({ packs: typeof window.PACKS_WANT, n: Object.keys(PORTRAITS).filter(function (k) { return /^g[mf][1-5][0-9][0-9]$/.test(k); }).length, url: !!POR_URL.gm101 && !!POR_URL.gf510, sc: !!SCENES.gf101, pack: typeof PACK_pool === "undefined" || PACK_pool === null, own: (function () { var k = SCENARIO.officers.filter(function (o) { return o.n === "주령"; })[0].por; return !!POR_URL[k] && !/^g[mf][0-9]/.test(k); })() })')
+    ok(st == {'packs': 'undefined', 'n': 120, 'url': True, 'sc': True, 'pack': True, 'own': True}, '오프라인 판에는 묶음이 들어 있어 뜨자마자 쓴다(공용 120장 · 주령의 제 초상) %s' % st)
 B.run(steps2, 393, 852, 2)
 print('\nd40: %d fail' % len(fails))
 for f in fails: print('  ✗', f)

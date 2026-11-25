@@ -52,7 +52,7 @@ def steps(pg):
     pg.evaluate('talkHide()')
     st = pg.evaluate('({ ready: window.SCENES_READY, n: Object.keys(SCENES).length, turn: G.turn, por: !!POR_URL["wuguotai"] })')
     d = pg.evaluate(SHOW, '오국태')
-    ok(st['ready'] is not True and st['n'] <= 120 and st['por'] and d['lg'] and not d['sc'],      # v0.24: 그림 묶음의 장면 120장은 따로 온다
+    ok(st['ready'] is not True and st['n'] <= 373 and st['por'] and d['lg'] and not d['sc'],      # v0.24: 그림 묶음의 장면 120장은 따로 온다 · v0.25: 개별 초상 묶음의 253장도(120 + 253 = 373) — 막힌 것은 scenes.json 의 265장
        '큰 그림을 받지 못해도 작은 초상으로 판이 돈다 %s' % st); B.shot(pg, 'w3_blocked', 300)
     pg.evaluate('closeDialog()')
     bad = [e for e in B.errors[n_err:] if 'scenes.json' not in e and 'Failed to load resource' not in e and 'net::ERR_FAILED' not in e]

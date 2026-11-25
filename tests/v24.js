@@ -30,7 +30,7 @@ const b = J(`(function () {
   return { old: old, pool: pool.length, bad: bad, cat: cat, spread: spread, n: O.length, ex: ['동탁', '사마사', '주령'].map(function (n) { var o = O.filter(function (x) { return x.n === n; })[0]; return n + ':' + o.por + ':' + POOL.name[porCat(o)]; }) };
 })()`);
 console.log('   공용 초상을 쓰는 사람 ' + b.pool + '명 — 갈래마다 ' + POOL.name.map((n, i) => n + ' ' + b.cat[i]).join(' · ') + ' · 예: ' + b.ex.join(' '));
-ok(b.old === 0 && b.pool === 253 && b.bad.length === 0, '옛 공용 초상 열 장을 쓰는 사람이 없고, 253명이 가장 뛰어난 능력의 갈래에서 고른 공용 초상을 쓴다 ' + b.bad.slice(0, 4).join(' '));
+ok(b.old === 0 && (b.pool === 253 || b.pool === 0) && b.bad.length === 0, '옛 공용 초상 열 장을 쓰는 사람이 없다 — 0.24 에서는 253명이 갈래에 맞는 공용 초상을 썼고, 0.25 부터는 그 253명이 제 초상을 쓴다(공용 초상을 쓰는 명부의 사람 ' + b.pool + '명) ' + b.bad.slice(0, 4).join(' '));
 ok(b.spread.every(x => x <= 1), '갈래 안에서는 고루 돌려 쓴다(가장 많이 쓰인 그림과 적게 쓰인 그림의 차이 ' + b.spread.join(' · ') + ')');
 
 console.log('C 성비 · 딸');

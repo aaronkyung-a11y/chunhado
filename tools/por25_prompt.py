@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v0.25 개별 초상 253장 — 새 무장 83명 + 공용 초상을 쓰던 170명(모두 남성). 장면은 art/por25_scenes.tsv(손으로 쓴 것: key · 이름 · 포인트색 · 장면).
+"""v0.25 개별 초상 253장 — 새 무장 83명 + 공용 초상을 쓰던 170명(모두 남성). 장면은 art/por25_scenes.tsv(손으로 쓴 것: 번호 · key · 이름 · 포인트색 · 장면).
 화풍 문구는 v0.18(남) · v0.24 공용 초상과 같다. 본(참조 그림) 없이 글만으로 그린다.
 usage: por25_prompt.py keys [tsv] | text <key> [tsv] | batches <dir> [tsv]      (batches: <dir>/b01.json … — generate_image_batch 의 requests, 12장씩)
 tsv 를 주지 않으면 이 파일 옆의 por25_scenes.tsv, 없으면 ../art/por25_scenes.tsv 를 읽는다(Higgsfield 샌드박스에서는 두 파일을 같은 곳에 받아 돌린다)."""
@@ -18,7 +18,9 @@ def load(arg=None):
     for l in open(find(arg), encoding='utf8'):
         l = l.rstrip('\n')
         if not l or l.startswith('#'): continue
-        k, name, col, scene = l.split('\t')
+        a = l.split('\t')
+        if len(a) == 5: a = a[1:]                      # 번호가 앞에 붙은 꼴(번호 key 이름 색 장면 — tools/ids24.py · dl_por17.py 가 읽는 꼴)도, 번호 없는 꼴도 읽는다. 번호는 늘 줄 차례
+        k, name, col, scene = a
         rows.append((len(rows) + 1, k, name, col, scene))
     assert len({r[1] for r in rows}) == len(rows), '열쇠가 겹친다'
     return rows

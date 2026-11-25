@@ -40,7 +40,7 @@ def steps(pg):
       return [tip({ kind: 'recruit', x: { pick: { t: free[0].id, o: os[0].id }, ts: [free[0].id, free[1].id], says: false } }), tip({ kind: 'recruit', x: { pick: { t: free[0].id, o: os[0].id }, ts: [free[0].id], says: true } }),
         tip({ kind: 'search', x: { o: os[0].id, says: true } }), tip({ kind: 'search', x: { o: os[0].id, says: false } })]; }''')
     print('  풀이 글:', tips)
-    ok('오늘은 불응' in tips[0] and '응할 듯' in tips[1] and '만날 듯' in tips[2] and '오늘은 못 만남' in tips[3] and not any(('○' in t or '×' in t) for t in tips), '군사의 예측은 기호(○ · ×) 대신 말로 — 응할 듯 · 오늘은 불응 · 만날 듯 · 오늘은 못 만남')
+    ok('오늘은 불응' in tips[0] and '응할 것' in tips[1] and '만날 것' in tips[2] and '오늘은 못 만남' in tips[3] and not any(('○' in t or '×' in t) for t in tips), '군사의 예측은 기호(○ · ×) 대신 말로 — 응할 듯 · 오늘은 불응 · 만날 듯 · 오늘은 못 만남')
     ok(all(('class="adv y"' in t or 'class="adv n"' in t) for t in tips), '표시의 빛깔 구분(adv y · adv n)은 그대로')
     m = pg.evaluate('''(tip) => { showHome(); var row = document.querySelector('#sheet .todo'), sm = row.querySelector('small') || row.querySelector('.mid').appendChild(document.createElement('small'));
       sm.innerHTML = '소패 수비 16,687 → 출진 · ' + tip; var a = sm.querySelector('.adv'), cs = getComputedStyle(a), ra = a.getBoundingClientRect(), rs = sm.getBoundingClientRect(), n = row.querySelector(':scope > .n'), cn = getComputedStyle(n), rn = n.getBoundingClientRect();

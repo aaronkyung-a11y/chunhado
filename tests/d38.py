@@ -26,18 +26,18 @@ def steps(pg):
 
     # ================= 1. 순찰의 소리 =================
     print('1. 순찰의 소리')
-    c = pg.evaluate('() => ({ patrol: CUES.patrol, step: CUES.step, n: Object.keys(SFX_DATA).length, clack: typeof SFX_DATA.clack === "string" ? SFX_DATA.clack.length : 0 })')
-    ok(c['patrol'] and c['patrol']['s'] == [['clack', 0.8, 0]] and c['clack'] > 3000 and c['n'] == 30, '순찰의 소리 patrol = clack(딱따기), 음높이 흔들림 0 · 소리 30개(29 + clack)')
+    c = pg.evaluate('() => ({ patrol: CUES.patrol, step: CUES.step, n: Object.keys(SFX_DATA).length, clack: typeof SFX_DATA.clack === "string" ? SFX_DATA.clack.length : 0, pat: typeof SFX_DATA.patrol === "string" ? SFX_DATA.patrol.length : 0 })')
+    ok(c['patrol'] and c['patrol']['s'] == [['patrol', 0.85, 0]] and c['pat'] > 3000 and c['clack'] == 0 and c['n'] == 30, '순찰의 소리 patrol = 순라군의 발걸음(v0.25 — 0.22.1 의 딱따기 clack 은 뺐다), 음높이 흔들림 0 · 소리 30개(29 + patrol)')
     ok(c['step']['s'][0][0] == 'stomp' and c['step']['s'][0][2] == 0.08, '싸움의 발구름 step 은 그대로(stomp, ±8%)')
-    d = pg.evaluate('''async () => { UI.sound = true; audioInit(); for (var i = 0; i < 60 && !(SND.buf.clack && SND.buf.stomp); i++) await new Promise(function (r) { setTimeout(r, 100); });
+    d = pg.evaluate('''async () => { UI.sound = true; audioInit(); for (var i = 0; i < 60 && !(SND.buf.patrol && SND.buf.stomp); i++) await new Promise(function (r) { setTimeout(r, 100); });
       function S(k) { var b = SND.buf[k]; if (!b) return null; var d = b.getChannelData(0), pk = 0, n98 = 0, n10 = Math.floor(b.sampleRate * 0.01), run = 0, best = 0, j, i2;
         for (j = 0; j < d.length; j++) { var a = Math.abs(d[j]); if (a > pk) pk = a; if (a >= 0.98) n98++; }
         for (j = 0; j + n10 <= d.length; j += n10) { var m = 0; for (i2 = j; i2 < j + n10; i2++) if (Math.abs(d[i2]) > m) m = Math.abs(d[i2]); run = m > 0.35 * pk ? run + 1 : 0; if (run > best) best = run; }
         return { dur: +b.duration.toFixed(2), pk: +pk.toFixed(2), n98: n98, thick: best * 10, off: +(SND.off[k] || 0).toFixed(3) }; }
-      return { clack: S('clack'), stomp: S('stomp'), loaded: Object.keys(SND.buf).length }; }''')
+      return { clack: S('patrol'), stomp: S('stomp'), loaded: Object.keys(SND.buf).length }; }''')
     print('    ', d)
-    ok(d['clack'] and 0.5 <= d['clack']['dur'] <= 0.75 and d['clack']['n98'] == 0 and d['clack']['pk'] <= 0.9, '딱따기가 풀렸고 깨진 점이 없다(길이 %s초 · 봉우리 %s)' % (d['clack'] and d['clack']['dur'], d['clack'] and d['clack']['pk']))
-    ok(d['clack']['thick'] <= 50 and d['stomp']['thick'] >= 150, '굵은 소리 덩어리: 딱따기 %dms(짧고 맑다) · 전에 쓰던 발구름 %dms' % (d['clack']['thick'], d['stomp']['thick']))
+    ok(d['clack'] and 0.8 <= d['clack']['dur'] <= 1.2 and d['clack']['n98'] == 0 and d['clack']['pk'] <= 0.9, '순찰의 발걸음이 풀렸고 깨진 점이 없다(길이 %s초 · 봉우리 %s)' % (d['clack'] and d['clack']['dur'], d['clack'] and d['clack']['pk']))
+    ok(d['clack']['thick'] <= 80 and d['stomp']['thick'] >= 150, '굵은 소리 덩어리: 순찰의 발걸음 %dms(걸음마다 짧게 끊긴다) · 처음에 쓰던 발구름 %dms' % (d['clack']['thick'], d['stomp']['thick']))
     pg.evaluate('() => { clearSel(); var b = facCities(G.player)[0]; b.order = 40; b.gold = 5000; baseOfficers(b).forEach(function (o) { o.acted = false; }); G.factions[G.player].ap = 300; selectBase(b, false, "home"); window.T = { b: b.id, order: b.order }; SFXLOG.length = 0; }')
     pg.wait_for_timeout(500)
     tapsel(pg, '#sheet [data-a=patrol]', 0, 500); tapsel(pg, '#modal [data-a=auto]', 0, 300); pg.evaluate('SFXLOG.length = 0'); tapsel(pg, '#modal [data-a=ok]', 0, 600)

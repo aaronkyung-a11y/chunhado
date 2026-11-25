@@ -13,8 +13,8 @@ def ok(cond, msg):
     if not cond: fails.append(msg)
 def toast(pg): return pg.evaluate('$("toast").textContent')
 def head(pg): return pg.evaluate('MODAL ? document.querySelector("#modal .dlg-h h2").textContent : ""')
-WORDS = ['불가', '매우 낮음', '낮음', '반반', '높음', '매우 높음', '확실']
-COARSE = ['불가', '낮은 듯', '반반인 듯', '높은 듯', '확실']
+WORDS = ['불가', '매우 낮음', '낮음', '보통', '높음', '매우 높음', '확실']
+COARSE = ['불가', '낮음', '보통', '높음', '확실']      # v0.25: '낮은 듯 · 반반인 듯 · 높은 듯' → '낮음 · 보통 · 높음'
 # 내 하후돈(극병 S) 부대 a 옆에 적 부대 d 를 세운다. T = { a, d, f, b }
 SETUP = """() => {
   G.aiOnly = false; if (G.peace) G.peace.until = 0;

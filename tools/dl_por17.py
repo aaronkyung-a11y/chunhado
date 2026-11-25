@@ -30,10 +30,14 @@ rev = {v: k for k, v in ids.items()}
 lines = []
 for l in sys.stdin:
     if l.startswith('~'):                       # ~HHMMSS key key …  : 그 시각 앞뒤로 찾아본다(주소를 다시 적지 않아도 되게)
-        a = l[1:].split()
+        a = l[1:].split(); hms = a[0]
         for k in a[1:]:
-            url = probe(rev[k], a[0])
-            if url: lines.append('%s,completed,"%s"' % (rev[k], url))
+            if os.path.exists(os.path.join(RAW, k + '.png')) and os.environ.get('SKIP_HAVE'): continue      # v0.25: 이미 받은 것은 건너뛴다(SKIP_HAVE=1)
+            url = probe(rev[k], hms)
+            if url:
+                lines.append('%s,completed,"%s"' % (rev[k], url))
+                m = re.search(r'/hf_\d{8}_(\d{6})_', url)
+                if m: hms = m.group(1)             # v0.25: 같은 묶음의 다음 그림은 방금 찾은 시각 가까이에 있다 — 거기서부터 찾는다
             else: print('NOT FOUND', k)
     else: lines.append(l)
 for l in lines:

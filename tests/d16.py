@@ -54,7 +54,7 @@ def steps(pg):
       clearSel(); showHome(); var hs = poachHints(b), rows = Array.prototype.map.call(document.querySelectorAll("#sheet .todo"), function (t) { return t.innerText.replace(/\\n/g, " / "); });
       var idx = -1; rows.forEach(function (r, i) { if (/등용할 만한 무장/.test(r)) idx = i; });
       return { n: hs.length, names: hs.map(function (x) { return x.t.n; }), row: idx >= 0 ? rows[idx] : "", idx: idx, pick: pickT.n, need: todoList().need }; })()''')
-    print('  응할 듯', hint)
+    print('  응할 것', hint)
     ok(hint['n'] >= 1 and hint['pick'] in hint['names'] and hint['idx'] >= 0 and ('%d명' % hint['n']) in hint['row'] and hint['names'][0] in hint['row'] and '%' in hint['row'], '지금 할 일에 "등용할 만한 무장 N명"과 이름·성공률 [%s]' % hint['row'][:70])
     B.shot(pg, 'h1_hint', 300)
     tapsel(pg, '#sheet .todo', hint['idx']); pg.wait_for_timeout(600)
