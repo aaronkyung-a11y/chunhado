@@ -164,8 +164,9 @@ def steps(pg):
     ok(mxa >= 4 and mxt >= 3 and max(b['ord'] for b in bow) > 9, '활 공격: 날아가는 화살 %d발과 잔상 %d줄이 한꺼번에 보인다 · 부대의 딱지 위에 그려진다' % (mxa, mxt))
     fire = sample(d2.act(2, 0, 'fire'), (420, 620, 900))
     print('      화계:', fire)
-    if '성공' in pg.evaluate('$("toast").textContent'):
-        ok(max(f['flame'] for f in fire) >= 4 and max(f['ember'] for f in fire) >= 1 and max(f['puff'] for f in fire) >= 1, '화계: 불길 여럿 · 불티 · 연기 %s' % fire)
+    toast = pg.evaluate('$("toast").textContent')      # v0.26: 떨어졌을 때 까닭을 알 수 있게 그때의 알림 글도 남긴다(0.26 의 전체 회귀에서 한 번 불길 0으로 떨어졌고, 다시 돌리면 붙었다)
+    if '성공' in toast:
+        ok(max(f['flame'] for f in fire) >= 4 and max(f['ember'] for f in fire) >= 1 and max(f['puff'] for f in fire) >= 1, '화계: 불길 여럿 · 불티 · 연기 %s [알림: %s]' % (fire, toast[:60]))
     else: print('      (화계가 실패한 판 — 불길은 보지 않는다: %s)' % pg.evaluate('$("toast").textContent'))
     fz = pg.evaluate('''() => { var k = K(S.f[0] + 3, S.f[1] + 2); G.fires[k] = 3; UI.dirty = true; syncScene(); var g = R3.fires[k]; var r = g ? { n: g.children.length, smoke: g.children.filter(function (c) { return c.userData.smoke; }).length } : null; delete G.fires[k]; UI.dirty = true; syncScene(); return r; }''')
     ok(fz and fz['n'] == 7 and fz['smoke'] == 2, '칸에 붙은 불: 불꽃 다섯 + 연기 둘 %s' % fz)

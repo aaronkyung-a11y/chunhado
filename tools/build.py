@@ -67,6 +67,20 @@ window.PACKS_WANT = %d; window.PACKS_READY = 0;
     assets = assets[:m.start()] + LOADER + assets[m.end():]
 parts = [('assets.js', assets)] + pack_parts + [('terrain', terrain), ('sprites.js', rd('sprites.js')), ('map3d.js', rd('map3d.js')), ('sfxdata.js', rd('sfxdata.js')), ('voicedata.js', rd('voicedata.js'))] + [(n, rd(n)) for n in CODE]
 js = '\n'.join('/* ==== file: ' + n + ' ==== */\n' + t for n, t in parts)
+# v0.26: 가까이 당겼을 때의 바탕 그림(4배 조각 — tools/map4.py 가 art/map4/tiles 에 만든다). 아티팩트 판은 data/t4-<지문>/, 앱(PWA)은 tiles/t4-<지문>/ 에 두고
+#   가까이 당긴 자리의 조각만 받아 온다(src/ui3d.js 의 hiTick). 한 파일짜리 판(오프라인 · dist/index.html)에는 없다 — 본래 그림 그대로다.
+HITILE = None
+_tj = os.path.join(root, 'art', 'map4', 'tiles.json')
+if (split or pwa) and os.path.exists(_tj):
+    _tm = json.load(open(_tj)); HITILE = ('data' if split else 'tiles') + '/t4-' + _tm['hash'] + '/'
+    js = 'window.HITILE = ' + json.dumps({'base': HITILE, 'nx': _tm['nx'], 'ny': _tm['ny'], 'w': _tm['w'], 'h': _tm['h'], 'm': _tm['m'], 'W': _tm['W'], 'H': _tm['H']}) + ';\n' + js
+def copy_tiles(parent):
+    if not HITILE: return
+    for _d in (os.listdir(parent) if os.path.isdir(parent) else []):
+        if _d.startswith('t4-') and _d != 't4-' + _tm['hash']: shutil.rmtree(os.path.join(parent, _d))
+    dst = os.path.join(parent, 't4-' + _tm['hash']); os.makedirs(dst, exist_ok=True)
+    for n in sorted(os.listdir(os.path.join(root, 'art', 'map4', 'tiles'))):
+        if n.endswith('.webp'): shutil.copy(os.path.join(root, 'art', 'map4', 'tiles', n), os.path.join(dst, n))
 assert '</script' not in js.lower()
 if embed:
     three = open(os.path.join(root, 'vendor', 'package', 'build', 'three.min.js'), encoding='utf-8').read()
@@ -139,7 +153,7 @@ if pwa:
     for n in sorted(os.listdir(os.path.join(root, 'pwa', 'icons'))): shutil.copy(os.path.join(root, 'pwa', 'icons', n), os.path.join(d, 'icons', n))
     for n in sorted(os.listdir(os.path.join(root, 'bgm'))):
         if n.endswith('.mp3'): shutil.copy(os.path.join(root, 'bgm', n), os.path.join(d, 'bgm', n))
-    copy_video(d)
+    copy_video(d); copy_tiles(os.path.join(d, 'tiles'))
     open(os.path.join(d, '.nojekyll'), 'w').close()                      # GitHub Pages: 파일을 그대로 내보내게
 else:
     out = os.path.join(root, 'dist', 'offline.html' if embed else 'index.html')
@@ -151,7 +165,7 @@ else:
         for _f in os.listdir(os.path.join(root, 'dist', 'artifact', 'data')):          # v0.24: 그림 묶음(옛 지문의 파일은 치운다)
             if _f.startswith('por-') or _f.startswith('scn-'): os.remove(os.path.join(root, 'dist', 'artifact', 'data', _f))
         for _n, _j in pack_files: open(os.path.join(root, 'dist', 'artifact', _n), 'w', encoding='utf-8').write(_j)
-        copy_video(os.path.join(root, 'dist', 'artifact'))
+        copy_video(os.path.join(root, 'dist', 'artifact')); copy_tiles(os.path.join(root, 'dist', 'artifact', 'data'))
         assert len(html.encode('utf-8')) < 16 * 1024 * 1024, '아티팩트의 페이지는 16MiB 까지'
 open(out, 'w', encoding='utf-8').write(html)
 open(os.path.join(root, 'dist', 'code.js'), 'w', encoding='utf-8').write('\n'.join(rd(n) for n in CODE))   # 문법 검사용

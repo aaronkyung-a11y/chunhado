@@ -17,7 +17,7 @@ console.log('A 그림 묶음');
 ok(rows.length === 253 && Object.keys(KEY).length === 253 && new Set(rows.map(r => r[0])).size === 253, '장면 표: 253줄 · 이름과 열쇠가 겹치지 않는다');
 const P = pack('p253'), pk = Object.keys(P.por).sort(), sk = Object.keys(P.scn).sort(), want = rows.map(r => r[0]).sort();
 ok(pk.join() === want.join() && sk.join() === pk.join(), '묶음에 흉상 ' + pk.length + '장 · 장면 ' + sk.length + '장 — 열쇠가 표와 같다');
-ok(pk.every(k => P.por[k].startsWith('UklGR') && P.por[k].length > 8000 && P.scn[k].startsWith('UklGR') && P.scn[k].length > 15000), '모두 WebP 그림이다(흉상 평균 ' + Math.round(pk.reduce((a, k) => a + P.por[k].length, 0) / pk.length / 1366) + 'KB · 장면 평균 ' + Math.round(pk.reduce((a, k) => a + P.scn[k].length, 0) / pk.length / 1366) + 'KB)');
+ok(pk.every(k => P.por[k].startsWith('UklGR') && P.por[k].length > 8000 && P.scn[k].startsWith('UklGR') && P.scn[k].length > 9000)      /* v0.26: 다시 그린 그림에는 흰 종이가 넓은 전신 그림이 있어 장면이 더 작다(가장 작은 것 12,920자) */, '모두 WebP 그림이다(흉상 평균 ' + Math.round(pk.reduce((a, k) => a + P.por[k].length, 0) / pk.length / 1366) + 'KB · 장면 평균 ' + Math.round(pk.reduce((a, k) => a + P.scn[k].length, 0) / pk.length / 1366) + 'KB)');
 const a0 = {}; vm.createContext(a0); vm.runInContext(fs.readFileSync(path.join(root, 'assets.js'), 'utf8'), a0);
 const base = new Set(vm.runInContext('Object.keys(PORTRAITS)', a0)), pool = new Set(Object.keys(pack('pool').por));
 ok(pk.every(k => !base.has(k) && !pool.has(k)), '새 열쇠는 있던 초상(assets.js ' + base.size + '장 · 공용 ' + pool.size + '장)의 열쇠와 겹치지 않는다');

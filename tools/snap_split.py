@@ -22,6 +22,11 @@ for va, vb in (("a.src = 'video/' + name + '.mp4'", "a.src = '../video/' + name 
     if va in src: assert src.count(va) == 1; src = src.replace(va, vb)
 # v0.24: 그림 묶음(data/por-… · data/scn-… — 이름에 내용의 지문이 있다)도 한 칸 위의 data/ 에 있는 것을 같이 쓴다
 src = src.replace('"data/por-', '"../data/por-').replace('"data/scn-', '"../data/scn-')
+# v0.26: 가까이 당겼을 때의 바탕 그림 조각(data/t4-<지문>/)도 한 칸 위의 것을 같이 쓴다
+assert src.count('"base": "data/t4-') <= 1; src = src.replace('"base": "data/t4-', '"base": "../data/t4-')
+# v0.26: 음악도 한 칸 위의 bgm/ 에 있다 — 0.19~0.25 의 스냅샷은 versions/bgm/ 을 찾다 못 찾아 코드로 만든 음악을 냈다(영상만 고쳐 두고 음악을 빠뜨렸다)
+_b = "a.src = 'bgm/' + file + '.mp3'"
+if src.count(_b) == 1: src = src.replace(_b, "a.src = '../bgm/' + file + '.mp3'")
 open(out, 'w', encoding='utf-8', newline='\n').write(src)
 if borrow: print('snapshot', out, os.path.getsize(out), '· 큰 그림은 v%s 의 것(지문이 같다)' % borrow)
 else:

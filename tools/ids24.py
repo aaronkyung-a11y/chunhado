@@ -4,7 +4,7 @@ usage: POR=24 ids24.py < 답"""
 import sys, os, re
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'); POR = os.environ.get('POR', '24')
 key = {}
-for l in open(os.path.join(ROOT, 'art/por%s_scenes.tsv' % POR), encoding='utf8'):
+for l in open(os.environ.get('SCENES') or os.path.join(ROOT, 'art/por%s_scenes.tsv' % POR), encoding='utf8'):
     if l.strip() and not l.startswith('#'): a = l.split('\t'); key[int(a[0])] = a[1]
 P = os.path.join(ROOT, 'art/por%s_ids.tsv' % POR)
 have = {}

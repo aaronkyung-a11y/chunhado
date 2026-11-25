@@ -44,6 +44,9 @@ CIVIL = ('robe', 'scholar', 'official', 'adviser', 'minister', 'hermit', 'mercha
 if os.environ.get('ALT'):
     VIEW['back'] = "Over-the-shoulder view: he is turned away from the viewer and glances back over his shoulder, so that his face is clearly visible."
     BM = BM.replace("The background is plain blank white paper everywhere - no vignette, no gray wash, gradient or shadow behind him.", "The entire background is bright, empty, pure white paper, exactly like a traditional ink portrait on white paper.")
+if os.environ.get('ALT') == '2':        # ALT=1 로도 검은 배경이 된 두 장(오찬 · 장개): 첫 문장부터 밝은 종이라고 못박는다
+    AM = AM.replace('A dramatic East Asian ink-brush illustration', 'A bright, high-key East Asian ink-brush illustration on white paper')
+    BM = BM.replace("The entire background is bright, empty, pure white paper, exactly like a traditional ink portrait on white paper.", "Daylight. The sheet of paper is white from edge to edge: all four corners and every margin of the picture are clean, empty white paper, exactly like a traditional ink portrait on white paper.")
 VIEW_OF = dict(x.split(':') for x in os.environ.get('VIEWS', '').split(',') if x)      # VIEWS=열쇠:방향,… — 그 사람만 방향을 바꾼다(얼굴이 안 보이게 나온 그림을 다시 그릴 때)
 HERE = os.path.dirname(os.path.abspath(__file__))
 def find(arg):

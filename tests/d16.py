@@ -84,6 +84,7 @@ def steps(pg):
     plan = pg.evaluate('''((bid) => { var b = G.bases[bid], os = idleOfficers(b), best = function (t) { var m = 0; os.forEach(function (o) { m = Math.max(m, recruitChance(b, o, t)); }); return m; };
       var ts = poachTargets(b).filter(function (t) { return !bondOf(t); }), yes = null, no = null;
       ts.forEach(function (t) { var r = recruitRoll(t); if (!yes && r < 40) { t.loy = 78; if (r < best(t)) yes = t; } });
+      if (!yes) ts.slice().sort(function (x, y) { return recruitRoll(x) - recruitRoll(y); }).forEach(function (t) { var r = recruitRoll(t); [78, 70, 60, 50, 40, 30, 20].forEach(function (L) { if (!yes) { t.loy = L; if (r < best(t)) yes = t; } }); });      // v0.26: 판의 씨앗에 따라 '굴림 40 미만 + 충성 78로 응할 사람'이 없을 때가 있다(전체 회귀에서 한 번) — 그때는 굴림이 낮은 사람부터 충성을 더 낮춰 가며 찾는다
       ts.forEach(function (t) { if (t === yes || no) return; var r = recruitRoll(t); if (best(t) > 0 && r >= best(t)) no = t; });
       return { yes: yes ? { id: yes.id, n: yes.n, p: best(yes), from: facName(yes.f), fb: G.bases[yes.loc].n } : null, no: no ? { id: no.id, n: no.n, p: best(no), loy: no.loy } : null, acc: yes ? adviceAcc(facAdv(G.player), yes.int) : 0, advInt: facAdv(G.player).int }; })''', st['b'])
     print('  plan', plan)

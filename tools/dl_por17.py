@@ -8,7 +8,7 @@ POR = os.environ.get('POR', '17')
 ids = {}; names = {}
 for l in open(os.path.join(ROOT, 'art/por%s_ids.tsv' % POR), encoding='utf8'):
     if l.strip() and not l.startswith('#'): a = l.split(); ids[a[2]] = a[1]
-for l in open(os.path.join(ROOT, 'art/por%s_scenes.tsv' % POR), encoding='utf8'):
+for l in open(os.environ.get('SCENES') or os.path.join(ROOT, 'art/por%s_scenes.tsv' % POR), encoding='utf8'):
     if l.strip() and not l.startswith('#'): a = l.rstrip('\n').split('\t'); names[a[1]] = a[2]
 RAW = os.path.join(ROOT, 'art/raw%s' % POR); os.makedirs(RAW, exist_ok=True)
 log = open(os.environ['PRIV_LOG'], 'a', encoding='utf8') if os.environ.get('PRIV_LOG') else None

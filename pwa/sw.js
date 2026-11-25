@@ -6,7 +6,7 @@
      곡을 바꾸면 BGM 의 번호를 올린다.
    · 영상(video/*.mp4 — v0.19): 음악과 같이 받아 두고 구간 요청에도 답한다(영상이 먼저, 그다음 음악). 영상을 바꾸면 VID 의 번호를 올린다.
    · 글꼴(Google Fonts): 받은 것을 저장해 두고 쓴다. */
-var SHELL = 'chunhado-shell-2', BGM = 'chunhado-bgm-1', FONT = 'chunhado-font-1', VID = 'chunhado-video-1';
+var SHELL = 'chunhado-shell-2', BGM = 'chunhado-bgm-1', FONT = 'chunhado-font-1', VID = 'chunhado-video-1', TILE = 'chunhado-tile-1';      // TILE(v0.26): 가까이 당겼을 때의 바탕 그림 조각
 var HOME = new URL('./', self.registration.scope).href;
 var SHELL_FILES = [HOME, 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-48.png'];
 var BGM_FILES = ['title', 'field1', 'field2', 'tense', 'battle1', 'battle2', 'victory', 'defeat'].map(function (n) { return new URL('bgm/' + n + '.mp3', self.registration.scope).href; });
@@ -17,7 +17,7 @@ self.addEventListener('install', function (e) {
 });
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (ks) {
-    return Promise.all(ks.filter(function (k) { return k.indexOf('chunhado-') === 0 && k !== SHELL && k !== BGM && k !== FONT && k !== VID; }).map(function (k) { return caches.delete(k); }));
+    return Promise.all(ks.filter(function (k) { return k.indexOf('chunhado-') === 0 && k !== SHELL && k !== BGM && k !== FONT && k !== VID && k !== TILE; }).map(function (k) { return caches.delete(k); }));
   }).then(function () { return self.clients.claim(); }));
 });
 self.addEventListener('message', function (e) {
@@ -91,6 +91,14 @@ function font(e, req, keep) {
     });
   });
 }
+function tile(req) {                                         // 조각: 저장해 둔 것이 있으면 그것, 없으면 받아서 저장
+  return caches.open(TILE).then(function (c) {
+    return c.match(req).then(function (hit) {
+      if (hit) return hit;
+      return fetch(req).then(function (r) { if (r && r.ok) c.put(req, r.clone()); return r; });
+    });
+  });
+}
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET') return;
@@ -101,6 +109,7 @@ self.addEventListener('fetch', function (e) {
       if (url.href.split('?')[0].split('#')[0] === HOME || url.pathname === new URL('index.html', self.registration.scope).pathname) e.respondWith(page());
       return;
     }
+    if (/\/tiles\/t4-[0-9a-f]+\/[0-9]+_[0-9]+\.webp$/.test(url.pathname)) { e.respondWith(tile(req)); return; }
     if (/\/bgm\/[^/]+\.mp3$/.test(url.pathname)) { e.respondWith(media(req, BGM, 'audio/mpeg')); return; }
     if (/\/video\/[^/]+\.(mp4|webm)$/.test(url.pathname)) { e.respondWith(media(req, VID, /\.webm$/.test(url.pathname) ? 'video/webm' : 'video/mp4')); return; }
     e.respondWith(shellFile(req));
