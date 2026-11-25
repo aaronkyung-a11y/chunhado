@@ -11,7 +11,7 @@ import sys, os, json
 AM = "A dramatic East Asian ink-brush illustration of a man of the Three Kingdoms era of China (around AD 200). Subject: "
 BM = (" Follow the pose and camera description exactly; do not fall back to a centered, front-facing hero pose. "
       "Thick black brushwork, gray wash, dry-brush, ink splatter; one accent color only (%s). Vertical picture; his whole head and face clearly visible and not cut off by the picture edge; "
-      "the figure fades into dry brush at the bottom. Pure white background, no text, seal or border.")
+      "the figure fades into dry brush at the bottom. The background is plain blank white paper everywhere - no vignette, no gray wash, gradient or shadow behind him. No text, seal or border.")
 VIEW = {'3qL': "Three-quarter view: his body angled toward the left edge of the picture, face turned partly toward the viewer.",
         '3qR': "Three-quarter view: his body angled toward the right edge of the picture, face turned partly toward the viewer.",
         'sideL': "Side view: he faces the left edge of the picture, seen almost in profile (the far eye just visible).",
@@ -22,15 +22,15 @@ VIEW_SEQ = ['3qL', 'sideR', 'back', '3qR', 'front', 'sideL', '3qR', '3qL', 'back
 CAM = {'eye': "Camera at eye level.", 'low': "Camera low, looking up at him.", 'high': "Camera high above, looking down on him; his face tilted up toward the viewer."}
 CAM_SEQ = ['eye', 'high', 'low', 'eye', 'high', 'eye', 'low', 'eye', 'high']
 FRAME = {'bust': "Close-up: head and shoulders only; the face large, about one third of the picture height.",
-         'half': "Half-length figure, from the waist up.",
-         'knee': "Three-quarter-length figure, from the knees up.",
-         'full': "Full-length figure from head to feet, with wide blank white paper around him; the head about one sixth of the picture height."}
+         'half': "Half-length figure, from the waist up, large in the frame.",
+         'knee': "Three-quarter-length figure, from the knees up, filling the picture height.",
+         'full': "Full-length figure from head to feet, filling the picture height from top to bottom, with blank white paper at the sides; the head about one sixth of the picture height."}
 FRAME_SEQ = ['half', 'bust', 'full', 'knee', 'half', 'full', 'bust', 'knee', 'half', 'bust', 'knee']
 STANCE_W = ['standing firm with feet planted wide', 'striding forward in mid-step', 'mounted on a galloping horse', 'kneeling on one knee', 'crouched low in a fighting stance',
             'mounted on a rearing horse', 'twisting sharply in mid-turn, cloak swirling', 'standing at ease with his weight on one leg']
 STANCE_C = ['standing upright', 'seated on a mat behind a low desk', 'walking slowly, robe trailing', 'seated cross-legged on a mat', 'kneeling formally',
             'standing with one hand behind his back', 'leaning forward over a low table', 'seated on a stool']
-PLACE_SEQ = ['', 'He is placed left of center, with open blank paper on the right.', '', 'He is placed right of center, with open blank paper on the left.', '', 'He is placed low in the frame, with blank paper above.', '']
+PLACE_SEQ = ['', 'He is placed left of center, with open blank paper on the right.', '', 'He is placed right of center, with open blank paper on the left.', '', '', '']      # 시범 뒤: '아래쪽에 작게'는 뺐다(인물이 너무 작아진다)
 FACE = ['in his twenties, clean-shaven, with a sharp jaw', 'about thirty with a thin mustache', 'in his forties with a full black beard', 'about fifty with a graying goatee',
         'weather-beaten, in his thirties, with a scar across one cheek', 'broad-faced with thick eyebrows and a short beard', 'narrow-eyed and hollow-cheeked, about forty',
         'round-faced and stocky, about thirty-five', 'long-faced with a long thin beard, about forty-five', 'square-jawed and stubbled, about thirty',
@@ -86,6 +86,8 @@ if __name__ == '__main__':
               '서로 다른 짝(방향 · 시점 · 크기)', len({r[5:8] for r in rows}))
     elif cmd == 'batches':
         rows = load(sys.argv[3] if len(sys.argv) > 3 else None); os.makedirs(sys.argv[2], exist_ok=True)
+        skip = {int(x) for x in os.environ.get('SKIP', '').split(',') if x}             # SKIP=번호,번호: 이미 그려 둔 것(시범에서 쓸 만했던 것)은 뺀다
+        rows = [r for r in rows if r[0] not in skip]
         for b in range(0, len(rows), 12):
             json.dump({"requests": [req(r) for r in rows[b:b + 12]]}, open(os.path.join(sys.argv[2], 'b%02d.json' % (b // 12 + 1)), 'w', encoding='utf8'), ensure_ascii=False)
         print('batches', (len(rows) + 11) // 12, 'keys', len(rows), 'chars', sum(len(text(r)) for r in rows))
