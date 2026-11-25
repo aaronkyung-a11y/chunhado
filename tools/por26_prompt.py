@@ -40,6 +40,11 @@ HAS_POSE = ('kneel', 'bow', 'seated', 'sitting', 'riding', 'horse', 'rider', 'mo
 HAS_FACE = ('young', 'old', 'elder', 'aging', 'beard', 'white-haired', 'gray', 'in his ', 'of about', 'youth', 'gaunt', 'plump', 'fat', 'obese', 'stout', 'stocky', 'lean', 'thin', 'handsome',
             'giant', 'burly', 'sickly', 'soft-faced', 'portly', 'veteran', 'weathered', 'shaggy', 'wild-haired', 'tall', 'emperor', 'prince')
 CIVIL = ('robe', 'scholar', 'official', 'adviser', 'minister', 'hermit', 'merchant', 'poet', 'envoy', 'courtier', 'clerk', 'nobleman', 'critic', 'attendant', 'censor', 'judge', 'statesman')
+# 다시 그릴 때(ALT=1): 뒤돌아본 그림 일곱 장이 검은 배경으로 나왔다 — '등을 보인다'는 말과 '그림자 · 번짐이 없다'는 부정문이 도리어 어두운 배경을 불렀다. 말을 바꾼다.
+if os.environ.get('ALT'):
+    VIEW['back'] = "Over-the-shoulder view: he is turned away from the viewer and glances back over his shoulder, so that his face is clearly visible."
+    BM = BM.replace("The background is plain blank white paper everywhere - no vignette, no gray wash, gradient or shadow behind him.", "The entire background is bright, empty, pure white paper, exactly like a traditional ink portrait on white paper.")
+VIEW_OF = dict(x.split(':') for x in os.environ.get('VIEWS', '').split(',') if x)      # VIEWS=열쇠:방향,… — 그 사람만 방향을 바꾼다(얼굴이 안 보이게 나온 그림을 다시 그릴 때)
 HERE = os.path.dirname(os.path.abspath(__file__))
 def find(arg):
     for p in ([arg] if arg else []) + [os.path.join(HERE, 'por25_scenes.tsv'), os.path.join(HERE, '..', 'art', 'por25_scenes.tsv')]:
@@ -62,7 +67,9 @@ def load(arg=None):
         a = l.split('\t')
         if len(a) == 5: a = a[1:]
         k, name, col, scene = a
-        rows.append((len(rows) + 1, k, name, col, scene) + pose(len(rows) + 1, scene))
+        ps = pose(len(rows) + 1, scene)
+        if k in VIEW_OF: ps = (VIEW_OF[k],) + ps[1:]
+        rows.append((len(rows) + 1, k, name, col, scene) + ps)
     return rows
 def text(r):
     v, c, f, st, pl, fa = r[5:]
