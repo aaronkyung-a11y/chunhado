@@ -62,7 +62,8 @@ def steps(pg):
     o = bio['order']; ok(o.index('sec bioh') > o.index('apt') and o.index('bio') == o.index('sec bioh') + 1 and o.index('bio') < o.index('stats'), '차례: 적성 → 특기 → 열전 → 소재 · 충성 …')
     pg.evaluate('closeDialog()')
     alln = pg.evaluate('''() => { var no = G.officers.filter(function (o) { return !bioOf(o); }).map(function (o) { return o.n; }); return [G.officers.length, no]; }''')
-    ok(alln[0] == 425 and alln[1] == [], '판 안의 무장 %d명 모두에게 열전이 있다' % alln[0])
+    ok(alln[0] == 508 and alln[1] == [],      # v0.23: 다른 시대의 무장 83명
+       '판 안의 무장 %d명 모두에게 열전이 있다' % alln[0])
     card = pg.evaluate('''() => { var o = G.officers.filter(function (x) { return x.n === '초선'; })[0]; ocardOpen(o); var e = $('ocard'), p = e.querySelector('.bio'), r = e.querySelector('.oc').getBoundingClientRect(); var t = { bio: p ? p.textContent : '', aptn: !!e.querySelector('.aptn'), inView: r.top >= 0 && r.bottom <= innerHeight + 1 }; return t; }''')
     B.shot(pg, 'c2_card', 300); pg.evaluate('ocardClose()')
     ok('연의의 인물' in card['bio'] and not card['aptn'] and card['inView'], '얼굴을 누르면 뜨는 무장 카드에도 열전(지어낸 인물은 그렇다고 적는다) — %s' % card['bio'][:30])

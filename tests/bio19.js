@@ -8,7 +8,8 @@ let pass = 0, fail = 0;
 function ok(c, msg) { if (c) pass++; else { fail++; console.log('  ✗ ' + msg); } }
 const names = vm.runInContext('SCENARIO.officers.map(function (o) { return o.n; })', ctx), B = JSON.parse(vm.runInContext('JSON.stringify(BIOS)', ctx));
 const keys = Object.keys(B), miss = names.filter(n => !B[n]), extra = keys.filter(k => !names.includes(k)), L = keys.map(k => B[k].length);
-ok(names.length === 425 && keys.length === 425, '명부 ' + names.length + '명 · 열전 ' + keys.length + '편');
+ok(names.length === 508 && keys.length === 508,      // v0.23: 다른 시대의 무장 83명
+   '명부 ' + names.length + '명 · 열전 ' + keys.length + '편');
 ok(miss.length === 0, '열전이 없는 사람: ' + miss.join(' '));
 ok(extra.length === 0, '명부에 없는 이름: ' + extra.join(' '));
 const short = keys.filter(k => B[k].length < 20), long = keys.filter(k => B[k].length > 110);
@@ -28,7 +29,7 @@ const unmarked2 = LATER.filter(n => !/이름|성은/.test(B[n] || ''));
 ok(unmarked2.length === 0, '이름이 뒷날 붙은 사람인데 그 말이 없다: ' + unmarked2.join(' '));
 // bioOf: 판 안의 무장으로도 꺼낸다
 const R = JSON.parse(vm.runInContext(`JSON.stringify((function () { newGame(0, 3); var all = G.officers.every(function (o) { return bioOf(o).length >= 20; }); return { all: all, cao: bioOf(off(G.factions[0].lord)), none: bioOf(null), n: G.officers.length }; })())`, ctx));
-ok(R.all && R.n === 425 && R.cao.indexOf('맹덕') >= 0 && R.none === '', 'bioOf: 판 안의 무장 ' + R.n + '명 모두에게서 꺼낸다');
+ok(R.all && R.n === 508 && R.cao.indexOf('맹덕') >= 0 && R.none === '', 'bioOf: 판 안의 무장 ' + R.n + '명 모두에게서 꺼낸다');
 const tot = L.reduce((a, b) => a + b, 0);
 console.log('열전 ' + keys.length + '편 · 가장 짧은 것 ' + Math.min(...L) + '자 · 가장 긴 것 ' + Math.max(...L) + '자 · 평균 ' + Math.round(tot / L.length) + '자 · 모두 ' + tot + '자');
 console.log(fail ? 'FAIL ' + fail : 'PASS ' + pass);

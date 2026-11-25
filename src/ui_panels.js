@@ -290,22 +290,96 @@ function officerBody(o) {
   var bars = '', ks = [['ldr', '통솔'], ['war', '무력'], ['int', '지력'], ['pol', '정치'], ['cha', '매력']];
   for (i = 0; i < 5; i++) bars += '<div class="bar"><span>' + ks[i][1] + '</span><i><u style="width:' + o[ks[i][0]] + '%"></u></i><b>' + o[ks[i][0]] + '</b></div>';
   var un = o.unit !== null && o.unit !== undefined ? UMAP[o.unit] : null;
-  var where = o.st === 'free' ? '재야 (' + G.bases[o.loc].n + ')' : o.st === 'captive' ? '포로 (' + G.bases[o.loc].n + ')' : (o.unit !== null ? '출진 중' : G.bases[o.loc].n);
+  var where = o.st === 'dead' ? '세상을 떠남' : o.st === 'free' ? '재야 (' + G.bases[o.loc].n + ')' : o.st === 'captive' ? '포로 (' + G.bases[o.loc].n + ')' : (o.unit !== null ? '출진 중' : G.bases[o.loc].n);
   return '<div class="card">' + sceneTag(o) + '<div class="bars">' + bars + '</div></div>' +
     '<div class="sec">병종 적성</div><div class="apt">' + a + '</div>' +
     (o.sk ? '<p class="skp"><b class="hi">특기 · ' + o.sk + '</b><br>' + SKILLS[o.sk] + '</p>' : '<p class="note">특기 없음</p>') +
     (bioOf(o) ? '<div class="sec bioh">열전</div><p class="bio">' + bioOf(o) + '</p>' : '') +                  // v0.19: 어떤 사람인가(적성의 곱은 도움말로 옮겼다)
-    '<div class="stats"><div><span>소재</span><b>' + where + '</b></div>' + (o.f >= 0 ? '<div><span>충성</span><b>' + (isLord(o) ? '군주' : o.loy + (bondOf(o) ? ' <em class="bond">' + bondOf(o) + '</em>' : '')) + '</b></div><div><span>지휘</span><b>' + fmt(cmdCap(o)) + '</b></div><div><span>공적</span><b>' + fmt(o.merit) + '</b></div>' : '') + '</div>' +
+    '<div class="stats">' + lifeCell(o) + '<div><span>소재</span><b>' + where + '</b></div>' + (o.f >= 0 ? '<div><span>충성</span><b>' + (isLord(o) ? '군주' : o.loy + (bondOf(o) ? ' <em class="bond">' + bondOf(o) + '</em>' : '')) + '</b></div><div><span>지휘</span><b>' + fmt(cmdCap(o)) + '</b></div><div><span>공적</span><b>' + fmt(o.merit) + '</b></div>' : '') + '</div>' +
     (un ? '<p class="note ocu">' + (uLeader(un) === o ? '주장' : '부장') + ' — ' + UNIT_TYPES[un.type].name + ' <b>' + fmt(un.troops) + '</b>명 · 기력 ' + un.morale + (APT_IDX[un.type] !== undefined ? ' · 부대 적성 ' + uApt(un) : '') + '</p>' : '') +
+    famNote(o) + heirNote(o) +
     (servedF(o).length ? '<p class="note">섬겼던 세력 — ' + servedTxt(o) + '</p>' : '');
+}
+/* v0.23: 나이(세는나이) · 태어난 해. 사서에 없어 어림한 해에는 '추정'을 붙인다. 세상을 떠난 사람은 생몰년 */
+function lifeCell(o) {
+  if (!o.by) return '';
+  var est = (o.e & 1) ? ' · 추정' : '', so = SCENARIO.officers[o.id], dyr = o.died || (so && so.n === o.n ? so.hd : 0);
+  if (o.st === 'dead') return '<div><span>생몰</span><b>' + o.by + (dyr ? ' ~ ' + dyr : '') + '<small>' + (dyr ? '향년 ' + (dyr - o.by + 1) + '세' : '') + est + '</small></b></div>';
+  return '<div><span>나이</span><b>' + ageOf(o) + '세' + (o.sick ? ' <em class="sick">병석</em>' : '') + '<small>' + o.by + '년생' + est + '</small></b></div>';
+}
+function famNote(o) {                      // v0.23: 아버지 · 자식(태어난 아이만)
+  if (!G) return '';
+  var kids = G.officers.filter(function (k) { return k.dad === o.n && k.by <= G.year; }), s = [];
+  if (o.dad) s.push('아버지 <b>' + o.dad + '</b>');
+  if (kids.length) s.push('자식 ' + kids.map(function (k) { return '<b>' + k.n + '</b>' + (k.st === 'dead' ? '(졸)' : (k.st === 'hidden' ? '(' + ageOf(k) + '세)' : '')); }).join(' · '));
+  return s.length ? '<p class="note fam">' + s.join(' — ') + '</p>' : '';
+}
+function heirTag(o) { return (o.f >= 0 && G.factions[o.f].heir === o.id && heirOk(o, o.f)) ? '후계' : ''; }
+function roleTag(o) { var a = advTag(o), h = heirTag(o); return a && h ? a + '·' + h : (a || h); }
+function heirLine(fc, L, who) {            // 뒤를 이으면 어떻게 되는가 한 줄. who = 군주와의 사이를 따로 적을 때(후계 창: 아들 · 형제 …)
+  return (who ? '<b>' + who + '</b>' : (fc.kin ? L.n + '의 혈연' : (fc.house ? L.n + '의 ' + (fc.rel || '일가') : '<b class="bad">한집안이 아님</b>'))) + ' · 인연이 이어짐 ' + fc.keep + '명' + (fc.fam.length ? ' · <b class="bad">일가 반발 ' + fc.fam.length + '명</b>' : '') +
+    (fc.vas.length ? ' · <b class="bad">심복 동요 ' + fc.vas.length + '명</b>' : '') + (fc.n ? ' · 그 밖 ' + fc.n + '명은 ' + fc.p + '%로 동요' : '');
+}
+function heirNote(o) {                     // 내 무장의 창에: 이 사람이 뒤를 이으면
+  if (!G || o.f !== G.player || G.aiOnly) return '';
+  var F = G.factions[G.player], L = off(F.lord);
+  if (L === o) { var cur = heirOf(G.player), nx = heirNext(G.player); return '<p class="note heir">후계 — ' + (cur ? '<b>' + cur.n + '</b>(정해 둠)' : (nx ? '정하지 않음 · 지금 차례는 <b>' + nx.n + '</b>' : '<b class="bad">뒤를 이을 무장이 없습니다</b>')) + '</p>'; }
+  if (!heirOk(o, G.player)) return '';
+  return '<p class="note heir">' + (F.heir === o.id ? '<b>정해 둔 후계</b> — ' : (heirNext(G.player) === o ? '지금 차례의 후계 — ' : '뒤를 이으면 — ')) + heirLine(heirForecast(G.player, o), L) + '</p>';
 }
 function showOfficer(o) {
   showDialog({
     render: function () {
-      return dlgHead(o.n + ' ' + (o.f >= 0 ? facChip(o.f) : '') + (advTag(o) ? ' <em class="advt">군사</em>' : '')) + '<div class="dlg-b">' + officerBody(o) + '</div>' +
-        ((o.f === G.player && advOk(o, G.player)) ? '<div class="dlg-f"><div class="pv">' + (advTag(o) ? '지금의 <b>군사</b>' : '') + '</div>' + (advTag(o) ? '' : '<button class="btn" type="button" data-a="adv">군사로 삼기</button>') + '</div>' : '');
-    }, on: { adv: function () { var r = setAdvisor(G.player, o.id); if (!r.ok) return toast(r.msg); sfx('ui'); talk(o, sayLine(o, 'advisor'), josa(o.n, '을를') + ' 군사로 삼았습니다 (지력 ' + o.int + ')'); refreshDialog(); refreshSheet(); } }
+      var mine = o.f === G.player && advOk(o, G.player), lordMine = o.f === G.player && isLord(o), isH = !!heirTag(o);
+      return dlgHead(o.n + ' ' + (o.f >= 0 ? facChip(o.f) : '') + (advTag(o) ? ' <em class="advt">군사</em>' : '') + (isH ? ' <em class="advt">후계</em>' : '')) + '<div class="dlg-b">' + officerBody(o) + '</div>' +
+        (mine ? '<div class="dlg-f"><div class="pv">' + (advTag(o) ? '지금의 <b>군사</b>' : '') + (isH ? (advTag(o) ? ' · ' : '') + '정해 둔 <b>후계</b>' : '') + '</div>' + (advTag(o) ? '' : '<button class="btn" type="button" data-a="adv">군사로 삼기</button>') + '<button class="btn" type="button" data-a="heir">' + (isH ? '후계 풀기' : '후계로 세우기') + '</button></div>'
+          : (lordMine ? '<div class="dlg-f"><div class="pv">' + ageOf(o) + '세</div><button class="btn" type="button" data-a="heirs">후계 정하기</button></div>' : ''));
+    },
+    on: {
+      adv: function () { var r = setAdvisor(G.player, o.id); if (!r.ok) return toast(r.msg); sfx('ui'); talk(o, sayLine(o, 'advisor'), josa(o.n, '을를') + ' 군사로 삼았습니다 (지력 ' + o.int + ')'); refreshDialog(); refreshSheet(); },
+      heir: function () { var r = cmdHeir(o.id); if (!r.ok) return toast(r.msg); sfx('ui'); saveGame(); toast(r.off ? josa(o.n, '을를') + ' 후계에서 풀었습니다' : josa(o.n, '을를') + ' 후계로 세웠습니다'); refreshDialog(); refreshSheet(); },
+      heirs: function () { showHeir(); }
+    }
   }, true);                                              // 목록 같은 창 위에서 열었으면 ×로 그 창에 돌아간다
+}
+/* v0.23 후계 정하기: 뒤를 이을 차례대로 늘어놓고, 누가 이으면 어떻게 될지 줄마다 적는다. 누르면 정하고, 다시 누르면 푼다 */
+function showHeir() {
+  var f = G.player;
+  showDialog({
+    render: function () {
+      var F = G.factions[f], L = off(F.lord), rk = heirRank(f), cur = heirOf(f), CL = ['', '아들', '형제', '혈연', '혈연', '', ''], i;
+      var show = rk.slice(0, 14); if (cur && show.indexOf(cur) < 0) show.unshift(cur);
+      var h = dlgHead('후계 — ' + L.n + ' ' + ageOf(L) + '세') + '<div class="dlg-b"><p class="note stn">군주가 세상을 떠나면 뒤를 이을 사람입니다. 정해 두지 않으면 <b>아들 → 형제 → 혈연 → 매력이 높은 무장</b>의 차례로 잇습니다. 새 군주가 선대와 <b>한집안</b>(혈연 · 의형제 · 부부)이 아니면 선대의 일가와 심복이 등을 돌릴 수 있습니다.</p><div class="rows hrl">';
+      for (i = 0; i < show.length; i++) {
+        var o = show[i], cl = heirClass(o, L, { heir: -1 }), fc = heirForecast(f, o), who = fc.kin ? (CL[cl] || '혈연') : (fc.house ? (fc.rel || '일가') : '');
+        h += offRow(o, { a: 'pick', sel: cur === o, badge: cur === o ? '후계' : (rk[0] === o ? '지금 차례' : ''), noapt: true, ds: heirLine(fc, L, who), rt: ageOf(o) + '세<br>매력 <b>' + o.cha + '</b>' });
+      }
+      if (!show.length) h += '<p class="note"><b class="bad">뒤를 이을 무장이 없습니다.</b> 군주가 세상을 떠나면 세력이 사라집니다.</p>';
+      return h + '</div></div><div class="dlg-f"><div class="pv">' + (cur ? '정해 둔 후계 <b>' + cur.n + '</b> — 다시 누르면 풉니다' : '정해 둔 후계가 없습니다') + '</div><button class="btn" type="button" data-a="close">닫기</button></div>';
+    },
+    on: { pick: function (el) { var id = +el.getAttribute('data-v'), r = cmdHeir(id); if (!r.ok) return toast(r.msg); sfx('ui'); saveGame(); toast(r.off ? '후계를 풀었습니다' : josa(off(id).n, '을를') + ' 후계로 세웠습니다'); refreshDialog(); refreshSheet(); } }
+  }, true);
+}
+/* v0.23 후계 알림: 내 군주가 세상을 떠나 뒤를 이었다(core.js 의 succeed 가 G.succ 에 적어 둔다) — 내 차례가 올 때 한 번 보여 준다 */
+function succShow(cb) {
+  var S = G.succ;
+  if (!S || S.seen || G.aiOnly || !off(S.heir) || !off(S.old)) { if (cb) cb(); return; }
+  var old = off(S.old), h = off(S.heir);
+  showDialog({
+    render: function () {
+      var rows = S.rows.slice().sort(function (a, b) { return (a[2] - a[1]) - (b[2] - b[1]); }), down = rows.filter(function (r) { return r[2] < r[1]; }).length, up = rows.length - down, i;
+      var s = dlgHead('후계 — ' + h.n) + '<div class="dlg-b"><div class="card">' + sceneTag(h) + '<div><p><b>' + josa(old.n, '이가') + '</b> 세상을 떠나고(향년 ' + ageOf(old) + '세) <b>' + josa(h.n, '이가') + '</b> 뒤를 이었습니다.' + (S.named ? ' 미리 정해 둔 후계입니다.' : '') + (S.house ? '' : ' <b class="bad">선대와 한집안이 아닙니다.</b>') + '</p>' +
+        '<p class="note">인연이 이어진 무장 ' + S.keep + '명 · 충성이 내린 무장 <b' + (down ? ' class="bad"' : '') + '>' + down + '명</b>' + (up ? ' · 오른 무장 ' + up + '명' : '') + '</p></div></div>';
+      if (rows.length) {
+        s += '<div class="sec">충성의 변화</div><div class="rows">';
+        for (i = 0; i < rows.length; i++) { var o = off(rows[i][0]); if (o) s += offRow(o, { a: 'off', noapt: true, ds: rows[i][3] || '', rt: '<span class="' + (rows[i][2] < rows[i][1] ? 'bad' : 'ok') + '">' + rows[i][1] + ' → <b>' + rows[i][2] + '</b></span>' }); }
+        s += '</div>';
+      }
+      return s + '</div><div class="dlg-f"><div class="pv">이제 <b>' + h.n + '군</b>입니다</div><button class="btn pri" type="button" data-a="close">확인</button></div>';
+    },
+    onClose: function () { S.seen = 1; saveGame(); if (cb) setTimeout(cb, 80); },
+    on: { off: function (el) { var o = off(+el.getAttribute('data-v')); if (o) ocardOpen(o); } }
+  });
 }
 /* v0.18 무장 카드: 얼굴(초상)을 누르면 어디서든 겹쳐 뜬다 — 창 · STATUS 창 · 대화창 · 일기토 위에. 닫으면(× · 바깥 · Esc) 하던 일이 그대로 남는다.
    창(MODAL)의 흐름과 따로 놀도록 제 층(#ocard)을 쓴다: 무장을 고르던 표도, 겨루던 일기토도 건드리지 않는다 */
@@ -315,7 +389,7 @@ function ocardOpen(o) {
   if (!o || !G) return;
   OCARD = o.id;
   var e = ocardEl();
-  e.innerHTML = '<div class="oc"><div class="dlg-h"><h2>' + o.n + ' ' + (o.f >= 0 ? facChip(o.f) : '') + (o.f >= 0 && isLord(o) ? ' <em class="advt">군주</em>' : '') + (advTag(o) ? ' <em class="advt">군사</em>' : '') + '</h2><button class="x" data-oc="x" type="button" aria-label="닫기">×</button></div><div class="oc-b">' + officerBody(o) + '</div></div>';
+  e.innerHTML = '<div class="oc"><div class="dlg-h"><h2>' + o.n + ' ' + (o.f >= 0 ? facChip(o.f) : '') + (o.f >= 0 && isLord(o) ? ' <em class="advt">군주</em>' : '') + (advTag(o) ? ' <em class="advt">군사</em>' : '') + (heirTag(o) ? ' <em class="advt">후계</em>' : '') + '</h2><button class="x" data-oc="x" type="button" aria-label="닫기">×</button></div><div class="oc-b">' + officerBody(o) + '</div></div>';
   e.classList.add('on');
   try { sfx('ui'); } catch (err) { /* 소리가 없어도 */ }
 }
@@ -1539,7 +1613,7 @@ function baseSheet(b0, tab0) {
           '<div class="cmds"><button class="cmd pri" type="button" data-a="corps"><b>군단</b><small>방침 · 군단장</small></button><button class="cmd" type="button" data-a="direct"><b>직할로</b><small>내가 직접 다스린다</small></button><button class="cmd" type="button" data-a="trans"><b>수송</b><small>내가 직접 보낸다</small></button></div>' +      // v0.18: 군단의 거점에서도 수송은 내가
           '<div class="sec">무장 <em class="cnt">' + ob.length + '</em></div><div class="rows">';
         ob.sort(function (x, y) { return (isLord(y) ? 1000 : 0) + (y.ldr + y.war + y.int + y.pol) / 4 - (isLord(x) ? 1000 : 0) - (x.ldr + x.war + x.int + x.pol) / 4; });
-        for (i = 0; i < ob.length; i++) h += offRow(ob[i], { badge: isLord(ob[i]) ? '군주' : (cpB.lead === ob[i].id ? '군단장' : advTag(ob[i])), rt: '<span class="' + (ob[i].loy < 70 ? 'bad' : '') + '">충 ' + ob[i].loy + '</span><br>' + offStatus(ob[i]) });
+        for (i = 0; i < ob.length; i++) h += offRow(ob[i], { badge: isLord(ob[i]) ? '군주' : (cpB.lead === ob[i].id ? '군단장' : roleTag(ob[i])), rt: '<span class="' + (ob[i].loy < 70 ? 'bad' : '') + '">충 ' + ob[i].loy + '</span><br>' + offStatus(ob[i]) });
         return h + '</div></div>';
       }
       if (!mine) {
@@ -1571,7 +1645,7 @@ function baseSheet(b0, tab0) {
           cmd('move', '이동', '행 ' + AP.move) + (cp ? cmd('captive', '포로', cp + '명') : '') + '</div><div class="sec">무장</div><div class="rows">';
         var all = G.officers.filter(function (o) { return o.f === b.owner && ((o.st === 'active' && o.loc === b.id && o.unit === null) || (o.st === 'travel' && o.dest === b.id)); });
         all.sort(function (x, y) { return (isLord(y) ? 1000 : 0) + (y.ldr + y.war + y.int + y.pol) / 4 - (isLord(x) ? 1000 : 0) - (x.ldr + x.war + x.int + x.pol) / 4; });
-        for (i = 0; i < all.length; i++) h += offRow(all[i], { badge: isLord(all[i]) ? '군주' : advTag(all[i]), dim: all[i].acted || all[i].st === 'travel', rt: '<span class="' + (all[i].loy < 70 ? 'bad' : '') + '">충 ' + all[i].loy + '</span><br>' + offStatus(all[i]) });
+        for (i = 0; i < all.length; i++) h += offRow(all[i], { badge: isLord(all[i]) ? '군주' : roleTag(all[i]), dim: all[i].acted || all[i].st === 'travel', rt: '<span class="' + (all[i].loy < 70 ? 'bad' : '') + '">충 ' + all[i].loy + '</span><br>' + offStatus(all[i]) });
         if (fr.length) { h += '</div><div class="sec">재야</div><div class="rows">'; for (i = 0; i < fr.length; i++) h += offRow(fr[i], {}); }
         h += '</div>';
       } else {
@@ -2529,7 +2603,7 @@ function showLists(tab) {
         if (!st.allU && total > foes.length) h += '<button class="row more" type="button" data-a="allu"><span class="mid"><span class="nm">다른 세력 부대 모두 보기</span><span class="ds">천하에 ' + total + '개</span></span><span class="rt">▸</span></button>';
       } else if (st.tab === 'off') {
         var os = facOfficers(G.player).sort(function (x, y) { return (isLord(y) ? 1000 : 0) + (y.ldr + y.war + y.int + y.pol) - (isLord(x) ? 1000 : 0) - (x.ldr + x.war + x.int + x.pol); });
-        os.forEach(function (o) { h += offRow(o, { badge: isLord(o) ? '군주' : advTag(o), rt: (o.unit !== null ? '출진' : G.bases[o.st === 'travel' ? o.dest : o.loc].n) + '<br><span class="' + (o.loy < 70 ? 'bad' : '') + '">충 ' + o.loy + '</span>' }); });
+        os.forEach(function (o) { h += offRow(o, { badge: isLord(o) ? '군주' : roleTag(o), rt: (o.unit !== null ? '출진' : G.bases[o.st === 'travel' ? o.dest : o.loc].n) + '<br><span class="' + (o.loy < 70 ? 'bad' : '') + '">충 ' + o.loy + '</span>' }); });
       } else {
         G.factions.filter(function (F) { return F.alive; }).map(function (F) { var t = 0; facBases(F.id).forEach(function (b) { t += b.troops; }); facUnits(F.id).forEach(function (u) { t += u.troops; }); return { F: F, t: t, c: facCities(F.id).length }; })
           .sort(function (x, y) { return y.c - x.c || y.t - x.t; })
@@ -2599,7 +2673,13 @@ var HELP_HTML = '<div class="help">' +
   '<p><b>헌책과 지력</b> — 헌책은 순찰·등용·탐색·포상·훈련·징병·건설·무기·거래·출진 가운데 지금 할 만한 일입니다. 군사의 지력이 높을수록 <b>정말 급한 것부터</b> 말하고(지력이 낮으면 순위가 뒤섞입니다), <b>알아채기 어려운 일</b>(숨은 인재 · 허술한 이웃 거점 · 무엇을 지을지)을 놓치지 않으며, 말이 자세합니다 — 지력 ' + COUNSEL.detail + ' 이상이면 숫자와 보낼 사람까지, ' + COUNSEL.some + ' 이상이면 무엇을 할지, 그 아래는 두루뭉술하게. 징병은 길로 이어진 이웃 세력의 병력이 우리보다 많을 때만 권합니다. 한 번 한 말은 ' + days(COUNSEL.keep) + ' 동안 맨 앞에 다시 세우지 않고, 같은 종류의 말(징병 · 건설 …)도 잇달아 하지 않습니다(급한 일은 예외).</p>' +
   '<p><b>탐색</b>의 결과도 미리 정해져 있습니다(도시 · 턴 · 그 턴의 몇 번째인가). 탐색할 무장을 고르면 군사가 <b>오늘 숨은 인재를 만날지</b> 말해 줍니다. 숨은 인재가 있는 도시는 헌책으로 귀띔해 주는데, 있는지 없는지를 아는 것도 지력만큼만 맞습니다(달마다 정해집니다).</p>' +
   '<p>등용과 계략의 성패는 <b>대상마다 미리 정해져 있습니다</b>(계략과 재야·포로 등용은 턴마다, 다른 세력 무장의 등용은 달마다). 그래서 그동안에는 누구에게 다시 물어도 답이 같고, 가장 잘하는 무장이 안 되면 누구도 안 됩니다. 군사를 바꿔 물어도 새로 알 수 있는 것은 없습니다 — 지력이 더 높은 군사의 말이 더 자주 맞을 뿐입니다.</p>' +
-  '<h3>무장 명부</h3><p>무장은 모두 ' + SCENARIO.officers.length + '명입니다(v0.17에서 124명이 늘었습니다 — 여성 ' + SCENARIO.women.length + '명). 194년에 이미 세력에 있는 사람 말고는 <b>등장 연도</b>가 되어야 나옵니다: 재야의 사람은 그 도시에서 <b>탐색</b>으로 찾고, 군주의 집안사람은 해가 바뀔 때 스스로 찾아옵니다. 예전 판의 저장을 불러오면 새 무장이 그 판에 덧붙습니다 — 세력에 있던 사람은 그 세력이 살아 있으면 그 세력으로, 망했으면 그 도시의 재야로 갑니다.</p>' +
+  '<h3>시대</h3><p>새 판을 시작할 때 <b>여덟 시대</b> 가운데 하나를 고릅니다 — 184년 황건의 난 · 190년 반동탁 연합 · 194년 군웅할거 · 200년 관도대전 · 207년 삼고초려 · 219년 한중 쟁탈 · 227년 출사표 · 234년 오장원. 시대마다 세력 · 땅 · 무장의 자리가 다릅니다. 그 해에 이미 세상을 떠난 사람은 나오지 않고, 아직 어린 사람은 <b>등장 연도</b>에 나옵니다. 예전 저장은 모두 194년 판입니다.</p>' +
+  '<h3>수명</h3><p>무장에게는 <b>태어난 해와 수명</b>이 있습니다(무장 창의 나이 — 태어난 해가 한 살인 세는나이). 사서에 병으로 · 늙어서 죽었다고 적힌 사람은 <b>역사의 그 해</b>에 세상을 떠납니다. 처형 · 전사 · 암살로 죽은 사람은 이 판에서 그 일을 겪지 않으므로 <b>역사보다 ' + LIFE.add + '년 더</b>, 그래도 ' + LIFE.min + '세가 안 되면 <b>' + LIFE.min + '세까지</b> 삽니다. 숨을 거두기 ' + LIFE.warn + '달쯤 앞서 <b>병석에 눕고</b>(알림), 출진 · 이동 중이면 거점에 돌아올 때까지 버팁니다. 태어난 해 · 죽은 해가 사서에 없는 사람이 많습니다 — 벼슬길과 싸움의 기록으로 어림했고, 그런 해에는 <b>추정</b>이라고 적었습니다. 예전 저장을 열면, 이미 수명이 지난 사람은 한꺼번에 떠나지 않고 ' + LIFE.old + '년에 걸쳐 차례로 떠납니다.</p>' +
+  '<p><b>수명 켬 · 끔</b> — 새 판을 시작할 때 <b>수명</b> 단추로 고르고, 판을 하는 중에도 <b>메뉴</b>에서 바꿉니다. 끄면 무장이 늙어 죽지 않고(가상의 아이도 태어나지 않습니다), 다시 켜면 이미 수명이 지난 사람은 ' + LIFE.old + '년에 걸쳐 차례로 떠납니다. 예전 저장은 켜진 채로 열립니다.</p>' +
+  '<h3>아이</h3><p>사서에 아버지가 적힌 사람(유선 · 조예 · 손등 …)은 <b>태어난 해에 알림</b>이 오고, 등장 연도가 되면 <b>아버지가 섬기는 세력</b>으로 옵니다(아버지가 벼슬하지 않으면 그 집안으로). 수명을 켠 판에서는 해가 바뀔 때 벼슬하는 무장(' + BIRTH.min + ' ~ ' + BIRTH.max + '세)에게서 <b>가상의 아이</b>도 태어납니다 — 한 해에 ' + BIRTH.p + '%(군주는 ' + BIRTH.lord + '%), 한 사람에게 ' + BIRTH.kids + '명까지. 성은 아버지의 성을 따르고, 능력 · 적성 · 특기는 아버지를 닮되 들쭉날쭉합니다. ' + BIRTH.grow + '년 뒤에 장성해 찾아오고, 초상은 공용입니다. 무장 창에 아버지와 자식이 적힙니다. 지금은 아들만 태어납니다.</p>' +
+  '<h3>후계</h3><p>군주가 세상을 떠나면 <b>후계</b>가 뒤를 잇고 세력의 이름이 바뀝니다. 군주의 무장 창(STATUS 창의 초상)에서 <b>후계 정하기</b>, 또는 무장 창의 <b>후계로 세우기</b>로 미리 정할 수 있습니다 — 행동력은 들지 않고 언제든 바꿉니다. 정해 두지 않으면 <b>아들(나이순) → 형제 → 그 밖의 혈연(매력순) → 매력이 높은 무장</b>(통솔 · 정치도 조금 봅니다)의 차례입니다. 뒤를 이을 무장이 한 사람도 없으면 세력은 사라지고 그 땅은 주인 없는 땅이 됩니다.</p>' +
+  '<p><b>후계와 충성</b> — 새 군주가 선대와 <b>한집안</b>(혈연 · 의형제 · 부부)이면 선대의 인연이 그대로 이어집니다(의형제 · 심복은 <b>세신</b>이 됩니다 — 충성 100). 한집안이 아니면 인연이 끊겨, 선대의 <b>일가</b>(혈연 · 의형제 · 부부 · 인척)는 충성이 ' + HEIR.kin[0] + ' ~ ' + HEIR.kin[1] + ' 내리고, <b>심복</b>은 ' + HEIR.bondP + '%로 ' + HEIR.bond[0] + ' ~ ' + HEIR.bond[1] + ' 내립니다. 새 군주와 직접 인연이 있는 사람은 흔들리지 않습니다. 인연이 없던 무장은 <b>흔들릴 수도, 그대로일 수도</b> 있습니다 — ' + HEIR.base + '%에서 새 군주의 매력이 선대보다 낮은 만큼 늘고(1마다 ' + HEIR.cha + '%p), 미리 정해 둔 후계면 ' + HEIR.named + '%p 줄며, 새 군주보다 공적이 높은 사람은 ' + HEIR.merit + '%p 더합니다. 그렇게 흔들리면 ' + HEIR.drop[0] + ' ~ ' + HEIR.drop[1] + ' 내립니다. 새 군주의 매력이 선대보다 ' + HEIR.upAt + ' 넘게 높으면 오르는 사람도 있습니다. 후계를 고르는 창에 누가 뒤를 이으면 어떻게 될지 줄마다 적혀 있습니다.</p>' +
+  '<h3>무장 명부</h3><p>무장은 모두 ' + SCENARIO.officers.length + '명입니다(여성 ' + SCENARIO.women.length + '명 · v0.23에서 다른 시대의 사람 ' + (SCENARIO.officers.length - 425) + '명이 늘었습니다). 그 시대에 이미 세력에 있는 사람 말고는 <b>등장 연도</b>가 되어야 나옵니다: 재야의 사람은 그 도시에서 <b>탐색</b>으로 찾고, 군주의 집안사람과 <b>아버지가 벼슬하고 있는 사람</b>은 해가 바뀔 때 스스로 찾아옵니다(아버지가 섬기는 세력으로). 예전 판의 저장을 불러오면 새 무장이 그 판에 덧붙습니다 — 세력에 있던 사람은 그 세력이 살아 있으면 그 세력으로, 망했으면 그 도시의 재야로 갑니다.</p>' +
   '<h3>무장 카드와 특기</h3><p>어느 창에서든 <b>무장의 얼굴을 누르면</b> 그 무장의 능력 · 병종 적성 · 특기 풀이 · 있는 곳이 겹쳐 뜹니다. ×나 바깥을 누르면 닫히고, 하던 일(무장 고르기 · 일기토 등)은 그대로 남습니다. 목록의 특기 이름 옆에는 무엇을 하는 특기인지 한 줄이 붙고, 무장을 고르는 표에는 줄마다 <b>병종 적성</b>(창 · 극 · 노 · 기 · 병기)과 특기가 함께 보입니다.</p>' +
   '<p><b>병종 적성</b>은 부대의 공격 · 방어에 곱해집니다 — C ×' + APT_MUL.C + ' · B ×' + APT_MUL.B + ' · A ×' + APT_MUL.A + ' · S ×' + APT_MUL.S + '(주장 · 부장 가운데 가장 높은 적성). 전법은 C 하나 · B 둘 · A부터 셋을 쓰고, 높을수록 잘 통합니다.</p>' +
   '<p><b>열전</b> — 무장 창과 무장 카드에는 그 사람이 누구인지 두세 문장이 붙습니다. 사서에 적힌 일을 바탕으로 했고, 연의나 민간 전승에만 나오는 사람 · 일은 그렇다고 적었습니다.</p>' +
@@ -2782,7 +2862,7 @@ function saveShapeOk(g) {
   function num(v) { return typeof v === 'number' && isFinite(v); }
   var i, j, nf = g.factions.length, no = g.officers.length;
   if (!num(g.year) || !num(g.month) || !(g.xun === 0 || g.xun === 1 || g.xun === 2) || g.turn < 0 || g.player < 0 || g.player >= nf) return false;
-  if (g.bases.length > MAPDATA.bases.length || g.bases.length < BASES_OLD || nf !== SCENARIO.factions.length || no < 1) return false;      // v0.20: 옛 저장은 거점이 적다(홍농이 없다) — 열 때 덧붙인다
+  if (g.bases.length > MAPDATA.bases.length || g.bases.length < BASES_OLD || nf !== scenarioPeek(g.scen).factions.length || no < 1) return false;      // v0.20: 옛 저장은 거점이 적다(홍농이 없다) — 열 때 덧붙인다
   for (i = 0; i < nf; i++) { var f = g.factions[i]; if (!f || typeof f.name !== 'string' || !f.name) return false; }
   for (i = 0; i < no; i++) { var o = g.officers[i]; if (!o || typeof o.n !== 'string' || !num(o.f) || o.f < -1 || o.f >= nf || !num(o.ldr) || !num(o.war) || !num(o.int) || !num(o.pol) || !num(o.cha)) return false; }
   for (i = 0; i < g.bases.length; i++) {
@@ -2879,6 +2959,7 @@ function showMenu() {
     render: function () {
       return dlgHead('메뉴 — ' + GAME_VERSION) + '<div class="dlg-b"><div class="cmds"><button class="cmd" type="button" data-a="save"><b>저장</b></button><button class="cmd" type="button" data-a="load"><b>불러오기</b></button>' +
         '<button class="cmd" type="button" data-a="talk"><b>대화창 ' + (UI.talk === false ? '꺼짐' : '켜짐') + '</b></button><button class="cmd" type="button" data-a="snd"><b>효과음 ' + (UI.sound ? '켜짐' : '꺼짐') + '</b></button><button class="cmd" type="button" data-a="voi"><b>음성 ' + (UI.voice === false ? '꺼짐' : '켜짐') + '</b><small>' + (UI.sound ? '중국어' : '효과음이 꺼져 있음') + '</small></button><button class="cmd" type="button" data-a="mus"><b>음악 ' + (UI.music ? '켜짐' : '꺼짐') + '</b>' + (UI.music && BGM.mode === 'file' ? '<small>연주곡</small>' : (UI.music && BGM.mode === 'syn' ? '<small>만든 음악</small>' : '')) + '</button><button class="cmd" type="button" data-a="spd"><b>열흘 재생</b><small>' + SPEEDS[UI.pspeed][0] + '</small></button><button class="cmd" type="button" data-a="pct"><b>확률 표시</b><small>' + (UI.pct ? '숫자(%)' : '말로 가늠') + '</small></button><button class="cmd" type="button" data-a="vid"><b>영상 ' + (UI.video === false ? '꺼짐' : '켜짐') + '</b><small>제목 · 오프닝 · 끝</small></button><button class="cmd" type="button" data-a="help"><b>도움말</b></button><button class="cmd" type="button" data-a="share"><b>공유</b></button>' +
+        '<button class="cmd" type="button" data-a="life"><b>수명 ' + (G.life === 1 ? '켜짐' : '꺼짐') + '</b><small>이 판</small></button>' +
         '<button class="cmd" type="button" data-a="title"><b>처음으로</b></button></div><p class="note">턴마다 자동 저장 · 저장 칸 ' + SAVE_SLOTS + '개 · 이 기기에만 남습니다(다른 기기로는 공유 → 세이브 파일 보내기)</p></div>';
     },
     on: {
@@ -2891,6 +2972,7 @@ function showMenu() {
       spd: function () { UI.pspeed = (UI.pspeed + 1) % 4; saveOpts(); toast(UI.pspeed ? '열흘 재생: ' + SPEEDS[UI.pspeed][0] : '열흘 재생 끔 — 요약만', 2000); refreshDialog(); },
       vid: function () { UI.video = UI.video === false; saveOpts(); toast(UI.video ? '영상 켬 — 제목 화면 · 새 판의 오프닝 · 끝' : '영상 끔', 2200); refreshDialog(); },
       pct: function () { UI.pct = !UI.pct; saveOpts(); toast(UI.pct ? '확률을 숫자(%)로 보여 줍니다' : '확률을 말로 가늠해 보여 줍니다 — 높음 · 반반 · 낮음', 2400); refreshDialog(); refreshSheet(); },
+      life: function () { var on = lifeSet(G.life !== 1); saveGame(); toast(on ? '수명 켬 — 무장이 제 수명에 세상을 떠나고 아이가 태어납니다' : '수명 끔 — 무장이 늙어 죽지 않습니다(아이도 태어나지 않습니다)', 2600); refreshDialog(); },
       help: function () { showHelp(); },
       share: function () { shareGame(); },
       title: function () { saveGame(); closeDialog(); clearRet(); clearSel(); showTitle(); playBgm('title'); }
@@ -3379,7 +3461,7 @@ function finishPlayback() {
   showHome(); requestDraw();
   if (G.over) { showGameOver(); return; }
   playBgm(bgmForState());
-  askNext(function () { showReport(REPORT); });      // v0.21: 수송을 마친 무장이 있으면 먼저 묻는다
+  askNext(function () { succShow(function () { showReport(REPORT); }); });      // v0.21: 수송을 마친 무장이 있으면 먼저 묻는다 · v0.23: 군주가 바뀌었으면 그것부터
 }
 function jumpBack(c0) {
   var x0 = cam.x, y0 = cam.y, z0 = cam.z;
@@ -3461,7 +3543,7 @@ function showTitle() {
   $('title').classList.remove('off');
   titleVideo(true);                                           // v0.19: 제목 그림이 움직인다
   titleBtns(); talkHide();                                    // 제목 화면에는 대화창을 남기지 않는다
-  $('tVer').textContent = GAME_VERSION + ' · 삼국지 천하도 · 194년 군웅할거';
+  $('tVer').textContent = GAME_VERSION + ' · 삼국지 천하도';
 }
 function startGame() {
   ocardClose();
@@ -3477,24 +3559,32 @@ function startGame() {
   advBrief(900);                                               // 이어 하기로 들어왔을 때도 군사가 한마디
 }
 function showFactionSelect() {
-  var st = { f: -1 };
-  var info = SCENARIO.factions.map(function (sf, i) {
-    var os = SCENARIO.officers.filter(function (o) { return o.f === i; }), lord = null;
-    os.forEach(function (o) { if (o.n === sf.n) lord = o; });
-    return { i: i, n: sf.n, color: sf.color, cities: sf.cities, cnt: os.length, lord: lord, troops: startTroops(i), peace: peaceFor(startTroops(i)) };
-  });
+  var st = { f: -1, scen: UI.scenPick || '194', life: UI.lifePick !== false }, S = null, info = [];
+  function load() {                                              // v0.23: 시대를 바꾸면 그 시대의 세력으로 다시 채운다(판은 건드리지 않는다)
+    S = scenarioPeek(st.scen);
+    info = S.factions.map(function (sf, i) {
+      var os = S.officers.filter(function (o) { return o.f === i; }), lord = null, tr = startTroops(i, S);
+      os.forEach(function (o) { if (o.n === sf.n) lord = o; });
+      return { i: i, n: sf.n, color: sf.color, cities: sf.cities, cnt: os.length, lord: lord, troops: tr, peace: peaceFor(tr), desc: sf.desc || FACTION_DESC[sf.n] || '' };
+    });
+  }
+  load();
   showDialog({
     render: function () {
-      var h = dlgHead('194년 군웅할거 — 군주를 고르세요') + '<div class="dlg-b"><div class="rows">';
+      var h = dlgHead(S.year + '년 ' + S.name + ' — 군주를 고르세요') + '<div class="dlg-b"><div class="scn">';
+      scenarioList().forEach(function (x) { h += '<button type="button" class="scb' + (x.id === st.scen ? ' on' : '') + '" data-a="scen" data-v="' + x.id + '"' + (x.id === st.scen ? ' aria-pressed="true"' : '') + '><b>' + x.year + '</b><span>' + x.name + '</span></button>'; });
+      h += '</div><p class="scsub"><b>' + S.han + '</b> ' + S.sub + '</p><button type="button" class="lifeb' + (st.life ? ' on' : '') + '" data-a="life" aria-pressed="' + (st.life ? 'true' : 'false') + '"><b>수명 ' + (st.life ? '켬' : '끔') + '</b><span>' + (st.life ? '무장이 제 수명에 세상을 떠나고, 아이가 태어납니다' : '무장이 늙어 죽지 않습니다 · 아이도 태어나지 않습니다') + '</span></button><div class="rows">';
       for (var i = 0; i < info.length; i++) {
-        var x = info[i];
-        h += '<button class="row' + (st.f === x.i ? ' sel' : '') + '" type="button" data-a="f" data-v="' + x.i + '">' + porTag(x.lord) + '<span class="mid"><span class="nm">' + x.n + ' <span class="chip" style="background:' + x.color + '">' + x.cities.join('·') + '</span></span><span class="ds" style="white-space:normal">' + FACTION_DESC[x.n] + '</span><span class="ds fs-st">병력 <b>' + fmt(x.troops) + '</b> · 초반 보호 <b' + (x.peace > PEACE_ALL ? ' class="ok"' : '') + '>' + months(x.peace) + '</b></span></span><span class="rt">무장<br><b>' + x.cnt + '</b></span></button>';
+        var x = info[i], ct = x.cities.length > 4 ? x.cities.slice(0, 3).join('·') + ' 외 ' + (x.cities.length - 3) : x.cities.join('·');
+        h += '<button class="row' + (st.f === x.i ? ' sel' : '') + '" type="button" data-a="f" data-v="' + x.i + '">' + porTag(x.lord) + '<span class="mid"><span class="nm">' + x.n + ' <span class="chip" style="background:' + x.color + '">' + ct + '</span></span><span class="ds" style="white-space:normal">' + x.desc + '</span><span class="ds fs-st">병력 <b>' + fmt(x.troops) + '</b> · 초반 보호 <b' + (x.peace > PEACE_ALL ? ' class="ok"' : '') + '>' + months(x.peace) + '</b></span></span><span class="rt">무장<br><b>' + x.cnt + '</b></span></button>';
       }
-      return h + '</div></div><div class="dlg-f"><div class="pv">' + (st.f >= 0 ? '<b>' + info[st.f].n + '</b> · 도시 ' + info[st.f].cities.length + ' · 무장 ' + info[st.f].cnt + '명<br>병력 ' + fmt(info[st.f].troops) + ' · 초반 보호 ' + months(info[st.f].peace) + '(' + dateOfTurn(info[st.f].peace) + '까지)' : '군주를 고르세요') + '</div><button class="btn pri" type="button" data-a="go"' + (st.f < 0 ? ' disabled' : '') + '>시작</button></div>';
+      return h + '</div></div><div class="dlg-f"><div class="pv">' + (st.f >= 0 ? '<b>' + info[st.f].n + '</b> · 도시 ' + info[st.f].cities.length + ' · 무장 ' + info[st.f].cnt + '명<br>병력 ' + fmt(info[st.f].troops) + ' · 초반 보호 ' + months(info[st.f].peace) + '(' + dateOfTurn(info[st.f].peace, S.year) + '까지)' : '시대와 군주를 고르세요') + '</div><button class="btn pri" type="button" data-a="go"' + (st.f < 0 ? ' disabled' : '') + '>시작</button></div>';
     },
     on: {
+      scen: function (el) { st.scen = el.getAttribute('data-v'); st.f = -1; UI.scenPick = st.scen; load(); sfx('ui'); refreshDialog(); },
+      life: function () { st.life = !st.life; UI.lifePick = st.life; sfx('ui'); refreshDialog(); },
       f: function (el) { st.f = +el.getAttribute('data-v'); refreshDialog(); },
-      go: function () { if (st.f < 0) return; closeDialog(); keepPrev(); newGame(st.f); saveGame(); startGame(); sfx('gong'); cinePlay('opening', { cap: '群雄割據', sub: '194년 — 천하는 어지럽고 영웅들이 일어선다' }, function () { showIntro(); }); }      // v0.19: 오프닝 영상(끄면 곧바로 다음 창)
+      go: function () { if (st.f < 0) return; closeDialog(); keepPrev(); newGame(st.f, undefined, st.scen, st.life); saveGame(); startGame(); sfx('gong'); cinePlay('opening', { cap: S.han, sub: S.year + '년 — ' + S.sub }, function () { showIntro(); }); }      // v0.19: 오프닝 영상(끄면 곧바로 다음 창)
     }
   });
 }
@@ -3502,7 +3592,7 @@ function showIntro() {
   var F = G.factions[G.player], L = off(F.lord);
   showDialog({
     render: function () {
-      return dlgHead(dateStr() + ' — ' + F.name) + '<div class="dlg-b"><div class="card">' + sceneTag(L) + '<div><p>' + FACTION_DESC[F.name] + '</p></div></div><div class="help"><ul>' +
+      return dlgHead(dateStr() + ' — ' + F.name) + '<div class="dlg-b"><div class="card">' + sceneTag(L) + '<div><p>' + ((SCENARIO.factions[G.player] && SCENARIO.factions[G.player].desc) || FACTION_DESC[F.n0 || F.name] || '') + '</p></div></div><div class="help"><ul>' +
         '<li>아래 <b>지금 할 일</b>을 위에서부터 누르면 됩니다.</li>' +
         '<li><b>도시</b>를 누르면 명령이 열립니다. <b>부대</b>는 파란 칸으로 움직이고, 적을 누르면 공격합니다.</li>' +
         '<li>다 했으면 <b>턴 종료</b> — 열흘이 흐릅니다.</li>' +

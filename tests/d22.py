@@ -184,7 +184,8 @@ def steps(pg):
     B.shot(pg, 'q5_order', 200); pg.evaluate('closeDialog()'); pg.wait_for_timeout(300)
     tapsel(pg, '#sheet [data-a=patrol]'); pg.wait_for_timeout(500); tapsel(pg, '#modal [data-a=auto]'); pg.wait_for_timeout(400)
     p5 = txt(pg, '#modal .pv'); m = re.search(r'치안 \+(\d+).*수입 (\d+)% → (\d+)%', p5)
-    ok(m and int(m.group(2)) == c5['pct'] and int(m.group(3)) == round(50 + (c5['order'] + int(m.group(1))) / 2), '순찰 미리보기에 수입 몫의 변화: ' + p5)
+    ok(m and int(m.group(2)) == c5['pct'] and int(m.group(3)) == int(50 + (c5['order'] + int(m.group(1))) / 2 + 0.5),      # v0.23: 게임은 Math.round(반올림), 파이썬의 round 는 .5 를 짝수로 보낸다 — 90.5 가 걸리면 어긋났다
+        '순찰 미리보기에 수입 몫의 변화: ' + p5)
     pg.evaluate('closeDialog()'); pg.wait_for_timeout(300)
 
     # ================= 6. 등용과 옛 관계 =================

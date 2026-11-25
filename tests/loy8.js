@@ -11,7 +11,8 @@ function by(n) { for (var i = 0; i < G.officers.length; i++) if (G.officers[i].n
 function quarter() { var m0 = G.month; do { endTurn(); } while (!(G.xun === 0 && (G.month === 1 || G.month === 4 || G.month === 7 || G.month === 10) && G.month !== m0)); }
 // 1) 표의 이름이 모두 명부에 있는가
 var names = {}, lords = {}; SCENARIO.officers.forEach(function (o) { names[o.n] = 1; }); SCENARIO.factions.forEach(function (f) { lords[f.n] = 1; });
-var bad = []; Object.keys(BONDS).forEach(function (l) { if (!lords[l]) bad.push(l); Object.keys(BONDS[l]).forEach(function (n) { if (!names[n]) bad.push(l + ':' + n); }); });
+var bad = []; Object.keys(BONDS).forEach(function (l) { if (!names[l]) bad.push(l);      // v0.23: 다른 시대의 군주 · 선대(손견 · 조비 …)도 표에 있다 — 명부에 있는 이름이면 된다
+  Object.keys(BONDS[l]).forEach(function (n) { if (!names[n]) bad.push(l + ':' + n); }); });
 chk('인연 표의 이름이 모두 명부에 있다', !bad.length, bad.join(' '));
 newGame(2, 11); G.aiOnly = true;                       // 유비로 시작(AI 가 대신 둔다)
 // 2) 시작 충성
